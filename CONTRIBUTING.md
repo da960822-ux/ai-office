@@ -1,34 +1,25 @@
-# 기여 가이드
+# Contributing
 
 ## 개발 환경
 
-- Python 3.11 이상
-- Node.js 20 이상
-- 루트 `requirements.txt` 의 의존성
+README의 설치 절차로 Python과 Web 의존성을 설치합니다. 런타임 DB, 로그, API key, task workspace는 커밋하지 않습니다.
 
-## 변경 절차
+## 변경 원칙
 
-1. 작업 목적이 드러나는 브랜치를 만듭니다. 예: `feat/task-dashboard`, `fix/job-retry`.
-2. 작은 단위로 변경하고, 관련 테스트를 함께 추가합니다.
-3. 아래 검증 명령을 실행합니다.
-4. 커밋 메시지는 `feat:`, `fix:`, `docs:`, `test:`, `chore:` 형식을 사용합니다.
-5. Pull Request에 변경 내용, 검증 결과, 남은 위험을 기록합니다.
+- task 상태와 Job 상태를 혼합하지 않습니다.
+- UI 상태는 추측하지 않고 API의 task·Job·event를 사용합니다.
+- 모델 실행을 완료로 처리하려면 Evidence와 별도 팀장 리뷰가 필요합니다.
+- 파일·명령·MCP 쓰기 권한은 TaskContract를 우회하지 않습니다.
+- 말풍선과 tool summary에 prompt 원문, 파일 본문, 인증 값을 넣지 않습니다.
+- Windows launcher 변경 시 부모 reloader와 listener 자식 종료를 함께 검증합니다.
 
-## 검증 명령
+## 필수 검증
 
-```bash
-npm test
-python -m pytest apps/api
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s apps\api -p "test_*.py" -v
+cd apps\web
+npm.cmd test -- --run
+npm.cmd run build
 ```
 
-웹 앱을 변경했다면 다음도 실행합니다.
-
-```bash
-cd apps/web
-npm ci
-npm run build
-```
-
-## 보안
-
-API 키와 MCP 인증 토큰은 커밋하지 않습니다. 로컬 설정은 `.ai-office/settings.json` 또는 OS keyring을 사용하고, 공개 저장소에 올릴 파일에는 비밀값을 포함하지 않습니다.
+PR에는 변경 이유, 사용자 영향, 재현 원인, 검증 결과를 적습니다.

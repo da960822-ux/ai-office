@@ -1,31 +1,35 @@
-# Runtime and local state
+# Python
 .venv/
-.cache/
 __pycache__/
 *.py[cod]
-*.sqlite3
-*.sqlite3-shm
-*.sqlite3-wal
-*.db
-*.db-shm
-*.db-wal
-data/workspaces/
-data/openrouter-models.json
-logs/*
-!.gitkeep
+.pytest_cache/
 
-# JavaScript dependencies and build output
+# Node
 node_modules/
-apps/web/node_modules/
-dist/
-build/
+apps/web/dist/
 *.tsbuildinfo
 
-# Local secrets and editor files
+# Local runtime state
+.ai-office/
+.cache/
+data/
+logs/
+
+# Credentials and local configuration
 .env
 .env.*
 !.env.example
-.DS_Store
-.idea/
-.vscode/
+*.pem
+*.key
+credentials*.json
 
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.log
