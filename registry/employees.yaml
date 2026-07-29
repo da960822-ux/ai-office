@@ -1,0 +1,295 @@
+NAVI:
+  id: NAVI
+  team: operations-planning
+  title: 오피스 실장 / 최종 오케스트레이터
+  runtime: PLANNER
+  profile_path: employees/operations-planning/NAVI/EMPLOYEE.md
+  required_skills:
+  - using-agent-skills
+  - planning-and-task-breakdown
+  - executing-plans
+  optional_skills:
+  - agent-orchestration-advisor
+ROUTE:
+  id: ROUTE
+  team: operations-planning
+  title: 작업 설계자 / 의존성 관리자
+  runtime: PLANNER
+  profile_path: employees/operations-planning/ROUTE/EMPLOYEE.md
+  required_skills:
+  - planning-and-task-breakdown
+  - dispatching-parallel-agents
+  - using-git-worktrees
+  - git-workflow-and-versioning
+  optional_skills: []
+CLOCK:
+  id: CLOCK
+  team: operations-planning
+  title: 실행 관제 / 비용·시간 관리자
+  runtime: OPERATOR
+  profile_path: employees/operations-planning/CLOCK/EMPLOYEE.md
+  required_skills:
+  - observability-and-instrumentation
+  - debugging-and-error-recovery
+  - code-simplification
+  optional_skills: []
+FRAME:
+  id: FRAME
+  team: product-experience
+  title: 제품 책임자 / 팀장
+  runtime: PLANNER
+  profile_path: employees/product-experience/FRAME/EMPLOYEE.md
+  required_skills:
+  - planning-and-task-breakdown
+  - source-driven-development
+  - writing-plans
+  optional_skills:
+  - prd-development
+  - discovery-process
+  - prioritization-advisor
+  - user-story
+FLOW:
+  id: FLOW
+  team: product-experience
+  title: UX·서비스 설계자
+  runtime: SPECIALIST
+  profile_path: employees/product-experience/FLOW/EMPLOYEE.md
+  required_skills:
+  - ui-ux-pro-max
+  - source-driven-development
+  - customer-research
+  optional_skills:
+  - customer-journey-map
+  - user-story-mapping
+  - discovery-process
+MOSS:
+  id: MOSS
+  team: product-experience
+  title: UI·콘텐츠 시스템 설계자
+  runtime: SPECIALIST
+  profile_path: employees/product-experience/MOSS/EMPLOYEE.md
+  required_skills:
+  - ui-ux-pro-max
+  - impeccable
+  - design-first-ui-prompting
+  - humanizer
+  optional_skills:
+  - gsap-core
+  - gsap-timeline
+BUILD:
+  id: BUILD
+  team: application
+  title: 테크리드 / 팀장
+  runtime: REVIEWER
+  profile_path: employees/application/BUILD/EMPLOYEE.md
+  required_skills:
+  - incremental-implementation
+  - code-simplification
+  - code-review-and-quality
+  - git-workflow-and-versioning
+  optional_skills: []
+FRONT:
+  id: FRONT
+  team: application
+  title: 프론트엔드 엔지니어
+  runtime: BUILDER
+  profile_path: employees/application/FRONT/EMPLOYEE.md
+  required_skills:
+  - frontend-ui-engineering
+  - browser-testing-with-devtools
+  - ui-ux-pro-max
+  - gsap-react
+  - gsap-performance
+  optional_skills: []
+BACK:
+  id: BACK
+  team: application
+  title: 백엔드·API 엔지니어
+  runtime: BUILDER
+  profile_path: employees/application/BACK/EMPLOYEE.md
+  required_skills:
+  - api-and-interface-design
+  - auth-implementation-patterns
+  - sql-optimization-patterns
+  - security-and-hardening
+  optional_skills: []
+LINK:
+  id: LINK
+  team: ai-data
+  title: AI 시스템 리드 / 팀장
+  runtime: REVIEWER
+  profile_path: employees/ai-data/LINK/EMPLOYEE.md
+  required_skills:
+  - prompt-engineering-patterns
+  - llm-evaluation
+  - rag-implementation
+  optional_skills:
+  - agent-orchestration-advisor
+SIGNAL:
+  id: SIGNAL
+  team: ai-data
+  title: AI 런타임·데이터 엔지니어
+  runtime: BUILDER
+  profile_path: employees/ai-data/SIGNAL/EMPLOYEE.md
+  required_skills:
+  - embedding-strategies
+  - hybrid-search-implementation
+  - rag-implementation
+  - sql-optimization-patterns
+  optional_skills: []
+EVAL:
+  id: EVAL
+  team: ai-data
+  title: AI 평가·안전 엔지니어
+  runtime: VERIFIER
+  profile_path: employees/ai-data/EVAL/EMPLOYEE.md
+  required_skills:
+  - llm-evaluation
+  - doubt-driven-development
+  - verification-before-completion
+  - security-and-hardening
+  optional_skills: []
+SHIP:
+  id: SHIP
+  team: platform-reliability
+  title: 플랫폼·릴리스 리드 / 팀장
+  runtime: OPERATOR
+  profile_path: employees/platform-reliability/SHIP/EMPLOYEE.md
+  required_skills:
+  - ci-cd-and-automation
+  - shipping-and-launch
+  - git-workflow-and-versioning
+  - verification-before-completion
+  optional_skills: []
+SRE:
+  id: SRE
+  team: platform-reliability
+  title: 신뢰성·운영 엔지니어
+  runtime: OPERATOR
+  profile_path: employees/platform-reliability/SRE/EMPLOYEE.md
+  required_skills:
+  - observability-and-instrumentation
+  - debugging-and-error-recovery
+  - systematic-debugging
+  - ci-cd-and-automation
+  optional_skills: []
+COST:
+  id: COST
+  team: platform-reliability
+  title: 인프라·성능·용량 관리자
+  runtime: OPERATOR
+  profile_path: employees/platform-reliability/COST/EMPLOYEE.md
+  required_skills:
+  - observability-and-instrumentation
+  - code-simplification
+  - source-driven-development
+  optional_skills: []
+GUARD:
+  id: GUARD
+  team: quality-security
+  title: 품질·보안 책임자 / 팀장
+  runtime: REVIEWER
+  profile_path: employees/quality-security/GUARD/EMPLOYEE.md
+  required_skills:
+  - code-review-and-quality
+  - verification-before-completion
+  - security-and-hardening
+  - code-review-excellence
+  optional_skills: []
+TRACE:
+  id: TRACE
+  team: quality-security
+  title: 테스트·디버깅 엔지니어
+  runtime: VERIFIER
+  profile_path: employees/quality-security/TRACE/EMPLOYEE.md
+  required_skills:
+  - test-driven-development
+  - systematic-debugging
+  - e2e-testing-patterns
+  - verification-before-completion
+  optional_skills: []
+SHIELD:
+  id: SHIELD
+  team: quality-security
+  title: AppSec·Privacy 엔지니어
+  runtime: SPECIALIST
+  profile_path: employees/quality-security/SHIELD/EMPLOYEE.md
+  required_skills:
+  - security-and-hardening
+  - auth-implementation-patterns
+  - source-driven-development
+  - doubt-driven-development
+  optional_skills: []
+GROW:
+  id: GROW
+  team: growth-marketing
+  title: 성장·마케팅 책임자 / 팀장
+  runtime: SPECIALIST
+  profile_path: employees/growth-marketing/GROW/EMPLOYEE.md
+  required_skills:
+  - product-marketing
+  - launch
+  - customer-research
+  optional_skills:
+  - positioning-statement
+VOICE:
+  id: VOICE
+  team: growth-marketing
+  title: 브랜드·콘텐츠·카피 전략가
+  runtime: SPECIALIST
+  profile_path: employees/growth-marketing/VOICE/EMPLOYEE.md
+  required_skills:
+  - copywriting
+  - humanizer
+  - product-marketing
+  - design-first-ui-prompting
+  optional_skills: []
+PULSE:
+  id: PULSE
+  team: growth-marketing
+  title: 성장 분석·실험 담당
+  runtime: SPECIALIST
+  profile_path: employees/growth-marketing/PULSE/EMPLOYEE.md
+  required_skills:
+  - analytics
+  - ab-testing
+  - cro
+  - seo-audit
+  optional_skills: []
+LENS:
+  id: LENS
+  team: service-knowledge
+  title: 독립 서비스 리뷰 책임자 / 팀장
+  runtime: REVIEWER
+  profile_path: employees/service-knowledge/LENS/EMPLOYEE.md
+  required_skills:
+  - code-review-and-quality
+  - verification-before-completion
+  - impeccable
+  - ui-ux-pro-max
+  optional_skills: []
+JOURNEY:
+  id: JOURNEY
+  team: service-knowledge
+  title: 사용자·운영 여정 검토자
+  runtime: SPECIALIST
+  profile_path: employees/service-knowledge/JOURNEY/EMPLOYEE.md
+  required_skills:
+  - ui-ux-pro-max
+  - cro
+  - customer-research
+  - onboarding
+  optional_skills:
+  - customer-journey-map
+DOCS:
+  id: DOCS
+  team: service-knowledge
+  title: 기술문서·지식 관리자
+  runtime: BUILDER
+  profile_path: employees/service-knowledge/DOCS/EMPLOYEE.md
+  required_skills:
+  - documentation-and-adrs
+  - writing-skills
+  - source-driven-development
+  - humanizer
+  optional_skills: []

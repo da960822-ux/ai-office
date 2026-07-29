@@ -1,0 +1,10 @@
+employee: DOCS
+runtime: BUILDER
+permissions:
+- P0_READ
+- P2_DOC_WRITE
+- P3_DOC_CHECK
+external_skill_default_mode: instruction_only
+network: deny_by_default
+scripts: deny_until_task_approved
+write_scope: task_contract_only

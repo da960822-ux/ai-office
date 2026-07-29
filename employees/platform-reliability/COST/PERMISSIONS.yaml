@@ -1,0 +1,10 @@
+employee: COST
+runtime: OPERATOR
+permissions:
+- P0_READ
+- P1_PROPOSE
+- P2_STATE_WRITE
+external_skill_default_mode: instruction_only
+network: deny_by_default
+scripts: deny_until_task_approved
+write_scope: task_contract_only

@@ -1,0 +1,5 @@
+{
+  "provider": "openrouter",
+  "lead_model": "z-ai/glm-5.2",
+  "worker_model": "deepseek/deepseek-v4-flash"
+}

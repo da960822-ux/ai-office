@@ -1,0 +1,27 @@
+export type Persona = { name: string; callSign: string; bio: string; specialty: string; temperament: string; palette: string; hair: string; skin: string; shirt: string; accessory?: string };
+export const personas: Record<string, Persona> = {
+  NAVI:{name:'나비 한',callSign:'Chief of Staff',bio:'복잡한 요청을 실행 가능한 계약으로 정리하는 오피스 실장.',specialty:'우선순위·의사결정',temperament:'차분한 전략가',palette:'#5f7f45',hair:'#20231e',skin:'#f3c7a5',shirt:'#2c4031',accessory:'glasses'},
+  ROUTE:{name:'로한 김',callSign:'Dependency Architect',bio:'병렬 작업과 의존성을 가장 짧은 경로로 연결한다.',specialty:'DAG·작업 설계',temperament:'정밀한 조율자',palette:'#758e76',hair:'#35291f',skin:'#b97859',shirt:'#526d6b'},
+  CLOCK:{name:'시온 박',callSign:'Operations Control',bio:'시간·비용·실행 신호를 놓치지 않는 관제 담당.',specialty:'예산·관측',temperament:'침착한 모니터',palette:'#77989b',hair:'#172329',skin:'#d99873',shirt:'#314e59'},
+  FRAME:{name:'프레임 윤',callSign:'Product Lead',bio:'사용자 문제를 명확한 제품 결정과 acceptance로 바꾼다.',specialty:'제품 전략',temperament:'명료한 리더',palette:'#bf7968',hair:'#4b2b25',skin:'#e9b08b',shirt:'#713f38'},
+  FLOW:{name:'유진 서',callSign:'Journey Designer',bio:'사용자 여정의 마찰을 관찰하고 서비스 흐름을 설계한다.',specialty:'UX·서비스 설계',temperament:'공감형 탐구자',palette:'#a17d9e',hair:'#211d26',skin:'#f0c5aa',shirt:'#58416e'},
+  MOSS:{name:'모스 리',callSign:'Visual System',bio:'제품의 감도와 인터랙션 언어를 한 장면으로 만든다.',specialty:'UI·콘텐츠 시스템',temperament:'감각적 완성가',palette:'#698e63',hair:'#734a31',skin:'#d99d76',shirt:'#31523b',accessory:'earring'},
+  BUILD:{name:'빌드 최',callSign:'Tech Lead',bio:'팀의 변경을 단순하고 신뢰할 수 있는 형태로 통합한다.',specialty:'통합·코드 리뷰',temperament:'단호한 설계자',palette:'#5f7496',hair:'#25272b',skin:'#e1ad8a',shirt:'#35475f',accessory:'glasses'},
+  FRONT:{name:'프론트 정',callSign:'Frontend Engineer',bio:'인터페이스를 빠르고 세밀하게 제품 경험으로 구현한다.',specialty:'React·UI 구현',temperament:'민첩한 제작자',palette:'#c28270',hair:'#2c1e1e',skin:'#f0be9d',shirt:'#9a4c43'},
+  BACK:{name:'백 도',callSign:'Backend Engineer',bio:'안정적인 API와 데이터 흐름을 만드는 서버 엔지니어.',specialty:'API·데이터 모델',temperament:'논리적 해결사',palette:'#637c9b',hair:'#1c2228',skin:'#a96e52',shirt:'#283e57'},
+  LINK:{name:'링크 진',callSign:'AI Systems Lead',bio:'AI 시스템의 연결점과 품질 기준을 설계하는 리드.',specialty:'LLM·RAG 전략',temperament:'통찰형 검토자',palette:'#7c6f9f',hair:'#403227',skin:'#d69268',shirt:'#493d69',accessory:'glasses'},
+  SIGNAL:{name:'시그널 조',callSign:'Data Engineer',bio:'데이터 신호를 검색 가능한 지식과 실행으로 바꾼다.',specialty:'데이터·임베딩',temperament:'호기심 많은 분석가',palette:'#5f9b91',hair:'#20332e',skin:'#efc1a5',shirt:'#28635d'},
+  EVAL:{name:'에바 강',callSign:'AI Evaluator',bio:'결과의 정확성과 안전성을 증거로 평가한다.',specialty:'AI 평가·안전',temperament:'신중한 판정자',palette:'#a77989',hair:'#4a2934',skin:'#c88968',shirt:'#713d52'},
+  SHIP:{name:'쉽 오',callSign:'Release Lead',bio:'안전한 릴리스 경로와 재현 가능한 배포 준비를 만든다.',specialty:'릴리스·자동화',temperament:'실용적 추진자',palette:'#6c8a80',hair:'#293128',skin:'#bc7a58',shirt:'#3c5b52'},
+  SRE:{name:'세라 문',callSign:'Reliability Engineer',bio:'문제가 커지기 전에 시스템의 이상 신호를 읽는다.',specialty:'신뢰성·디버깅',temperament:'냉정한 복구자',palette:'#5d86a4',hair:'#2a2831',skin:'#f0c2a6',shirt:'#305575'},
+  COST:{name:'코스트 배',callSign:'Capacity Planner',bio:'성능과 비용 사이의 가장 좋은 균형을 찾아낸다.',specialty:'용량·효율',temperament:'현실적 최적가',palette:'#8b8b62',hair:'#4a382a',skin:'#d59976',shirt:'#5d6240'},
+  GUARD:{name:'가드 송',callSign:'Quality & Security Lead',bio:'품질과 보안 기준을 마지막까지 지키는 책임자.',specialty:'보안·권한 검토',temperament:'엄정한 수호자',palette:'#a26b62',hair:'#24201f',skin:'#9d6249',shirt:'#622f2c',accessory:'glasses'},
+  TRACE:{name:'트레이스 임',callSign:'Test Engineer',bio:'실패를 재현하고 원인을 좁혀 다시 검증한다.',specialty:'테스트·디버깅',temperament:'집요한 탐색가',palette:'#5d91a5',hair:'#39312a',skin:'#e8b18f',shirt:'#2d667d'},
+  SHIELD:{name:'실드 한',callSign:'AppSec Specialist',bio:'위험을 미리 발견해 안전한 대안을 제안한다.',specialty:'AppSec·Privacy',temperament:'조용한 방어자',palette:'#7e697f',hair:'#171719',skin:'#d99473',shirt:'#4d3853'},
+  GROW:{name:'그로우 백',callSign:'Growth Lead',bio:'시장과 사용자의 반응을 성장 실험으로 연결한다.',specialty:'포지셔닝·성장',temperament:'에너지 있는 기획자',palette:'#c48255',hair:'#613d27',skin:'#f1c09e',shirt:'#824425'},
+  VOICE:{name:'보이스 유',callSign:'Brand Strategist',bio:'제품의 언어와 브랜드 목소리를 일관되게 만든다.',specialty:'카피·브랜드',temperament:'섬세한 편집자',palette:'#b36f87',hair:'#422734',skin:'#e5a887',shirt:'#78374e',accessory:'earring'},
+  PULSE:{name:'펄스 노',callSign:'Growth Analyst',bio:'숫자의 움직임에서 다음 실험 가설을 찾는다.',specialty:'분석·실험',temperament:'빠른 관찰자',palette:'#789b65',hair:'#252b21',skin:'#be805e',shirt:'#47653a'},
+  LENS:{name:'렌즈 권',callSign:'Independent Reviewer',bio:'독립된 시선으로 서비스 품질과 완성도를 본다.',specialty:'서비스 리뷰',temperament:'균형 잡힌 비평가',palette:'#74818f',hair:'#39302c',skin:'#e3aa88',shirt:'#44515d',accessory:'glasses'},
+  JOURNEY:{name:'저니 신',callSign:'Service Researcher',bio:'사용자의 실제 경험을 따라가며 빈틈을 찾는다.',specialty:'사용자 여정',temperament:'따뜻한 관찰자',palette:'#a17f65',hair:'#4a2c25',skin:'#f1c7aa',shirt:'#704b35'},
+  DOCS:{name:'독스 안',callSign:'Knowledge Builder',bio:'흩어진 결정과 기술 정보를 읽기 쉬운 지식으로 남긴다.',specialty:'문서·지식 관리',temperament:'꼼꼼한 기록가',palette:'#70866b',hair:'#2b3028',skin:'#d99772',shirt:'#405b3f',accessory:'glasses'}
+};

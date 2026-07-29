@@ -1,0 +1,92 @@
+project: FaceFit
+positioning: 매 면접을 다음 성장으로 바꾸는 코칭 시스템
+stack:
+  frontend: React + Vite + TypeScript + React Router
+primary_routes:
+  - /
+  - /login
+  - /signup
+  - /onboarding
+  - /equipment
+  - /voice-profile
+  - /session/live
+  - /analysis
+  - /report
+  - /dashboard
+brand:
+  moss: "#557A5A"
+  deep_moss: "#3E5A42"
+  orange: "#E2703C"
+  ivory: "#F8F4EE"
+  charcoal: "#302B27"
+preserve:
+  - 기존 라우팅·상태·이벤트
+  - 구현·Mock·예정 구분
+  - 분석 → 처방 → 다음 연습 → 재측정 성장 루프
+exclude_unless_reapproved:
+  - 결제·이용권 실제 구현
+verification_commands:
+  - npm run build
+  - npm run lint
+  - npm run test
+viewports: [1440, 768, 390]
+benchmark_tasks:
+  - id: A
+    type: bug_fix
+    scenario: 분석 실패 화면의 재시도 기능 추가
+    required_flow: 재현 → 최소 수정 → E2E → evidence → 독립 리뷰
+  - id: B
+    type: feature
+    scenario: 개선 문장을 다음 연습 과제로 저장
+    required_flow: acceptance → 프론트/백 계약 → 구현 → 계약 테스트 → E2E
+  - id: C
+    type: cross_functional
+    scenario: 랜딩 메시지 중복 제거와 성장 루프 연결
+    required_flow: 제품·UI·카피 협의 → 구현 → 여정 검토 → 캡처·문서
+
+
+token_policy:
+  default_profile: standard
+  profiles:
+    low:
+      max_active_profiles: 2
+      max_model_calls: 3
+      max_deep_calls: 0
+      max_dynamic_context_tokens: 8000
+      max_output_tokens: 1200
+    standard:
+      max_active_profiles: 3
+      max_model_calls: 5
+      max_deep_calls: 1
+      max_dynamic_context_tokens: 16000
+      max_output_tokens: 2000
+    complex:
+      max_active_profiles: 5
+      max_model_calls: 8
+      max_deep_calls: 2
+      max_dynamic_context_tokens: 32000
+      max_output_tokens: 3000
+  compaction_trigger_ratio: 0.70
+  cache_static_prefix:
+    - corporate_constitution_version
+    - runtime_contract_version
+    - tool_schema_version
+    - output_schema_version
+    - approved_skill_core_hashes
+  preserve_during_compaction:
+    - goal
+    - acceptance
+    - decisions
+    - unresolved_errors
+    - security_warnings
+    - evidence_ids
+    - current_commit
+
+skill_policy:
+  install_source: user_local_or_project_only
+  inbox_path: .ai-office/user-skills/inbox
+  default_install_mode: instruction_only
+  auto_download: false
+  auto_update: false
+  require_hash_lock: true
+  shadow_tasks_required: 3

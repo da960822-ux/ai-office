@@ -1,0 +1,14 @@
+.pose-sit{background-image:url('/assets/agent-pose-sit.png')!important}.pose-walk-a{background-image:url('/assets/agent-pose-walk-a.png')!important}.pose-walk-b{background-image:url('/assets/agent-pose-walk-b.png')!important}.pose-work{background-image:url('/assets/agent-pose-work.png')!important}.pose-review{background-image:url('/assets/agent-pose-review.png')!important}.pose-meeting{background-image:url('/assets/agent-pose-meeting.png')!important}
+
+/* 8 columns × 3 rows: App supplies 0%, 50%, 100% background positions. */
+.floor-agent{--avatar-scale:.78}.floor-agent.team-lead{--avatar-scale:.88}.floor-agent .avatar-art.sprite-avatar{transform:scale(var(--avatar-scale));transform-origin:center bottom;margin-bottom:-9px}
+.floor-agent.action-walk .avatar-art{animation:office-walk .18s steps(2,end) infinite!important;will-change:transform}.floor-agent.action-work .avatar-art{animation:office-work 1.6s ease-in-out infinite;animation-delay:var(--motion-delay,0ms)}.floor-agent.action-review .avatar-art{animation:office-review 2s ease-in-out infinite;animation-delay:var(--motion-delay,0ms)}.floor-agent.action-meeting .avatar-art{animation:office-meeting 2.3s ease-in-out infinite;animation-delay:var(--motion-delay,0ms)}.floor-agent.action-idle .avatar-art{animation:none!important}.floor-agent.action-idle .desk-chair{display:none!important}
+@keyframes office-walk{0%,100%{transform:scale(var(--avatar-scale))}50%{transform:scale(var(--avatar-scale)) translateY(-4px) rotate(-1deg)}}@keyframes office-work{0%,100%{transform:scale(var(--avatar-scale))}50%{transform:scale(var(--avatar-scale)) translateY(-1px) rotate(.5deg)}}@keyframes office-review{0%,100%{transform:scale(var(--avatar-scale))}50%{transform:scale(var(--avatar-scale)) translateY(-3px) rotate(-1deg)}}@keyframes office-meeting{0%,100%{transform:scale(var(--avatar-scale))}50%{transform:scale(var(--avatar-scale)) translateY(-2px)}}
+
+/* Keep zone label at empty zone edge, never over a person. */
+.team-sign{min-width:0!important;max-width:164px!important;padding:3px 6px!important;border-radius:5px!important;background:#142018e8!important;box-shadow:0 2px 7px #0008!important;white-space:nowrap}.team-sign span{font-size:8px!important;line-height:1.2!important;letter-spacing:-.01em!important}
+
+/* Detail rail must never create a horizontal scrollbar. */
+.profile-panel{box-sizing:border-box!important;overflow-x:hidden!important;overflow-y:auto!important}.profile-panel *{min-width:0}.profile-panel p,.profile-panel dd{overflow-wrap:anywhere!important;word-break:break-word}.profile-panel dl,.profile-panel dl div{min-width:0!important}
+
+@media(prefers-reduced-motion:reduce){.floor-agent,.office-world{transition:none!important}.floor-agent .avatar-art{animation:none!important}}

@@ -1,0 +1,11 @@
+employee: GUARD
+runtime: REVIEWER
+permissions:
+- P0_READ
+- P4_REVIEW
+- P4_EVIDENCE_READ
+- P2_STATE_WRITE
+external_skill_default_mode: instruction_only
+network: deny_by_default
+scripts: deny_until_task_approved
+write_scope: task_contract_only
