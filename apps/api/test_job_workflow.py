@@ -168,7 +168,7 @@ class DurableJobWorkflowE2E(unittest.TestCase):
             worker.schedule_autonomous_tasks()
             delegated = self.client.get(f"/api/tasks/{task['id']}").json()
             self.assertEqual(delegated["state"], "executing")
-            self.assertEqual([item["owner"] for item in delegated["action_items"]], ["PULSE"])
+            self.assertEqual([item["owner"] for item in delegated["action_items"]], ["GROW"])
 
             self.claim_and_process()
             reviewing = self.client.get(f"/api/tasks/{task['id']}").json()

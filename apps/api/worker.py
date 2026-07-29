@@ -326,6 +326,18 @@ def process_meeting(job: dict) -> None:
                 }
                 for lead in leads
             ]
+        plan = main.task_payload(db, job["task_id"]).get("execution_plan", {}).get("plan") or {}
+        planned_candidates = [
+            {
+                "worker_id": phase["lead_id"], "description": phase["objective"],
+                "skill_ids": phase.get("skill_ids", []), "deliverable": phase["output"],
+                "handoff_to": phase.get("handoff_to") or plan.get("final_owner") or phase["lead_id"],
+                "depends_on": phase.get("depends_on", []),
+            }
+            for phase in plan.get("phases", []) if phase.get("lead_id") in leads
+        ]
+        if planned_candidates:
+            candidates = planned_candidates
         db.execute("DELETE FROM action_items WHERE task_id = ?", (job["task_id"],))
         contract = main.task_payload(db, job["task_id"])["contract"]
         for index, scope in enumerate(candidates, 1):
@@ -357,6 +369,16 @@ def process_execute(job: dict) -> None:
             scope = db.execute("SELECT * FROM task_agent_scopes WHERE task_id = ? AND employee_id = ?", (job["task_id"], employee)).fetchone()
             skill_ids = json.loads(scope["skill_ids"]) if scope else []
             handoff = f"Handoff to {scope['handoff_to']}: {scope['deliverable']}" if scope else "Return a verifiable department contribution."
+            plan = main.task_payload(db, job["task_id"]).get("execution_plan", {}).get("plan") or {}
+            phase_by_id = {phase["id"]: phase for phase in plan.get("phases", [])}
+            dependency_owners = [phase_by_id[item]["lead_id"] for item in (json.loads(scope["dependencies"]) if scope else []) if item in phase_by_id]
+            upstream = [item for item in main.task_payload(db, job["task_id"])["deliverables"] if item["owner"] in dependency_owners and item["status"] == "department_draft"]
+            workspace_row = db.execute("SELECT path FROM workspaces WHERE id = ?", (payload["workspace_id"],)).fetchone()
+            upstream_context = []
+            for item in upstream:
+                path = main.Path(workspace_row["path"]) / item["path"]
+                if path.exists():
+                    upstream_context.append({"owner": item["owner"], "path": item["path"], "content": path.read_text(encoding="utf-8", errors="replace")[:12000]})
             run_id = f"AR-{job['id']}-{index:02d}"
             existing = db.execute("SELECT state FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
             if existing and existing["state"] == "succeeded":
@@ -376,6 +398,8 @@ def process_execute(job: dict) -> None:
                     f"Original task:\n{payload.get('instruction', '')}\n\n"
                     f"Your bounded assignment:\n{work_summary}\n\n"
                     f"{handoff}\n\n"
+                    f"Required upstream handoff inputs:\n{json.dumps(upstream_context, ensure_ascii=False)}\n\n"
+                    "Use upstream inputs as constraints. Cite unresolved gaps; do not restart prior research or redefine approved upstream decisions.\n\n"
                     "Deliver only this bounded contribution. Do not choose or rewrite the final cross-department recommendation."
                 ),
                 skill_ids=skill_ids,
@@ -396,7 +420,7 @@ def process_execute(job: dict) -> None:
     with main.database() as db:
         task = main.task_payload(db, job["task_id"])
         plan = task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else {}
-        lead = task.get("lead_id") or plan.get("final_owner") or next((employee for employee in task["assigned_employees"] if employee in main.LEAD_IDS and employee != "NAVI"), None)
+        lead = plan.get("final_owner") or task.get("lead_id") or next((employee for employee in task["assigned_employees"] if employee in main.LEAD_IDS and employee != "NAVI"), None)
         department_deliverables = [item for item in task["deliverables"] if item["status"] == "department_draft"]
         if lead and department_deliverables:
             synthesize_job = main.enqueue_job(db, job["task_id"], "synthesize", {

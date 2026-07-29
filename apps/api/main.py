@@ -834,7 +834,8 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
     instructions = (
         "You are the operating chief. Think through the request and design a minimal, adaptive company workflow; do not classify by keywords. "
         "Use department ownership as constraints, not as a canned workflow. Add a department only when its output changes the result. "
-        "Represent cross-department work as explicit dependencies and handoffs. Choose one accountable final owner. "
+        "Build a deliverable chain, not parallel opinions: every later phase that uses earlier work must name that phase in depends_on, state exact input it consumes in objective, and state exact file/evidence it hands off. "
+        "Typical example when relevant: verified research -> product decision/PRD -> implementation -> independent quality/security gate -> release or final document. Omit steps that do not change this request. Choose one accountable final owner. "
         "For research, define source quality, recency, triangulation, and decision criteria. For implementation, define verification and independent review proportional to risk. "
         "Choose an artifact kind from the supplied standards. Decide workspace_context as none, read, or write based on whether local project files are relevant. "
         "Return strict JSON only with: summary (<=160 Korean chars), artifact_kind, final_owner, workspace_context, requires_web_research (boolean), evidence_strategy, "
@@ -874,6 +875,14 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
             "depends_on": [str(item)[:80] for item in phase.get("depends_on", []) if isinstance(item, str)][:6],
             "skill_ids": selected_skills,
         })
+    seen_phase_ids: set[str] = set()
+    for index, phase in enumerate(phases):
+        original_id = phase["id"]
+        if original_id in seen_phase_ids:
+            phase["id"] = f"{original_id}-{index + 1}"
+        previous_ids = {item["id"] for item in phases[:index]}
+        phase["depends_on"] = [item for item in phase["depends_on"] if item in previous_ids]
+        seen_phase_ids.add(phase["id"])
     agents = list(dict.fromkeys(phase["lead_id"] for phase in phases))
     final_owner = payload.get("final_owner")
     artifact_kind = payload.get("artifact_kind")
