@@ -1,22 +1,14 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `code-review-and-quality` — `addyosmani/agent-skills:skills/code-review-and-quality` · MIT · 설치 대상 `./skills/code-review-and-quality/SKILL.md`
-- `verification-before-completion` — `obra/superpowers:skills/verification-before-completion` · MIT · 설치 대상 `./skills/verification-before-completion/SKILL.md`
-- `security-and-hardening` — `addyosmani/agent-skills:skills/security-and-hardening` · MIT · 설치 대상 `./skills/security-and-hardening/SKILL.md`
-- `code-review-excellence` — `wshobson/agents:plugins/developer-essentials/skills/code-review-excellence` · MIT · 설치 대상 `./skills/code-review-excellence/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: GUARD Local Role Core — 품질·보안 책임자 / 팀장의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - 독립 품질·보안·릴리스 게이트 최종 판정 - 미검증을 conditional_pass 또는 fail로 표시 1. acceptance와 evidence 연결 확인 2. reviewer independence 확인 3. blocker·high 위험 검토 4. pass·conditional_pass·fail 판정
+- `code-review-and-quality`: Code Review and Quality — --- name: code-review-and-quality description: Conducts multi-axis code review. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to assess code quality across multiple
+- `code-review-excellence`: Code Review Excellence — --- name: code-review-excellence description: Master effective code review practices to provide constructive feedback, catch bugs early, and foster knowledge sharing while maintaining team morale. Use when reviewing pull requests, establish
+- `legal-compliance-check`: /compliance-check -- Compliance Review — --- name: compliance-check description: Run a compliance check on a proposed action, product feature, or business initiative, surfacing applicable regulations, required approvals, and risk areas. Use when launching a feature that touches pe
+- `legal-risk-assessment`: Legal Risk Assessment Skill — --- name: legal-risk-assessment description: Assess and classify legal risks using a severity-by-likelihood framework with escalation criteria. Use when evaluating contract risk, assessing deal exposure, classifying issues by severity, or d
+- `sast-configuration`: SAST Configuration — --- name: sast-configuration description: Configure Static Application Security Testing (SAST) tools for automated vulnerability detection in application code. Use when setting up security scanning, implementing DevSecOps practices, or auto
+- `security-and-hardening`: Security and Hardening — --- name: security-and-hardening description: Hardens code against vulnerabilities. Use when handling user input, authentication, data storage, or external integrations. Use when building any feature that accepts untrusted data, manages use
+- `security-requirement-extraction`: Security Requirement Extraction — --- name: security-requirement-extraction description: Derive security requirements from threat models and business context. Use when translating threats into actionable requirements, creating security user stories, or building security tes
+- `stride-analysis-patterns`: STRIDE Analysis Patterns — --- name: stride-analysis-patterns description: Apply STRIDE methodology to systematically identify threats. Use when analyzing system security, conducting threat modeling sessions, or creating security documentation. --- Systematic threat
+- `verification-before-completion`: Verification Before Completion — --- name: verification-before-completion description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success cl

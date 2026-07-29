@@ -1,22 +1,18 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `analytics` — `coreyhaines31/marketingskills:skills/analytics` · MIT · 설치 대상 `./skills/analytics/SKILL.md`
-- `ab-testing` — `coreyhaines31/marketingskills:skills/ab-testing` · MIT · 설치 대상 `./skills/ab-testing/SKILL.md`
-- `cro` — `coreyhaines31/marketingskills:skills/cro` · MIT · 설치 대상 `./skills/cro/SKILL.md`
-- `seo-audit` — `coreyhaines31/marketingskills:skills/seo-audit` · MIT · 설치 대상 `./skills/seo-audit/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: PULSE Local Role Core — 성장 분석·실험 담당의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - 이벤트 사전·퍼널·CRO·SEO 감사·실험 설계 - 데이터가 있을 때만 결과 판정 1. 측정 목표와 이벤트 정의 2. 기준선과 데이터 품질 확인 3. 표본·기간·가드레일 포함 실험 계획 4. 데이터 부족 시 판정 보류 - data_source - sample_size - time_window - guardrail
+- `ab-testing`: A/B Test Setup — --- name: ab-testing description: When the user wants to plan, design, or implement an A/B test or experiment, or build a growth experimentation program. Also use when the user mentions "A/B test," "split test," "experiment," "test this cha
+- `ads`: Paid Ads — --- name: ads description: "When the user wants help with paid advertising campaigns on Google Ads, Meta (Facebook/Instagram), LinkedIn, Twitter/X, or other ad platforms. Also use when the user mentions 'PPC,' 'paid media,' 'ROAS,' 'CPA,' '
+- `analytics`: Analytics Tracking — --- name: analytics description: When the user wants to set up, improve, or audit analytics tracking and measurement. Also use when the user mentions "set up tracking," "GA4," "Google Analytics," "conversion tracking," "event tracking," "UT
+- `aso`: ASO Audit — --- name: aso description: "When the user wants to audit or optimize an App Store or Google Play listing. Also use when the user mentions 'ASO audit,' 'app store optimization,' 'optimize my app listing,' 'improve app visibility,' 'app store
+- `attribution`: Attribution — --- name: attribution description: When the user wants to figure out which marketing actually drives conversions and revenue, choose or interpret an attribution model, or reconcile conflicting numbers across tools. Also use when the user me
+- `churn-prevention`: Churn Prevention — --- name: churn-prevention description: "When the user wants to reduce churn, build cancellation flows, set up save offers, recover failed payments, or implement retention strategies. Also use when the user mentions 'churn,' 'cancel flow,'
+- `cro`: Conversion Rate Optimization (CRO) — --- name: cro description: "When the user wants to optimize, improve, or increase conversions on any marketing page or form — including homepage, landing pages, pricing pages, feature pages, lead capture forms, or contact forms. Also use wh
+- `pm-measure-experiment-design`: Experiment Design — --- name: measure-experiment-design description: Designs an A/B test or experiment with variants, success metrics, sample size, and duration for an existing hypothesis. Use when planning an experiment to validate a product change or test an
+- `pm-measure-experiment-results`: Experiment Results — --- name: measure-experiment-results description: Documents the results of a completed experiment or A/B test with statistical analysis, learnings, and recommendations. Use after experiments conclude to communicate findings, inform decision
+- `programmatic-seo`: Programmatic SEO — --- name: programmatic-seo description: When the user wants to create SEO-driven pages at scale using templates and data. Also use when the user mentions "programmatic SEO," "template pages," "pages at scale," "directory pages," "location p
+- `referrals`: Referral & Affiliate Programs — --- name: referrals description: "When the user wants to create, optimize, or analyze a referral program, affiliate program, or word-of-mouth strategy. Also use when the user mentions 'referral,' 'affiliate,' 'ambassador,' 'word of mouth,'
+- `seo-audit`: SEO Audit — --- name: seo-audit description: When the user wants to audit, review, or diagnose SEO issues on their site. Also use when the user mentions "SEO audit," "technical SEO," "why am I not ranking," "SEO issues," "on-page SEO," "meta tags revie
+- `startup-metrics-framework`: Startup Metrics Framework — --- name: startup-metrics-framework description: Track, calculate, and optimize key performance metrics for SaaS, marketplace, consumer, and B2B startups from seed through Series A, including unit economics, growth efficiency, and cash mana

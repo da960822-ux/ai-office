@@ -330,9 +330,50 @@ def department_policy(employee_id: str) -> dict:
     return json.loads(DEPARTMENT_BOUNDARIES_PATH.read_text(encoding="utf-8"))[employee["team"]]
 
 
-def deliverable_spec(request: str) -> tuple[str, dict]:
+ARTIFACT_KIND_BY_TASK_KIND = {
+    "market_research": "market_decision_report",
+    "business_strategy": "market_decision_report",
+    "product_planning": "product_design_spec",
+    "customer_discovery": "product_design_spec",
+    "experiment_design": "experiment_report",
+    "experiment_analysis": "experiment_report",
+    "architecture_design": "architecture_spec",
+    "frontend_implementation": "implementation_report",
+    "backend_implementation": "implementation_report",
+    "ai_data_implementation": "ai_system_report",
+    "test_engineering": "assurance_report",
+    "accessibility_review": "assurance_report",
+    "quality_review": "assurance_report",
+    "security_review": "assurance_report",
+    "privacy_review": "compliance_review",
+    "legal_compliance": "compliance_review",
+    "contract_review_draft": "compliance_review",
+    "release_operations": "release_operations_report",
+    "ci_cd_design": "release_operations_report",
+    "cloud_operations": "release_operations_report",
+    "launch_management": "release_operations_report",
+    "observability_operations": "observability_runbook",
+    "incident_response": "incident_response_report",
+    "finops_review": "financial_model_report",
+    "financial_planning": "financial_model_report",
+    "paid_acquisition": "go_to_market_plan",
+    "app_store_optimization": "go_to_market_plan",
+    "lifecycle_marketing": "go_to_market_plan",
+    "community_growth": "go_to_market_plan",
+    "partner_marketing": "go_to_market_plan",
+    "seo_growth": "go_to_market_plan",
+    "retention_growth": "go_to_market_plan",
+    "content_marketing": "go_to_market_plan",
+    "brand_strategy": "go_to_market_plan",
+    "sales_operations": "sales_operations_plan",
+    "customer_support": "customer_support_runbook",
+}
+
+
+def deliverable_spec(request: str, task_kind: str | None = None) -> tuple[str, dict]:
     standards = json.loads(DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
-    return "business_document", standards["business_document"]
+    artifact_kind = ARTIFACT_KIND_BY_TASK_KIND.get(task_kind or "", "business_document")
+    return artifact_kind, standards[artifact_kind]
 
 
 def skill_ids_for_task(employee_id: str, request: str) -> list[str]:
@@ -428,6 +469,15 @@ TASK_KINDS = {
     "market_research", "business_strategy", "product_planning", "ui_design",
     "frontend_implementation", "backend_implementation", "ai_data_implementation",
     "release_operations", "quality_review", "security_review", "document_authoring", "general",
+    "customer_discovery", "experiment_design", "experiment_analysis",
+    "architecture_design", "test_engineering", "accessibility_review",
+    "privacy_review", "legal_compliance", "contract_review_draft",
+    "ci_cd_design", "cloud_operations", "observability_operations",
+    "finops_review", "incident_response", "financial_planning",
+    "launch_management", "paid_acquisition", "app_store_optimization",
+    "lifecycle_marketing", "community_growth", "partner_marketing",
+    "sales_operations", "seo_growth", "retention_growth",
+    "content_marketing", "brand_strategy", "customer_support",
 }
 
 
@@ -1095,7 +1145,33 @@ def assert_completion_invariants(
     final_owner = json.loads(plan_row["plan_json"]).get("final_owner") if plan_row else None
     if final_owner and review["reviewer_id"] == final_owner:
         raise RuntimeError("Final owner cannot approve their own deliverable")
+    if task_requires_user_approval(db, task_id):
+        approval = db.execute(
+            "SELECT 1 FROM approvals WHERE task_id = ? AND decision = 'approve' AND decided_by = 'USER' LIMIT 1",
+            (task_id,),
+        ).fetchone()
+        if not approval:
+            raise RuntimeError("Completion requires explicit user approval for external, sales, support, privacy, or legal work")
     return dict(final)
+
+
+def task_requires_user_approval(db: sqlite3.Connection, task_id: str) -> bool:
+    sensitive_kinds = {
+        "privacy_review",
+        "legal_compliance",
+        "contract_review_draft",
+        "sales_operations",
+        "customer_support",
+    }
+    definitions = json.loads(SKILL_DEFINITIONS_PATH.read_text(encoding="utf-8"))
+    for row in db.execute("SELECT task_kind, skill_ids FROM task_phases WHERE task_id = ?", (task_id,)):
+        if row["task_kind"] in sensitive_kinds:
+            return True
+        for skill_id in json.loads(row["skill_ids"]):
+            activation = definitions.get(skill_id, {}).get("activation", {})
+            if activation.get("requires_human_review") or activation.get("requires_approval"):
+                return True
+    return False
 
 
 def fallback_execution_plan(roster: list[str], items: list[tuple[str, str]]) -> dict:
@@ -1838,15 +1914,21 @@ def decide_approval(task_id: str, payload: ApprovalInput) -> dict:
             workspace, allowed, reason = validate_task_workspace(workspace_row)
             if not allowed:
                 raise HTTPException(409, reason)
-            try:
-                assert_completion_invariants(db, task_id, workspace)
-            except RuntimeError as error:
-                raise HTTPException(409, str(error)) from error
         count = db.execute("SELECT COUNT(*) FROM approvals WHERE task_id = ?", (task_id,)).fetchone()[0] + 1
         approval_id = f"APR-{task_id.split('-')[-1]}-{count:02d}"
         now = utc_now()
         next_state = {"approve": "completed", "rework": "planning", "reject": "cancelled"}[payload.decision]
         db.execute("INSERT INTO approvals VALUES (?, ?, ?, ?, ?, ?)", (approval_id, task_id, payload.decision, payload.reason, "USER", now))
+        if payload.decision == "approve":
+            try:
+                assert_completion_invariants(db, task_id, workspace)
+            except RuntimeError as error:
+                raise HTTPException(409, str(error)) from error
+            db.execute(
+                "UPDATE deliverables SET status = 'approved', updated_at = ? "
+                "WHERE task_id = ? AND status = 'final_candidate'",
+                (now, task_id),
+            )
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (next_state, now, task_id))
         db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "approval_decision", task["state"], next_state, "USER", payload.reason or payload.decision, json.dumps([]), now))
         return task_payload(db, task_id)
@@ -2019,13 +2101,6 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         research_task = bool(dynamic_plan.get("requires_web_research"))
         workspace_context = dynamic_plan.get("workspace_context", "read")
         allow_workspace_context = workspace_context in {"read", "write"}
-        standards = json.loads(DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
-        artifact_kind = dynamic_plan.get("artifact_kind")
-        if artifact_kind in standards:
-            artifact_standard = standards[artifact_kind]
-        else:
-            artifact_kind, artifact_standard = deliverable_spec(effective_request)
-        boundary = department_policy(payload.employee_id)
         active_phase = next(
             (
                 phase for phase in task.get("phases", [])
@@ -2034,6 +2109,13 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             None,
         )
         task_kind = (active_phase or {}).get("task_kind") or default_task_kind(role["team"])
+        standards = json.loads(DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
+        artifact_kind = dynamic_plan.get("artifact_kind")
+        if artifact_kind in standards:
+            artifact_standard = standards[artifact_kind]
+        else:
+            artifact_kind, artifact_standard = deliverable_spec(effective_request, task_kind)
+        boundary = department_policy(payload.employee_id)
         skill_context = employee_skill_context(
             payload.employee_id,
             effective_request,

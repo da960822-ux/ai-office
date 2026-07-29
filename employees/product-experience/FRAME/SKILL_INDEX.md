@@ -1,24 +1,17 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `planning-and-task-breakdown` — `addyosmani/agent-skills:skills/planning-and-task-breakdown` · MIT · 설치 대상 `./skills/planning-and-task-breakdown/SKILL.md`
-- `source-driven-development` — `addyosmani/agent-skills:skills/source-driven-development` · MIT · 설치 대상 `./skills/source-driven-development/SKILL.md`
-- `writing-plans` — `obra/superpowers:skills/writing-plans` · MIT · 설치 대상 `./skills/writing-plans/SKILL.md`
-
-## 조건부 공개 스킬
-- `prd-development` — `deanpeters/Product-Manager-Skills:skills/prd-development` · CC-BY-NC-SA-4.0 · 별도 승인 후 설치
-- `discovery-process` — `deanpeters/Product-Manager-Skills:skills/discovery-process` · CC-BY-NC-SA-4.0 · 별도 승인 후 설치
-- `prioritization-advisor` — `deanpeters/Product-Manager-Skills:skills/prioritization-advisor` · CC-BY-NC-SA-4.0 · 별도 승인 후 설치
-- `user-story` — `deanpeters/Product-Manager-Skills:skills/user-story` · CC-BY-NC-SA-4.0 · 별도 승인 후 설치
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: FRAME Local Role Core — 제품 책임자 / 팀장의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - 사용자 문제·가치·범위·non-goals·KPI·acceptance 확정 - 만들 수 있음과 만들 가치가 있음을 구분 1. 사용자·문제·맥락 확인 2. 핵심 가치와 제외 범위 정의 3. 성공 지표와 release criteria 작성 4. 구현 가능한 acceptance로 변환 - user_problem_sour
+- `planning-and-task-breakdown`: Planning and Task Breakdown — --- name: planning-and-task-breakdown description: Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large to start, when you need to es
+- `pm-define-hypothesis`: Hypothesis — --- name: define-hypothesis description: Defines a testable hypothesis with clear success metrics and a validation approach. Use when forming assumptions to test or aligning a team on what success looks like, before any experiment is design
+- `pm-define-prioritization-framework`: Prioritization Framework — --- name: define-prioritization-framework description: Run applicable prioritization frameworks (RICE, ICE, MoSCoW, Weighted Scoring, Kano) against a list of features or initiatives. Produces a comparison table showing where rankings agree
+- `pm-define-problem-statement`: Problem Statement — --- name: define-problem-statement description: Creates a clear problem framing document with user impact, business context, and success criteria. Use when starting a new initiative, realigning a drifted project, or communicating up to lead
+- `pm-deliver-prd`: Product Requirements Document (PRD) — --- name: deliver-prd description: Creates a comprehensive Product Requirements Document that aligns stakeholders on what to build, why, and how success will be measured. Use when specifying features, epics, or product initiatives for engin
+- `pm-deliver-user-stories`: User Stories — --- name: deliver-user-stories description: Generates user stories in the standard persona, action, benefit story format from product requirements or feature descriptions. Use when breaking a feature into stories for sprint planning, writin
+- `pm-develop-solution-brief`: Solution Brief — --- name: develop-solution-brief description: Creates a concise one-page solution overview that communicates the proposed approach, key decisions, and trade-offs. Use when pitching solutions to stakeholders, aligning teams on approach, or d
+- `pm-foundation-lean-canvas`: Lean Canvas — --- name: foundation-lean-canvas description: Produces a one-page lean canvas across nine interlocking blocks (problem, customer, UVP, solution, channels, revenue, cost, metrics, unfair advantage) with optional inline HTML and SVG visual re
+- `pm-foundation-meeting-synthesize`: Meeting Synthesize — --- name: foundation-meeting-synthesize description: Cross-meeting archaeology skill. Consumes multiple meeting recaps (or raw notes) over a period and surfaces patterns invisible in any single meeting. Shows how decisions evolved, who has
+- `source-driven-development`: Source-Driven Development — --- name: source-driven-development description: Grounds every implementation decision in official documentation. Use when you want authoritative, source-cited code free from outdated patterns. Use when building with any framework or librar
+- `spec-driven-development`: Spec-Driven Development — --- name: spec-driven-development description: Creates specs before coding. Use when starting a new project, feature, or significant change and no specification exists yet. Use when requirements are unclear, ambiguous, or only exist as a va
+- `writing-plans`: Writing Plans — --- name: writing-plans description: Use when you have a spec or requirements for a multi-step task, before touching code --- Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable

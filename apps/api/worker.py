@@ -725,14 +725,22 @@ def process_review(job: dict) -> None:
         db.execute("INSERT INTO reviews VALUES (?, ?, ?, ?, ?, ?)", (review_id, job["task_id"], reviewer, verdict, findings, main.utc_now()))
         db.execute("INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (f"EVD-{job['task_id'].split('-')[-1]}-LEAD-REVIEW", job["task_id"], None, "lead_review", "pass" if verdict == "pass" else "fail", main.hashlib.sha256(findings.encode()).hexdigest(), 0, main.utc_now()))
         if verdict == "pass":
-            main.assert_completion_invariants(
-                db,
-                job["task_id"],
-                workspace,
-                current_job_id=job["id"],
-            )
-            db.execute("UPDATE deliverables SET status = 'approved', updated_at = ? WHERE id = ?", (main.utc_now(), final["id"]))
-            next_state = "completed"
+            if main.task_requires_user_approval(db, job["task_id"]):
+                next_state = "awaiting_approval"
+                main.emit_job_event(
+                    db, job["task_id"], "approval.required",
+                    "민감 업무 결과는 사용자 승인이 있어야 완료됩니다.",
+                    job_id=job["id"], agent_id=reviewer,
+                )
+            else:
+                main.assert_completion_invariants(
+                    db,
+                    job["task_id"],
+                    workspace,
+                    current_job_id=job["id"],
+                )
+                db.execute("UPDATE deliverables SET status = 'approved', updated_at = ? WHERE id = ?", (main.utc_now(), final["id"]))
+                next_state = "completed"
         elif verdict == "blocked":
             next_state = "blocked"
         else:

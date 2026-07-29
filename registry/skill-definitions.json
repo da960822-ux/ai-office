@@ -412,6 +412,230 @@
   "pm-deliver-acceptance-criteria": {
     "id": "pm-deliver-acceptance-criteria", "source": "pm-skills", "source_path": "skills/deliver-acceptance-criteria", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
   },
+  "pm-define-problem-statement": {
+    "id": "pm-define-problem-statement", "source": "pm-skills", "source_path": "skills/define-problem-statement", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["product_planning", "customer_discovery"]}
+  },
+  "pm-define-hypothesis": {
+    "id": "pm-define-hypothesis", "source": "pm-skills", "source_path": "skills/define-hypothesis", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["product_planning", "customer_discovery", "experiment_design"]}
+  },
+  "pm-discover-interview-synthesis": {
+    "id": "pm-discover-interview-synthesis", "source": "pm-skills", "source_path": "skills/discover-interview-synthesis", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["customer_discovery", "market_research"]}
+  },
+  "pm-define-jtbd-canvas": {
+    "id": "pm-define-jtbd-canvas", "source": "pm-skills", "source_path": "skills/define-jtbd-canvas", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["customer_discovery", "product_planning"]}
+  },
+  "pm-define-prioritization-framework": {
+    "id": "pm-define-prioritization-framework", "source": "pm-skills", "source_path": "skills/define-prioritization-framework", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["product_planning", "business_strategy"]}
+  },
+  "pm-measure-experiment-design": {
+    "id": "pm-measure-experiment-design", "source": "pm-skills", "source_path": "skills/measure-experiment-design", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["experiment_design", "product_planning"]}
+  },
+  "pm-measure-experiment-results": {
+    "id": "pm-measure-experiment-results", "source": "pm-skills", "source_path": "skills/measure-experiment-results", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["experiment_analysis", "quality_review"]}
+  },
+  "pm-deliver-launch-checklist": {
+    "id": "pm-deliver-launch-checklist", "source": "pm-skills", "source_path": "skills/deliver-launch-checklist", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["launch_management", "release_operations"]}
+  },
+  "spec-driven-development": {
+    "id": "spec-driven-development", "source": "addy", "source_path": "skills/spec-driven-development", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["product_planning", "architecture_design", "backend_implementation", "frontend_implementation"]}
+  },
+  "context-engineering": {
+    "id": "context-engineering", "source": "addy", "source_path": "skills/context-engineering", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["architecture_design", "ai_data_implementation"]}
+  },
+  "performance-optimization": {
+    "id": "performance-optimization", "source": "addy", "source_path": "skills/performance-optimization", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["frontend_implementation", "backend_implementation", "test_engineering"]}
+  },
+  "architecture-patterns": {
+    "id": "architecture-patterns", "source": "wshobson", "source_path": "plugins/backend-development/skills/architecture-patterns", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["architecture_design", "backend_implementation"]}
+  },
+  "openapi-spec-generation": {
+    "id": "openapi-spec-generation", "source": "wshobson", "source_path": "plugins/documentation-generation/skills/openapi-spec-generation", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["backend_implementation", "document_authoring"]}
+  },
+  "screen-reader-testing": {
+    "id": "screen-reader-testing", "source": "wshobson", "source_path": "plugins/accessibility-compliance/skills/screen-reader-testing", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["accessibility_review", "test_engineering", "frontend_implementation"]}
+  },
+  "gdpr-data-handling": {
+    "id": "gdpr-data-handling", "source": "wshobson", "source_path": "plugins/hr-legal-compliance/skills/gdpr-data-handling", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["privacy_review", "legal_compliance", "backend_implementation"]}
+  },
+  "sast-configuration": {
+    "id": "sast-configuration", "source": "wshobson", "source_path": "plugins/security-scanning/skills/sast-configuration", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["security_review", "ci_cd_design"]}
+  },
+  "security-requirement-extraction": {
+    "id": "security-requirement-extraction", "source": "wshobson", "source_path": "plugins/security-scanning/skills/security-requirement-extraction", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["security_review", "privacy_review", "architecture_design"]}
+  },
+  "stride-analysis-patterns": {
+    "id": "stride-analysis-patterns", "source": "wshobson", "source_path": "plugins/security-scanning/skills/stride-analysis-patterns", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["security_review", "architecture_design"]}
+  },
+  "deployment-pipeline-design": {
+    "id": "deployment-pipeline-design", "source": "wshobson", "source_path": "plugins/cicd-automation/skills/deployment-pipeline-design", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["ci_cd_design", "release_operations"]}
+  },
+  "github-actions-templates": {
+    "id": "github-actions-templates", "source": "wshobson", "source_path": "plugins/cicd-automation/skills/github-actions-templates", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["ci_cd_design"]}
+  },
+  "secrets-management": {
+    "id": "secrets-management", "source": "wshobson", "source_path": "plugins/cicd-automation/skills/secrets-management", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["ci_cd_design", "cloud_operations", "security_review"]}
+  },
+  "terraform-module-library": {
+    "id": "terraform-module-library", "source": "wshobson", "source_path": "plugins/cloud-infrastructure/skills/terraform-module-library", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["cloud_operations"]}
+  },
+  "multi-cloud-architecture": {
+    "id": "multi-cloud-architecture", "source": "wshobson", "source_path": "plugins/cloud-infrastructure/skills/multi-cloud-architecture", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["cloud_operations", "architecture_design"]}
+  },
+  "k8s-manifest-generator": {
+    "id": "k8s-manifest-generator", "source": "wshobson", "source_path": "plugins/kubernetes-operations/skills/k8s-manifest-generator", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["cloud_operations"]}
+  },
+  "helm-chart-scaffolding": {
+    "id": "helm-chart-scaffolding", "source": "wshobson", "source_path": "plugins/kubernetes-operations/skills/helm-chart-scaffolding", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["cloud_operations"]}
+  },
+  "gitops-workflow": {
+    "id": "gitops-workflow", "source": "wshobson", "source_path": "plugins/kubernetes-operations/skills/gitops-workflow", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["cloud_operations", "release_operations"]}
+  },
+  "cost-optimization": {
+    "id": "cost-optimization", "source": "wshobson", "source_path": "plugins/cloud-infrastructure/skills/cost-optimization", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["finops_review"]}
+  },
+  "distributed-tracing": {
+    "id": "distributed-tracing", "source": "wshobson", "source_path": "plugins/observability-monitoring/skills/distributed-tracing", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["observability_operations", "backend_implementation"]}
+  },
+  "prometheus-configuration": {
+    "id": "prometheus-configuration", "source": "wshobson", "source_path": "plugins/observability-monitoring/skills/prometheus-configuration", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["observability_operations"]}
+  },
+  "slo-implementation": {
+    "id": "slo-implementation", "source": "wshobson", "source_path": "plugins/observability-monitoring/skills/slo-implementation", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["observability_operations", "quality_review"]}
+  },
+  "incident-runbook-templates": {
+    "id": "incident-runbook-templates", "source": "wshobson", "source_path": "plugins/incident-response/skills/incident-runbook-templates", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["incident_response", "document_authoring"]}
+  },
+  "on-call-handoff-patterns": {
+    "id": "on-call-handoff-patterns", "source": "wshobson", "source_path": "plugins/incident-response/skills/on-call-handoff-patterns", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["incident_response"]}
+  },
+  "postmortem-writing": {
+    "id": "postmortem-writing", "source": "wshobson", "source_path": "plugins/incident-response/skills/postmortem-writing", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["incident_response", "document_authoring"]}
+  },
+  "startup-financial-modeling": {
+    "id": "startup-financial-modeling", "source": "wshobson", "source_path": "plugins/startup-business-analyst/skills/startup-financial-modeling", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["financial_planning", "business_strategy"]}
+  },
+  "startup-metrics-framework": {
+    "id": "startup-metrics-framework", "source": "wshobson", "source_path": "plugins/startup-business-analyst/skills/startup-metrics-framework", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["financial_planning", "business_strategy", "experiment_analysis"]}
+  },
+  "ads": {
+    "id": "ads", "source": "marketing", "source_path": "skills/ads", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["paid_acquisition"]}
+  },
+  "aso": {
+    "id": "aso", "source": "marketing", "source_path": "skills/aso", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["app_store_optimization"]}
+  },
+  "emails": {
+    "id": "emails", "source": "marketing", "source_path": "skills/emails", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["lifecycle_marketing"]}
+  },
+  "cold-email": {
+    "id": "cold-email", "source": "marketing", "source_path": "skills/cold-email", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["sales_operations"], "requires_approval": true}
+  },
+  "community-marketing": {
+    "id": "community-marketing", "source": "marketing", "source_path": "skills/community-marketing", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["community_growth"]}
+  },
+  "co-marketing": {
+    "id": "co-marketing", "source": "marketing", "source_path": "skills/co-marketing", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["partner_marketing"]}
+  },
+  "sales-enablement": {
+    "id": "sales-enablement", "source": "marketing", "source_path": "skills/sales-enablement", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["sales_operations", "document_authoring"]}
+  },
+  "programmatic-seo": {
+    "id": "programmatic-seo", "source": "marketing", "source_path": "skills/programmatic-seo", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["seo_growth", "frontend_implementation"]}
+  },
+  "churn-prevention": {
+    "id": "churn-prevention", "source": "marketing", "source_path": "skills/churn-prevention", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["retention_growth", "customer_support"]}
+  },
+  "referrals": {
+    "id": "referrals", "source": "marketing", "source_path": "skills/referrals", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["retention_growth", "community_growth"]}
+  },
+  "social": {
+    "id": "social", "source": "marketing", "source_path": "skills/social", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["content_marketing", "community_growth"]}
+  },
+  "brand-voice-analyzer": {
+    "id": "brand-voice-analyzer", "source": "onewave", "source_path": "brand-voice-analyzer", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["brand_strategy", "content_marketing"]}
+  },
+  "brand-consistency-checker": {
+    "id": "brand-consistency-checker", "source": "onewave", "source_path": "brand-consistency-checker", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["brand_strategy", "content_marketing", "quality_review"]}
+  },
+  "content-repurposer": {
+    "id": "content-repurposer", "source": "onewave", "source_path": "content-repurposer", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["content_marketing"]}
+  },
+  "finance-unit-economics": {
+    "id": "finance-unit-economics", "source": "casemark-finance", "source_path": "skills/finance/analyzing-unit-economics", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["financial_planning", "business_strategy"], "read_policy": "analysis only; assumptions and sensitivity required"}
+  },
+  "finance-driver-based-model": {
+    "id": "finance-driver-based-model", "source": "casemark-finance", "source_path": "skills/finance/building-driver-based-models", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["financial_planning"], "read_policy": "analysis only; bull/base/bear scenarios required"}
+  },
+  "legal-compliance-check": {
+    "id": "legal-compliance-check", "source": "anthropic-knowledge-work", "source_path": "legal/skills/compliance-check", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["legal_compliance", "privacy_review", "launch_management"], "requires_human_review": true}
+  },
+  "legal-risk-assessment": {
+    "id": "legal-risk-assessment", "source": "anthropic-knowledge-work", "source_path": "legal/skills/legal-risk-assessment", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["legal_compliance", "business_strategy"], "requires_human_review": true}
+  },
+  "legal-contract-review": {
+    "id": "legal-contract-review", "source": "anthropic-knowledge-work", "source_path": "legal/skills/review-contract", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto",
+    "activation": {"allowed_task_kinds": ["contract_review_draft", "document_authoring"], "requires_human_review": true}
+  },
+  "sales-operations": {
+    "id": "sales-operations", "source": "local", "source_path": "employees/growth-marketing/GROW/skills/sales-operations", "entry": "SKILL.md", "license": "Proprietary", "install_policy": "local",
+    "activation": {"allowed_task_kinds": ["sales_operations"], "requires_approval": true}
+  },
+  "customer-support-operations": {
+    "id": "customer-support-operations", "source": "local", "source_path": "employees/service-knowledge/JOURNEY/skills/customer-support-operations", "entry": "SKILL.md", "license": "Proprietary", "install_policy": "local",
+    "activation": {"allowed_task_kinds": ["customer_support"], "requires_approval": true}
+  },
   "ui-ux-pro-max": {
     "id": "ui-ux-pro-max",
     "source": "uiux",

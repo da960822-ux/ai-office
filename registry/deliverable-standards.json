@@ -38,5 +38,45 @@
     "filename": "FINAL.md",
     "required_sections": ["ICP", "Positioning", "Channels", "Messaging", "Experiment plan", "Metrics", "Budget and risks"],
     "rules": ["Do not redefine product scope without FRAME handoff"]
+  },
+  "experiment_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Hypothesis", "Method", "Sample and data quality", "Results", "Decision", "Follow-up"],
+    "rules": ["Separate observations from interpretation", "Report negative and inconclusive results", "Do not change success criteria after seeing results"]
+  },
+  "architecture_spec": {
+    "filename": "FINAL.md",
+    "required_sections": ["Context", "Requirements and constraints", "Options", "Decision", "Interfaces and data flow", "Failure modes", "Security and operations"],
+    "rules": ["Trace requirements to the approved product specification", "Record rejected options and tradeoffs", "Do not claim deployed infrastructure without execution evidence"]
+  },
+  "financial_model_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Model purpose", "Inputs and sources", "Assumptions", "Unit economics", "Scenarios", "Sensitivity", "Decision"],
+    "rules": ["Label estimates and sourced facts separately", "Show formulas or calculation logic", "Never present projections as guaranteed outcomes"]
+  },
+  "compliance_review": {
+    "filename": "FINAL.md",
+    "required_sections": ["Scope and jurisdiction", "Data and obligations", "Evidence", "Findings", "Risk rating", "Required actions", "Human decision"],
+    "rules": ["Treat AI output as triage, not legal advice", "Require explicit human approval", "Identify missing jurisdiction or counsel input"]
+  },
+  "sales_operations_plan": {
+    "filename": "FINAL.md",
+    "required_sections": ["ICP and qualification", "Pipeline stages", "Evidence and assumptions", "Playbook", "Metrics", "Approval-gated actions", "Handoff"],
+    "rules": ["Do not send messages or mutate CRM without a connected tool and explicit approval", "Mark simulations and drafts clearly", "Preserve customer data boundaries"]
+  },
+  "customer_support_runbook": {
+    "filename": "FINAL.md",
+    "required_sections": ["Scope", "Issue classification", "Evidence checks", "Response guidance", "Escalation", "Protected actions", "Audit trail"],
+    "rules": ["Do not access or change customer accounts without an authorized connector", "Require approval for refunds, credits, billing, or account changes", "Never invent ticket resolution evidence"]
+  },
+  "observability_runbook": {
+    "filename": "FINAL.md",
+    "required_sections": ["Service objectives", "Signals", "Instrumentation", "Alerts", "Dashboards", "Response", "Validation"],
+    "rules": ["Tie alerts to user impact", "Distinguish proposed telemetry from observed production data"]
+  },
+  "incident_response_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Impact", "Timeline", "Detection", "Response", "Root cause", "Corrective actions", "Owners and due dates"],
+    "rules": ["Use blameless language", "Preserve timestamps and evidence", "Do not declare remediation complete without verification"]
   }
 }

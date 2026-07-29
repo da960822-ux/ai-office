@@ -1,22 +1,15 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `documentation-and-adrs` — `addyosmani/agent-skills:skills/documentation-and-adrs` · MIT · 설치 대상 `./skills/documentation-and-adrs/SKILL.md`
-- `writing-skills` — `obra/superpowers:skills/writing-skills` · MIT · 설치 대상 `./skills/writing-skills/SKILL.md`
-- `source-driven-development` — `addyosmani/agent-skills:skills/source-driven-development` · MIT · 설치 대상 `./skills/source-driven-development/SKILL.md`
-- `humanizer` — `blader/humanizer:SKILL.md` · MIT · 설치 대상 `./skills/humanizer/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: DOCS Local Role Core — 기술문서·지식 관리자의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - PRD·ADR·API·데이터 사전·런북·회고·사용자 문서·릴리스 노트 관리 - 코드와 문서 drift 탐지 1. 변경 영향 문서 식별 2. 코드·계약·배포 버전 대조 3. 결정 이유·대안·복구 방법 기록 4. 오래된 문서와 소유자 표시 - source_version - changed_sections - owner
+- `document-artifact-production`: Document Artifact Production — --- name: document-artifact-production description: Create and validate real document artifacts for reports, plans, specifications, meeting records, manuals, and office deliverables. Use when work must end with a Markdown, DOCX, PDF, HWP, s
+- `documentation-and-adrs`: Documentation and ADRs — --- name: documentation-and-adrs description: Records decisions and documentation. Use when making architectural decisions, changing public APIs, shipping features, or when you need to record context that future engineers and agents will ne
+- `humanizer`: Humanizer: Remove AI Writing Patterns — --- name: humanizer description: | Remove signs of AI-generated writing from text. Use when editing or reviewing text to make it sound more natural and human-written. Based on Wikipedia's comprehensive "Signs of AI writing" guide. Detects a
+- `incident-runbook-templates`: Incident Runbook Templates — --- name: incident-runbook-templates description: Create structured incident response runbooks with step-by-step procedures, escalation paths, and recovery actions. Use this skill when building a service outage runbook for a payment process
+- `legal-contract-review`: /review-contract -- Contract Review Against Playbook — --- name: review-contract description: Review a contract against your organization's negotiation playbook — flag deviations, generate redlines, provide business impact analysis. Use when reviewing vendor or customer agreements, when you nee
+- `openapi-spec-generation`: OpenAPI Spec Generation — --- name: openapi-spec-generation description: Generate and maintain OpenAPI 3.1 specifications from code, design-first specs, and validation patterns. Use when creating API documentation, generating SDKs, or ensuring API contract complianc
+- `postmortem-writing`: Postmortem Writing — --- name: postmortem-writing description: Write effective blameless postmortems with root cause analysis, timelines, and action items. Use when conducting incident reviews, writing postmortem documents, or improving incident response proces
+- `sales-enablement`: Sales Enablement — --- name: sales-enablement description: "When the user wants to create sales collateral, pitch decks, one-pagers, objection handling docs, or demo scripts. Also use when the user mentions 'sales deck,' 'pitch deck,' 'one-pager,' 'leave-behi
+- `source-driven-development`: Source-Driven Development — --- name: source-driven-development description: Grounds every implementation decision in official documentation. Use when you want authoritative, source-cited code free from outdated patterns. Use when building with any framework or librar
+- `writing-skills`: Writing Skills — --- name: writing-skills description: Use when creating new skills, editing existing skills, or verifying skills work before deployment --- **Writing skills IS Test-Driven Development applied to process documentation.** **Personal skills li

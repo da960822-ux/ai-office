@@ -1,21 +1,20 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `product-marketing` — `coreyhaines31/marketingskills:skills/product-marketing` · MIT · 설치 대상 `./skills/product-marketing/SKILL.md`
-- `launch` — `coreyhaines31/marketingskills:skills/launch` · MIT · 설치 대상 `./skills/launch/SKILL.md`
-- `customer-research` — `coreyhaines31/marketingskills:skills/customer-research` · MIT · 설치 대상 `./skills/customer-research/SKILL.md`
-
-## 조건부 공개 스킬
-- `positioning-statement` — `deanpeters/Product-Manager-Skills:skills/positioning-statement` · CC-BY-NC-SA-4.0 · 별도 승인 후 설치
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: GROW Local Role Core — 성장·마케팅 책임자 / 팀장의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - ICP·포지셔닝·GTM·채널·실험 우선순위 제안 1. 제품 사실과 현재 구현 상태 확인 2. 대상 고객 근거 수집 3. 현재 퍼널 병목을 가설로 정의 4. 가장 작은 검증 계획 제안 - source_basis - product_fact_check - assumption_list - 광고비 지출 - 공개 캠
+- `co-marketing`: # Before Starting — --- name: co-marketing description: "When the user wants to find co-marketing partners, plan joint campaigns, or brainstorm partnership opportunities. Use when the user says 'co-marketing,' 'partner marketing,' 'joint campaign,' 'who should
+- `community-marketing`: Community Marketing — --- name: community-marketing description: "Build and leverage online communities to drive product growth and brand loyalty. Use when the user wants to create a community strategy, grow a Discord or Slack community, manage a forum or subred
+- `competitor-profiling`: Competitor Profiling — --- name: competitor-profiling description: "When the user wants to research, profile, or analyze competitors from their URLs. Also use when the user mentions 'competitor profile,' 'competitor research,' 'competitor analysis,' 'profile this
+- `customer-research`: Customer Research — --- name: customer-research description: When the user wants to conduct, analyze, or synthesize customer research. Use when the user mentions "customer research," "ICP research," "talk to customers," "analyze transcripts," "customer intervi
+- `launch`: Launch Strategy — --- name: launch description: "When the user wants to plan a product launch, feature announcement, or release strategy. Also use when the user mentions 'launch,' 'Product Hunt,' 'feature release,' 'announcement,' 'go-to-market,' 'beta launc
+- `marketing-plan`: Marketing Plan — --- name: marketing-plan description: When the user needs a comprehensive marketing plan for a client, a company they advise, or their own product. Also use when the user mentions "marketing plan," "growth plan," "GTM plan," "go-to-market p
+- `pm-define-jtbd-canvas`: Jobs to be Done Canvas — --- name: define-jtbd-canvas description: Creates a Jobs to be Done canvas capturing the functional, emotional, and social dimensions of a customer job. Use when deeply understanding customer motivations, designing for jobs, or reframing pr
+- `pm-deliver-launch-checklist`: Launch Checklist — --- name: deliver-launch-checklist description: Creates a cross-functional pre-launch checklist covering engineering, design, marketing, support, legal, and operations readiness, with owners, dates, and go/no-go criteria so nothing is misse
+- `pm-discover-competitive-analysis`: Competitive Analysis — --- name: discover-competitive-analysis description: Creates a structured competitive analysis comparing features, pricing, and positioning across 3-5 direct and indirect competitors, with a 2x2 map and actionable strategic recommendations.
+- `pm-discover-interview-synthesis`: Interview Synthesis — --- name: discover-interview-synthesis description: Synthesizes user research interviews into actionable insights, patterns, and recommendations. Use after conducting user interviews, customer calls, or usability sessions to extract and com
+- `pm-discover-market-sizing`: Market Sizing — --- name: discover-market-sizing description: Estimate market opportunity (TAM, SAM, SOM) using multiple sizing frameworks (top-down, bottom-up, comparable company, analogous market). Triangulates across frameworks, highlights where they co
+- `pricing`: Pricing Strategy — --- name: pricing description: "When the user wants help with pricing decisions, packaging, or monetization strategy. Also use when the user mentions 'pricing,' 'pricing tiers,' 'freemium,' 'free trial,' 'packaging,' 'price increase,' 'valu
+- `product-marketing`: Product Marketing Context — --- name: product-marketing description: "When the user wants to create or update their product marketing context document. Also use when the user mentions 'product context,' 'marketing context,' 'set up context,' 'positioning,' 'who is my
+- `sales-enablement`: Sales Enablement — --- name: sales-enablement description: "When the user wants to create sales collateral, pitch decks, one-pagers, objection handling docs, or demo scripts. Also use when the user mentions 'sales deck,' 'pitch deck,' 'one-pager,' 'leave-behi
+- `sales-operations`: Sales Operations — --- name: sales-operations description: Design evidence-backed sales pipelines, qualification rules, CRM fields, handoffs, forecasts, and approval-gated outreach. Use for sales process design, CRM planning, lead qualification, pipeline revi

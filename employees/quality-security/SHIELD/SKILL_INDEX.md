@@ -1,22 +1,14 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `security-and-hardening` — `addyosmani/agent-skills:skills/security-and-hardening` · MIT · 설치 대상 `./skills/security-and-hardening/SKILL.md`
-- `auth-implementation-patterns` — `wshobson/agents:plugins/developer-essentials/skills/auth-implementation-patterns` · MIT · 설치 대상 `./skills/auth-implementation-patterns/SKILL.md`
-- `source-driven-development` — `addyosmani/agent-skills:skills/source-driven-development` · MIT · 설치 대상 `./skills/source-driven-development/SKILL.md`
-- `doubt-driven-development` — `addyosmani/agent-skills:skills/doubt-driven-development` · MIT · 설치 대상 `./skills/doubt-driven-development/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: SHIELD Local Role Core — AppSec·Privacy 엔지니어의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - 위협 모델·권한·secret·공급망·개인정보·AI 도구 보안 검토 1. 신뢰 경계와 공격면 확인 2. 서버 측 권한·입력 검증·로그 민감정보 확인 3. dependency·script·skill 출처 검토 4. high 위험 변경의 완화·승인·보상 경로 정의 - scan_artifact - perm
+- `auth-implementation-patterns`: Authentication & Authorization Implementation Patterns — --- name: auth-implementation-patterns description: Master authentication and authorization patterns including JWT, OAuth2, session management, and RBAC to build secure, scalable access control systems. Use when implementing auth systems, s
+- `doubt-driven-development`: Doubt-Driven Development — --- name: doubt-driven-development description: Subjects every non-trivial decision to a fresh-context adversarial review before it stands. Use when correctness matters more than speed, when working in unfamiliar code, when stakes are high
+- `gdpr-data-handling`: GDPR Data Handling — --- name: gdpr-data-handling description: Implement GDPR-compliant data handling with consent management, data subject rights, and privacy by design. Use when building systems that process EU personal data, implementing privacy controls, or
+- `sast-configuration`: SAST Configuration — --- name: sast-configuration description: Configure Static Application Security Testing (SAST) tools for automated vulnerability detection in application code. Use when setting up security scanning, implementing DevSecOps practices, or auto
+- `secrets-management`: Secrets Management — --- name: secrets-management description: Implement secure secrets management for CI/CD pipelines using Vault, AWS Secrets Manager, or native platform solutions. Use when handling sensitive credentials, rotating secrets, or securing CI/CD e
+- `security-and-hardening`: Security and Hardening — --- name: security-and-hardening description: Hardens code against vulnerabilities. Use when handling user input, authentication, data storage, or external integrations. Use when building any feature that accepts untrusted data, manages use
+- `security-requirement-extraction`: Security Requirement Extraction — --- name: security-requirement-extraction description: Derive security requirements from threat models and business context. Use when translating threats into actionable requirements, creating security user stories, or building security tes
+- `source-driven-development`: Source-Driven Development — --- name: source-driven-development description: Grounds every implementation decision in official documentation. Use when you want authoritative, source-cited code free from outdated patterns. Use when building with any framework or librar
+- `stride-analysis-patterns`: STRIDE Analysis Patterns — --- name: stride-analysis-patterns description: Apply STRIDE methodology to systematically identify threats. Use when analyzing system security, conducting threat modeling sessions, or creating security documentation. --- Systematic threat

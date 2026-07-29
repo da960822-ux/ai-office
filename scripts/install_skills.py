@@ -25,26 +25,45 @@ def download(url):
 
 def extract_selected(zdata, destination, source_id, definitions):
     """Extract only requested skill trees to avoid Windows path-length failures."""
-    wanted = tuple(
+    source_definitions = [
+        d for d in definitions.values() if d["source"] == source_id
+    ]
+    wanted_dirs = tuple(
         d["source_path"].strip("/") + "/"
-        for d in definitions.values() if d["source"] == source_id
+        for d in source_definitions if not d.get("single_file")
     )
+    wanted_files = {
+        d["source_path"].strip("/")
+        for d in source_definitions if d.get("single_file")
+    }
     with zipfile.ZipFile(io.BytesIO(zdata)) as archive:
         names = [name for name in archive.namelist() if name and not name.endswith("/")]
         root = names[0].split("/", 1)[0]
         for name in names:
             relative = name.split("/", 1)[1] if "/" in name else ""
-            if relative in {"LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"} or relative.startswith(wanted):
+            if (
+                relative in {"LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"}
+                or relative in wanted_files
+                or relative.startswith(wanted_dirs)
+            ):
                 target = destination / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with archive.open(name) as source, target.open("wb") as output:
                     shutil.copyfileobj(source, output)
 def resolve(source):
     repo=source['repo']; branch=source.get('branch','main')
-    try: return api_json(f'https://api.github.com/repos/{repo}/commits/{branch}')['sha'], branch
-    except Exception:
-        alt='master' if branch=='main' else 'main'
-        return api_json(f'https://api.github.com/repos/{repo}/commits/{alt}')['sha'], alt
+    candidates=(branch,'master' if branch=='main' else 'main')
+    for candidate in candidates:
+        try:
+            return api_json(f'https://api.github.com/repos/{repo}/commits/{candidate}')['sha'], candidate
+        except Exception:
+            run=subprocess.run(
+                ['git','ls-remote',f'https://github.com/{repo}.git',f'refs/heads/{candidate}'],
+                capture_output=True,text=True,timeout=30,shell=False,
+            )
+            if run.returncode == 0 and run.stdout.strip():
+                return run.stdout.split()[0], candidate
+    raise RuntimeError(f'Unable to resolve a branch for {repo}')
 
 def main():
     ap=argparse.ArgumentParser()
@@ -62,8 +81,11 @@ def main():
     for e in selected:
         requested += [(e,s,False) for s in binds[e]['required']]
         if args.include_optional: requested += [(e,s,True) for s in binds[e]['optional']]
-    needed_sources=sorted({defs[s]['source'] for _,s,_ in requested})
-    cache=Path(os.getenv('AI_OFFICE_SKILL_CACHE', str(ROOT/'.cache'/'skill-repos'))); cache.mkdir(parents=True,exist_ok=True)
+    needed_sources=sorted({defs[s]['source'] for _,s,_ in requested if defs[s]['source'] != 'local'})
+    default_cache=ROOT/'.cache'/'skill-repos'
+    if os.name == 'nt' and len(str(default_cache)) > 80:
+        default_cache=Path(tempfile.gettempdir())/'ai-office-skill-cache'
+    cache=Path(os.getenv('AI_OFFICE_SKILL_CACHE', str(default_cache))); cache.mkdir(parents=True,exist_ok=True)
     repo_roots={}; source_locks={}
     for source_id in needed_sources:
         src=sources[source_id]
@@ -73,7 +95,8 @@ def main():
         if args.dry_run:
             print('[DRY] fetch',src['repo']); continue
         sha,branch=resolve(src)
-        zpath=cache/f'{source_id}-{sha}.zip'; edir=cache/f'{source_id}-{sha}'
+        cache_key=f'{source_id}-{sha[:12]}'
+        zpath=cache/f'{cache_key}.zip'; edir=cache/cache_key
         if args.refresh and edir.exists(): shutil.rmtree(edir)
         if not edir.exists():
             data=download(f'https://github.com/{src["repo"]}/archive/{sha}.zip')
@@ -93,6 +116,8 @@ def main():
     lock=load('skills.lock.json')
     for emp,sid,is_optional in requested:
         meta=defs[sid]; source_id=meta['source']
+        if source_id == 'local':
+            continue
         if source_id not in repo_roots: continue
         src=repo_roots[source_id]/meta['source_path']
         dst=ROOT/emps[emp]['profile_path'].rsplit('/',1)[0]/'skills'/sid

@@ -26,6 +26,10 @@
     - "pm-foundation-lean-canvas"
     - "pm-foundation-meeting-synthesize"
     - "pm-deliver-user-stories"
+    - "pm-define-problem-statement"
+    - "pm-define-hypothesis"
+    - "pm-define-prioritization-framework"
+    - "spec-driven-development"
 "FLOW":
   "required":
     - "source-driven-development"
@@ -35,10 +39,10 @@
 "MOSS":
   "required":
     - "ui-ux-pro-max"
-    - "impeccable"
     - "design-first-ui-prompting"
+  "optional":
+    - "impeccable"
     - "humanizer"
-  "optional": []
 "BUILD":
   "required":
     - "incremental-implementation"
@@ -47,34 +51,43 @@
     - "git-workflow-and-versioning"
   "optional":
     - "documentation-and-adrs"
+    - "spec-driven-development"
+    - "architecture-patterns"
+    - "performance-optimization"
 "FRONT":
   "required":
     - "frontend-ui-engineering"
     - "browser-testing-with-devtools"
+  "optional":
     - "ui-ux-pro-max"
     - "gsap-react"
     - "gsap-performance"
-  "optional": []
+    - "performance-optimization"
 "BACK":
   "required":
     - "api-and-interface-design"
     - "auth-implementation-patterns"
     - "sql-optimization-patterns"
     - "security-and-hardening"
-  "optional": []
+  "optional":
+    - "architecture-patterns"
+    - "openapi-spec-generation"
+    - "distributed-tracing"
 "LINK":
   "required":
     - "prompt-engineering-patterns"
     - "llm-evaluation"
     - "rag-implementation"
-  "optional": []
+  "optional":
+    - "context-engineering"
 "SIGNAL":
   "required":
     - "embedding-strategies"
     - "hybrid-search-implementation"
     - "rag-implementation"
     - "sql-optimization-patterns"
-  "optional": []
+  "optional":
+    - "context-engineering"
 "EVAL":
   "required":
     - "llm-evaluation"
@@ -88,7 +101,16 @@
     - "shipping-and-launch"
     - "git-workflow-and-versioning"
     - "verification-before-completion"
-  "optional": []
+  "optional":
+    - "deployment-pipeline-design"
+    - "github-actions-templates"
+    - "secrets-management"
+    - "terraform-module-library"
+    - "multi-cloud-architecture"
+    - "k8s-manifest-generator"
+    - "helm-chart-scaffolding"
+    - "gitops-workflow"
+    - "pm-deliver-launch-checklist"
 "SRE":
   "required":
     - "observability-and-instrumentation"
@@ -96,11 +118,20 @@
     - "ci-cd-and-automation"
   "optional":
     - "debugging-and-error-recovery"
+    - "distributed-tracing"
+    - "prometheus-configuration"
+    - "slo-implementation"
+    - "incident-runbook-templates"
+    - "on-call-handoff-patterns"
+    - "postmortem-writing"
+    - "gitops-workflow"
 "COST":
   "required":
     - "observability-and-instrumentation"
   "optional":
-    - "source-driven-development"
+    - "cost-optimization"
+    - "finance-unit-economics"
+    - "finance-driver-based-model"
 "GUARD":
   "required":
     - "code-review-and-quality"
@@ -108,19 +139,30 @@
     - "security-and-hardening"
   "optional":
     - "code-review-excellence"
+    - "sast-configuration"
+    - "security-requirement-extraction"
+    - "stride-analysis-patterns"
+    - "legal-compliance-check"
+    - "legal-risk-assessment"
 "TRACE":
   "required":
     - "test-driven-development"
     - "systematic-debugging"
     - "e2e-testing-patterns"
     - "verification-before-completion"
-  "optional": []
+  "optional":
+    - "screen-reader-testing"
 "SHIELD":
   "required":
     - "security-and-hardening"
     - "auth-implementation-patterns"
     - "doubt-driven-development"
-  "optional": []
+  "optional":
+    - "gdpr-data-handling"
+    - "sast-configuration"
+    - "security-requirement-extraction"
+    - "stride-analysis-patterns"
+    - "secrets-management"
 "GROW":
   "required":
     - "product-marketing"
@@ -132,6 +174,13 @@
     - "competitor-profiling"
     - "marketing-plan"
     - "pricing"
+    - "pm-discover-interview-synthesis"
+    - "pm-define-jtbd-canvas"
+    - "community-marketing"
+    - "co-marketing"
+    - "sales-enablement"
+    - "sales-operations"
+    - "pm-deliver-launch-checklist"
 "VOICE":
   "required":
     - "copywriting"
@@ -140,6 +189,12 @@
   "optional":
     - "content-strategy"
     - "copy-editing"
+    - "emails"
+    - "cold-email"
+    - "social"
+    - "brand-voice-analyzer"
+    - "brand-consistency-checker"
+    - "content-repurposer"
 "PULSE":
   "required":
     - "analytics"
@@ -148,6 +203,14 @@
     - "cro"
     - "seo-audit"
     - "attribution"
+    - "ads"
+    - "aso"
+    - "programmatic-seo"
+    - "churn-prevention"
+    - "referrals"
+    - "startup-metrics-framework"
+    - "pm-measure-experiment-design"
+    - "pm-measure-experiment-results"
 "LENS":
   "required":
     - "code-review-and-quality"
@@ -155,14 +218,24 @@
   "optional":
     - "pm-critic"
     - "pm-deliver-acceptance-criteria"
+    - "legal-contract-review"
+    - "churn-prevention"
 "JOURNEY":
   "required":
     - "cro"
     - "customer-research"
     - "onboarding"
-  "optional": []
+  "optional":
+    - "churn-prevention"
+    - "pm-discover-interview-synthesis"
+    - "customer-support-operations"
 "DOCS":
   "required":
     - "document-artifact-production"
   "optional":
     - "documentation-and-adrs"
+    - "openapi-spec-generation"
+    - "legal-contract-review"
+    - "incident-runbook-templates"
+    - "postmortem-writing"
+    - "sales-enablement"

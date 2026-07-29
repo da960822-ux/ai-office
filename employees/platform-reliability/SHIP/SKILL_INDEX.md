@@ -1,22 +1,18 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `ci-cd-and-automation` — `addyosmani/agent-skills:skills/ci-cd-and-automation` · MIT · 설치 대상 `./skills/ci-cd-and-automation/SKILL.md`
-- `shipping-and-launch` — `addyosmani/agent-skills:skills/shipping-and-launch` · MIT · 설치 대상 `./skills/shipping-and-launch/SKILL.md`
-- `git-workflow-and-versioning` — `addyosmani/agent-skills:skills/git-workflow-and-versioning` · MIT · 설치 대상 `./skills/git-workflow-and-versioning/SKILL.md`
-- `verification-before-completion` — `obra/superpowers:skills/verification-before-completion` · MIT · 설치 대상 `./skills/verification-before-completion/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: SHIP Local Role Core — 플랫폼·릴리스 리드 / 팀장의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - 빌드 artifact·릴리스 준비·preview/staging 제안·rollback 계획 1. 검증된 commit과 artifact 연결 2. 환경·feature flag·migration 위험 확인 3. RELEASE_READY 판정 4. 운영 배포는 대표 승인과 기존 파이프라인으로 위임 - commit
+- `ci-cd-and-automation`: CI/CD and Automation — --- name: ci-cd-and-automation description: Automates CI/CD pipeline setup. Use when setting up or modifying build and deployment pipelines. Use when you need to automate quality gates, configure test runners in CI, or establish deployment
+- `deployment-pipeline-design`: Deployment Pipeline Design — --- name: deployment-pipeline-design description: Design multi-stage CI/CD pipelines with approval gates, security checks, and deployment orchestration. Use this skill when designing zero-downtime deployment pipelines, implementing canary r
+- `git-workflow-and-versioning`: Git Workflow and Versioning — --- name: git-workflow-and-versioning description: Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, or when you need to organize work across multiple parallel streams.
+- `github-actions-templates`: GitHub Actions Templates — --- name: github-actions-templates description: Create production-ready GitHub Actions workflows for automated testing, building, and deploying applications. Use when setting up CI/CD with GitHub Actions, automating development workflows, o
+- `gitops-workflow`: GitOps Workflow — --- name: gitops-workflow description: Implement GitOps workflows with ArgoCD and Flux for automated, declarative Kubernetes deployments with continuous reconciliation. Use when implementing GitOps practices, automating Kubernetes deploymen
+- `helm-chart-scaffolding`: Helm Chart Scaffolding — --- name: helm-chart-scaffolding description: Design, organize, and manage Helm charts for templating and packaging Kubernetes applications with reusable configurations. Use when creating Helm charts, packaging Kubernetes applications, or i
+- `k8s-manifest-generator`: Kubernetes Manifest Generator — --- name: k8s-manifest-generator description: Create production-ready Kubernetes manifests for Deployments, Services, ConfigMaps, and Secrets following best practices and security standards. Use when generating Kubernetes YAML manifests, cr
+- `multi-cloud-architecture`: Multi-Cloud Architecture — --- name: multi-cloud-architecture description: Design multi-cloud architectures using a decision framework to select and integrate services across AWS, Azure, GCP, and OCI. Use when building multi-cloud systems, avoiding vendor lock-in, or
+- `pm-deliver-launch-checklist`: Launch Checklist — --- name: deliver-launch-checklist description: Creates a cross-functional pre-launch checklist covering engineering, design, marketing, support, legal, and operations readiness, with owners, dates, and go/no-go criteria so nothing is misse
+- `secrets-management`: Secrets Management — --- name: secrets-management description: Implement secure secrets management for CI/CD pipelines using Vault, AWS Secrets Manager, or native platform solutions. Use when handling sensitive credentials, rotating secrets, or securing CI/CD e
+- `shipping-and-launch`: Shipping and Launch — --- name: shipping-and-launch description: Prepares production launches. Use when preparing to deploy to production. Use when you need a pre-launch checklist, when setting up monitoring, when planning a staged rollout, or when you need a ro
+- `terraform-module-library`: Terraform Module Library — --- name: terraform-module-library description: Build reusable Terraform modules for AWS, Azure, GCP, and OCI infrastructure following infrastructure-as-code best practices. Use when creating infrastructure modules, standardizing cloud prov
+- `verification-before-completion`: Verification Before Completion — --- name: verification-before-completion description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success cl

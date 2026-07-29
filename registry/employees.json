@@ -54,7 +54,11 @@
       "pm-develop-solution-brief",
       "pm-foundation-lean-canvas",
       "pm-foundation-meeting-synthesize",
-      "pm-deliver-user-stories"
+      "pm-deliver-user-stories",
+      "pm-define-problem-statement",
+      "pm-define-hypothesis",
+      "pm-define-prioritization-framework",
+      "spec-driven-development"
     ]
   },
   "FLOW": {
@@ -79,11 +83,12 @@
     "profile_path": "employees/product-experience/MOSS/EMPLOYEE.md",
     "required_skills": [
       "ui-ux-pro-max",
-      "impeccable",
-      "design-first-ui-prompting",
-      "humanizer"
+      "design-first-ui-prompting"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "impeccable",
+      "humanizer"
+    ]
   },
   "BUILD": {
     "id": "BUILD",
@@ -98,7 +103,10 @@
       "git-workflow-and-versioning"
     ],
     "optional_skills": [
-      "documentation-and-adrs"
+      "documentation-and-adrs",
+      "spec-driven-development",
+      "architecture-patterns",
+      "performance-optimization"
     ]
   },
   "FRONT": {
@@ -109,12 +117,14 @@
     "profile_path": "employees/application/FRONT/EMPLOYEE.md",
     "required_skills": [
       "frontend-ui-engineering",
-      "browser-testing-with-devtools",
+      "browser-testing-with-devtools"
+    ],
+    "optional_skills": [
       "ui-ux-pro-max",
       "gsap-react",
-      "gsap-performance"
-    ],
-    "optional_skills": []
+      "gsap-performance",
+      "performance-optimization"
+    ]
   },
   "BACK": {
     "id": "BACK",
@@ -128,7 +138,11 @@
       "sql-optimization-patterns",
       "security-and-hardening"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "architecture-patterns",
+      "openapi-spec-generation",
+      "distributed-tracing"
+    ]
   },
   "LINK": {
     "id": "LINK",
@@ -141,7 +155,9 @@
       "llm-evaluation",
       "rag-implementation"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "context-engineering"
+    ]
   },
   "SIGNAL": {
     "id": "SIGNAL",
@@ -155,7 +171,9 @@
       "rag-implementation",
       "sql-optimization-patterns"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "context-engineering"
+    ]
   },
   "EVAL": {
     "id": "EVAL",
@@ -183,7 +201,17 @@
       "git-workflow-and-versioning",
       "verification-before-completion"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "deployment-pipeline-design",
+      "github-actions-templates",
+      "secrets-management",
+      "terraform-module-library",
+      "multi-cloud-architecture",
+      "k8s-manifest-generator",
+      "helm-chart-scaffolding",
+      "gitops-workflow",
+      "pm-deliver-launch-checklist"
+    ]
   },
   "SRE": {
     "id": "SRE",
@@ -197,7 +225,14 @@
       "ci-cd-and-automation"
     ],
     "optional_skills": [
-      "debugging-and-error-recovery"
+      "debugging-and-error-recovery",
+      "distributed-tracing",
+      "prometheus-configuration",
+      "slo-implementation",
+      "incident-runbook-templates",
+      "on-call-handoff-patterns",
+      "postmortem-writing",
+      "gitops-workflow"
     ]
   },
   "COST": {
@@ -210,7 +245,9 @@
       "observability-and-instrumentation"
     ],
     "optional_skills": [
-      "source-driven-development"
+      "cost-optimization",
+      "finance-unit-economics",
+      "finance-driver-based-model"
     ]
   },
   "GUARD": {
@@ -225,7 +262,12 @@
       "security-and-hardening"
     ],
     "optional_skills": [
-      "code-review-excellence"
+      "code-review-excellence",
+      "sast-configuration",
+      "security-requirement-extraction",
+      "stride-analysis-patterns",
+      "legal-compliance-check",
+      "legal-risk-assessment"
     ]
   },
   "TRACE": {
@@ -240,7 +282,9 @@
       "e2e-testing-patterns",
       "verification-before-completion"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "screen-reader-testing"
+    ]
   },
   "SHIELD": {
     "id": "SHIELD",
@@ -253,7 +297,13 @@
       "auth-implementation-patterns",
       "doubt-driven-development"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "gdpr-data-handling",
+      "sast-configuration",
+      "security-requirement-extraction",
+      "stride-analysis-patterns",
+      "secrets-management"
+    ]
   },
   "GROW": {
     "id": "GROW",
@@ -271,7 +321,14 @@
       "pm-discover-competitive-analysis",
       "competitor-profiling",
       "marketing-plan",
-      "pricing"
+      "pricing",
+      "pm-discover-interview-synthesis",
+      "pm-define-jtbd-canvas",
+      "community-marketing",
+      "co-marketing",
+      "sales-enablement",
+      "sales-operations",
+      "pm-deliver-launch-checklist"
     ]
   },
   "VOICE": {
@@ -287,7 +344,13 @@
     ],
     "optional_skills": [
       "content-strategy",
-      "copy-editing"
+      "copy-editing",
+      "emails",
+      "cold-email",
+      "social",
+      "brand-voice-analyzer",
+      "brand-consistency-checker",
+      "content-repurposer"
     ]
   },
   "PULSE": {
@@ -303,7 +366,15 @@
       "ab-testing",
       "cro",
       "seo-audit",
-      "attribution"
+      "attribution",
+      "ads",
+      "aso",
+      "programmatic-seo",
+      "churn-prevention",
+      "referrals",
+      "startup-metrics-framework",
+      "pm-measure-experiment-design",
+      "pm-measure-experiment-results"
     ]
   },
   "LENS": {
@@ -318,7 +389,9 @@
     ],
     "optional_skills": [
       "pm-critic",
-      "pm-deliver-acceptance-criteria"
+      "pm-deliver-acceptance-criteria",
+      "legal-contract-review",
+      "churn-prevention"
     ]
   },
   "JOURNEY": {
@@ -332,7 +405,11 @@
       "customer-research",
       "onboarding"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "churn-prevention",
+      "pm-discover-interview-synthesis",
+      "customer-support-operations"
+    ]
   },
   "DOCS": {
     "id": "DOCS",
@@ -344,7 +421,12 @@
       "document-artifact-production"
     ],
     "optional_skills": [
-      "documentation-and-adrs"
+      "documentation-and-adrs",
+      "openapi-spec-generation",
+      "legal-contract-review",
+      "incident-runbook-templates",
+      "postmortem-writing",
+      "sales-enablement"
     ]
   }
 }

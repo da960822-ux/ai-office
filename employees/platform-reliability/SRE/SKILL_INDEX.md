@@ -1,22 +1,16 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `observability-and-instrumentation` — `addyosmani/agent-skills:skills/observability-and-instrumentation` · MIT · 설치 대상 `./skills/observability-and-instrumentation/SKILL.md`
-- `debugging-and-error-recovery` — `addyosmani/agent-skills:skills/debugging-and-error-recovery` · MIT · 설치 대상 `./skills/debugging-and-error-recovery/SKILL.md`
-- `systematic-debugging` — `obra/superpowers:skills/systematic-debugging` · MIT · 설치 대상 `./skills/systematic-debugging/SKILL.md`
-- `ci-cd-and-automation` — `addyosmani/agent-skills:skills/ci-cd-and-automation` · MIT · 설치 대상 `./skills/ci-cd-and-automation/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: SRE Local Role Core — 신뢰성·운영 엔지니어의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - V1 실행 건강도·로그·실패율·복구 절차 관리 - 실제 운영 단계에서 SLI/SLO·알림·runbook 확장 1. run/correlation ID 확인 2. HEALTHY·DEGRADED·DOWN 판정 3. 반복 장애의 탐지·완화·복구 기록 4. 실제 데이터가 생긴 뒤 SLO 제안 - structured_log
+- `ci-cd-and-automation`: CI/CD and Automation — --- name: ci-cd-and-automation description: Automates CI/CD pipeline setup. Use when setting up or modifying build and deployment pipelines. Use when you need to automate quality gates, configure test runners in CI, or establish deployment
+- `debugging-and-error-recovery`: Debugging and Error Recovery — --- name: debugging-and-error-recovery description: Guides systematic root-cause debugging. Use when tests fail, builds break, behavior doesn't match expectations, or you encounter any unexpected error. Use when you need a systematic approa
+- `distributed-tracing`: Distributed Tracing — --- name: distributed-tracing description: Implement distributed tracing with Jaeger and Tempo to track requests across microservices and identify performance bottlenecks. Use when debugging microservices, analyzing request flows, or implem
+- `gitops-workflow`: GitOps Workflow — --- name: gitops-workflow description: Implement GitOps workflows with ArgoCD and Flux for automated, declarative Kubernetes deployments with continuous reconciliation. Use when implementing GitOps practices, automating Kubernetes deploymen
+- `incident-runbook-templates`: Incident Runbook Templates — --- name: incident-runbook-templates description: Create structured incident response runbooks with step-by-step procedures, escalation paths, and recovery actions. Use this skill when building a service outage runbook for a payment process
+- `observability-and-instrumentation`: Observability and Instrumentation — --- name: observability-and-instrumentation description: Instruments code so production behavior is visible and diagnosable. Use when adding logging, metrics, tracing, or alerting. Use when shipping any feature that runs in production and y
+- `on-call-handoff-patterns`: On-Call Handoff Patterns — --- name: on-call-handoff-patterns description: Master on-call shift handoffs with context transfer, escalation procedures, and documentation. Use this skill when transitioning on-call responsibilities between engineers and ensuring the inc
+- `postmortem-writing`: Postmortem Writing — --- name: postmortem-writing description: Write effective blameless postmortems with root cause analysis, timelines, and action items. Use when conducting incident reviews, writing postmortem documents, or improving incident response proces
+- `prometheus-configuration`: Prometheus Configuration — --- name: prometheus-configuration description: Set up Prometheus for comprehensive metric collection, storage, and monitoring of infrastructure and applications. Use when implementing metrics collection, setting up monitoring infrastructur
+- `slo-implementation`: SLO Implementation — --- name: slo-implementation description: Define and implement Service Level Indicators (SLIs) and Service Level Objectives (SLOs) with error budgets and alerting. Use when establishing reliability targets, implementing SRE practices, or me
+- `systematic-debugging`: Systematic Debugging — --- name: systematic-debugging description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes --- **Core principle:** ALWAYS find root cause before attempting fixes. Symptom fixes are failure. **Vio

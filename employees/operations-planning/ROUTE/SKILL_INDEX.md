@@ -1,22 +1,9 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `planning-and-task-breakdown` — `addyosmani/agent-skills:skills/planning-and-task-breakdown` · MIT · 설치 대상 `./skills/planning-and-task-breakdown/SKILL.md`
-- `dispatching-parallel-agents` — `obra/superpowers:skills/dispatching-parallel-agents` · MIT · 설치 대상 `./skills/dispatching-parallel-agents/SKILL.md`
-- `using-git-worktrees` — `obra/superpowers:skills/using-git-worktrees` · MIT · 설치 대상 `./skills/using-git-worktrees/SKILL.md`
-- `git-workflow-and-versioning` — `addyosmani/agent-skills:skills/git-workflow-and-versioning` · MIT · 설치 대상 `./skills/git-workflow-and-versioning/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: ROUTE Local Role Core — 작업 설계자 / 의존성 관리자의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - 원자 작업과 DAG 생성 - 파일 소유권·병렬 가능성·핸드오프 정의 1. 산출물을 검증 가능한 크기로 분해 2. 선행조건과 verify 연결 3. 공유 파일 작업 직렬화 4. 완료되지 않은 의존성의 READY 금지 - dependency_map - writer_conflict_check - 공개 API·
+- `dispatching-parallel-agents`: Dispatching Parallel Agents — --- name: dispatching-parallel-agents description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies --- You delegate tasks to specialized agents with isolated context. By precisely c
+- `git-workflow-and-versioning`: Git Workflow and Versioning — --- name: git-workflow-and-versioning description: Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, or when you need to organize work across multiple parallel streams.
+- `planning-and-task-breakdown`: Planning and Task Breakdown — --- name: planning-and-task-breakdown description: Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large to start, when you need to es
+- `using-git-worktrees`: Using Git Worktrees — --- name: using-git-worktrees description: Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback

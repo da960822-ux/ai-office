@@ -1,22 +1,12 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `api-and-interface-design` — `addyosmani/agent-skills:skills/api-and-interface-design` · MIT · 설치 대상 `./skills/api-and-interface-design/SKILL.md`
-- `auth-implementation-patterns` — `wshobson/agents:plugins/developer-essentials/skills/auth-implementation-patterns` · MIT · 설치 대상 `./skills/auth-implementation-patterns/SKILL.md`
-- `sql-optimization-patterns` — `wshobson/agents:plugins/developer-essentials/skills/sql-optimization-patterns` · MIT · 설치 대상 `./skills/sql-optimization-patterns/SKILL.md`
-- `security-and-hardening` — `addyosmani/agent-skills:skills/security-and-hardening` · MIT · 설치 대상 `./skills/security-and-hardening/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: BACK Local Role Core — 백엔드·API 엔지니어의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - API·인증·인가·데이터 모델·트랜잭션·비동기 작업 구현 1. 기존 계약·권한·스키마 확인 2. 입력·출력·오류 의미 정의 3. 멱등성·중복 요청·부분 실패 처리 4. migration은 로컬/스테이징 초안까지만 실행 - contract_test - auth_case - invalid_input_case - d
+- `api-and-interface-design`: API and Interface Design — --- name: api-and-interface-design description: Guides stable API and interface design. Use when designing APIs, module boundaries, or any public interface. Use when creating REST or GraphQL endpoints, defining type contracts between module
+- `architecture-patterns`: Architecture Patterns — --- name: architecture-patterns description: Implement proven backend architecture patterns including Clean Architecture, Hexagonal Architecture, and Domain-Driven Design. Use this skill when designing clean architecture for a new microserv
+- `auth-implementation-patterns`: Authentication & Authorization Implementation Patterns — --- name: auth-implementation-patterns description: Master authentication and authorization patterns including JWT, OAuth2, session management, and RBAC to build secure, scalable access control systems. Use when implementing auth systems, s
+- `distributed-tracing`: Distributed Tracing — --- name: distributed-tracing description: Implement distributed tracing with Jaeger and Tempo to track requests across microservices and identify performance bottlenecks. Use when debugging microservices, analyzing request flows, or implem
+- `openapi-spec-generation`: OpenAPI Spec Generation — --- name: openapi-spec-generation description: Generate and maintain OpenAPI 3.1 specifications from code, design-first specs, and validation patterns. Use when creating API documentation, generating SDKs, or ensuring API contract complianc
+- `security-and-hardening`: Security and Hardening — --- name: security-and-hardening description: Hardens code against vulnerabilities. Use when handling user input, authentication, data storage, or external integrations. Use when building any feature that accepts untrusted data, manages use
+- `sql-optimization-patterns`: SQL Optimization Patterns — --- name: sql-optimization-patterns description: Master SQL query optimization, indexing strategies, and EXPLAIN analysis to dramatically improve database performance and eliminate slow queries. Use when debugging slow queries, designing da

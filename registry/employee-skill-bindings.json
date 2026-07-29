@@ -32,7 +32,11 @@
       "pm-develop-solution-brief",
       "pm-foundation-lean-canvas",
       "pm-foundation-meeting-synthesize",
-      "pm-deliver-user-stories"
+      "pm-deliver-user-stories",
+      "pm-define-problem-statement",
+      "pm-define-hypothesis",
+      "pm-define-prioritization-framework",
+      "spec-driven-development"
     ]
   },
   "FLOW": {
@@ -61,7 +65,12 @@
       "code-review-and-quality",
       "git-workflow-and-versioning"
     ],
-    "optional": ["documentation-and-adrs"]
+    "optional": [
+      "documentation-and-adrs",
+      "spec-driven-development",
+      "architecture-patterns",
+      "performance-optimization"
+    ]
   },
   "FRONT": {
     "required": [
@@ -71,7 +80,8 @@
     "optional": [
       "ui-ux-pro-max",
       "gsap-react",
-      "gsap-performance"
+      "gsap-performance",
+      "performance-optimization"
     ]
   },
   "BACK": {
@@ -81,7 +91,11 @@
       "sql-optimization-patterns",
       "security-and-hardening"
     ],
-    "optional": []
+    "optional": [
+      "architecture-patterns",
+      "openapi-spec-generation",
+      "distributed-tracing"
+    ]
   },
   "LINK": {
     "required": [
@@ -89,7 +103,7 @@
       "llm-evaluation",
       "rag-implementation"
     ],
-    "optional": []
+    "optional": ["context-engineering"]
   },
   "SIGNAL": {
     "required": [
@@ -98,7 +112,7 @@
       "rag-implementation",
       "sql-optimization-patterns"
     ],
-    "optional": []
+    "optional": ["context-engineering"]
   },
   "EVAL": {
     "required": [
@@ -116,7 +130,17 @@
       "git-workflow-and-versioning",
       "verification-before-completion"
     ],
-    "optional": []
+    "optional": [
+      "deployment-pipeline-design",
+      "github-actions-templates",
+      "secrets-management",
+      "terraform-module-library",
+      "multi-cloud-architecture",
+      "k8s-manifest-generator",
+      "helm-chart-scaffolding",
+      "gitops-workflow",
+      "pm-deliver-launch-checklist"
+    ]
   },
   "SRE": {
     "required": [
@@ -124,13 +148,26 @@
       "systematic-debugging",
       "ci-cd-and-automation"
     ],
-    "optional": ["debugging-and-error-recovery"]
+    "optional": [
+      "debugging-and-error-recovery",
+      "distributed-tracing",
+      "prometheus-configuration",
+      "slo-implementation",
+      "incident-runbook-templates",
+      "on-call-handoff-patterns",
+      "postmortem-writing",
+      "gitops-workflow"
+    ]
   },
   "COST": {
     "required": [
       "observability-and-instrumentation"
     ],
-    "optional": ["source-driven-development"]
+    "optional": [
+      "cost-optimization",
+      "finance-unit-economics",
+      "finance-driver-based-model"
+    ]
   },
   "GUARD": {
     "required": [
@@ -138,7 +175,14 @@
       "verification-before-completion",
       "security-and-hardening"
     ],
-    "optional": ["code-review-excellence"]
+    "optional": [
+      "code-review-excellence",
+      "sast-configuration",
+      "security-requirement-extraction",
+      "stride-analysis-patterns",
+      "legal-compliance-check",
+      "legal-risk-assessment"
+    ]
   },
   "TRACE": {
     "required": [
@@ -147,7 +191,7 @@
       "e2e-testing-patterns",
       "verification-before-completion"
     ],
-    "optional": []
+    "optional": ["screen-reader-testing"]
   },
   "SHIELD": {
     "required": [
@@ -155,7 +199,13 @@
       "auth-implementation-patterns",
       "doubt-driven-development"
     ],
-    "optional": []
+    "optional": [
+      "gdpr-data-handling",
+      "sast-configuration",
+      "security-requirement-extraction",
+      "stride-analysis-patterns",
+      "secrets-management"
+    ]
   },
   "GROW": {
     "required": [
@@ -168,7 +218,14 @@
       "pm-discover-competitive-analysis",
       "competitor-profiling",
       "marketing-plan",
-      "pricing"
+      "pricing",
+      "pm-discover-interview-synthesis",
+      "pm-define-jtbd-canvas",
+      "community-marketing",
+      "co-marketing",
+      "sales-enablement",
+      "sales-operations",
+      "pm-deliver-launch-checklist"
     ]
   },
   "VOICE": {
@@ -177,7 +234,16 @@
       "humanizer",
       "product-marketing"
     ],
-    "optional": ["content-strategy", "copy-editing"]
+    "optional": [
+      "content-strategy",
+      "copy-editing",
+      "emails",
+      "cold-email",
+      "social",
+      "brand-voice-analyzer",
+      "brand-consistency-checker",
+      "content-repurposer"
+    ]
   },
   "PULSE": {
     "required": [
@@ -187,7 +253,15 @@
       "ab-testing",
       "cro",
       "seo-audit",
-      "attribution"
+      "attribution",
+      "ads",
+      "aso",
+      "programmatic-seo",
+      "churn-prevention",
+      "referrals",
+      "startup-metrics-framework",
+      "pm-measure-experiment-design",
+      "pm-measure-experiment-results"
     ]
   },
   "LENS": {
@@ -195,7 +269,12 @@
       "code-review-and-quality",
       "verification-before-completion"
     ],
-    "optional": ["pm-critic", "pm-deliver-acceptance-criteria"]
+    "optional": [
+      "pm-critic",
+      "pm-deliver-acceptance-criteria",
+      "legal-contract-review",
+      "churn-prevention"
+    ]
   },
   "JOURNEY": {
     "required": [
@@ -203,12 +282,23 @@
       "customer-research",
       "onboarding"
     ],
-    "optional": []
+    "optional": [
+      "churn-prevention",
+      "pm-discover-interview-synthesis",
+      "customer-support-operations"
+    ]
   },
   "DOCS": {
     "required": [
       "document-artifact-production"
     ],
-    "optional": ["documentation-and-adrs"]
+    "optional": [
+      "documentation-and-adrs",
+      "openapi-spec-generation",
+      "legal-contract-review",
+      "incident-runbook-templates",
+      "postmortem-writing",
+      "sales-enablement"
+    ]
   }
 }

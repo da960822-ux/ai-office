@@ -1,22 +1,16 @@
 # Skill Routing Index
 
-이 파일은 설치 전 라우팅용 선언 인덱스다. 실제 실행은 로컬 `SKILL.md`와 lock 검증 후 허용한다.
+라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.
 
-## 로컬 기본 스킬
-
-- `_local-role-core`: 직원 고정 역할·SOP·증거 기준
-
-## 필수 공개 스킬
-- `copywriting` — `coreyhaines31/marketingskills:skills/copywriting` · MIT · 설치 대상 `./skills/copywriting/SKILL.md`
-- `humanizer` — `blader/humanizer:SKILL.md` · MIT · 설치 대상 `./skills/humanizer/SKILL.md`
-- `product-marketing` — `coreyhaines31/marketingskills:skills/product-marketing` · MIT · 설치 대상 `./skills/product-marketing/SKILL.md`
-- `design-first-ui-prompting` — `MengTo/Skills:agent-skills/ui/design-first-ui-prompting` · MIT · 설치 대상 `./skills/design-first-ui-prompting/SKILL.md`
-
-## 조건부 공개 스킬
-- 없음
-
-## 로딩 규칙
-
-1. 라우팅 단계에서는 이 인덱스만 읽는다.
-2. 작업에 선택된 스킬의 실제 `SKILL.md`만 기본 1~3개 연다.
-3. `MISSING`, `UNLOCKED`, `HASH_MISMATCH` 상태의 스킬은 열지 않는다.
+- `_local-role-core`: VOICE Local Role Core — 브랜드·콘텐츠·카피 전략가의 고정 업무 절차를 제공한다. 외부 스킬이 아직 설치되지 않아도 이 절차는 항상 사용한다. - 브랜드 보이스·메시지 위계·랜딩·온보딩·메일·발표 카피 작성 1. 대상 독자와 문맥 정의 2. 제품 사실과 구현 상태 확인 3. 가치 제안 중복 제거 4. Humanizer 후 의미·컴플라이언스 재검토 - audience_context - product_fact_map - CTA_reason - 법적 주장
+- `brand-consistency-checker`: Brand Consistency Checker — --- name: brand-consistency-checker description: Scan documents and slides for off-brand colors, fonts, and logos. Validate against brand guidelines and suggest corrections. --- Scan documents and slides for off-brand colors, fonts, and log
+- `brand-voice-analyzer`: Brand Voice Analyzer — --- name: brand-voice-analyzer description: Analyzes a company's content to extract and codify their brand voice into a comprehensive style guide. Reads website copy, blog posts, emails, and social media to identify tone, vocabulary pattern
+- `cold-email`: Cold Email Writing — --- name: cold-email description: Write B2B cold emails and follow-up sequences that get replies. Use when the user wants to write cold outreach emails, prospecting emails, cold email campaigns, sales development emails, or SDR emails. Also
+- `content-repurposer`: Content Repurposer — --- name: content-repurposer description: Master skill that transforms ANY content into 8+ formats: slides, infographic, video script, podcast, social posts, email series, flashcards, quiz, one-pager, interactive game. --- Master skill that
+- `content-strategy`: Content Strategy — --- name: content-strategy description: When the user wants to plan a content strategy, decide what content to create, or figure out what topics to cover. Also use when the user mentions "content strategy," "what should I write about," "con
+- `copy-editing`: Copy Editing — --- name: copy-editing description: "When the user wants to edit, review, or improve existing marketing copy, or refresh outdated content. Also use when the user mentions 'edit this copy,' 'review my copy,' 'copy feedback,' 'proofread,' 'po
+- `copywriting`: Copywriting — --- name: copywriting description: When the user wants to write, rewrite, or improve marketing copy for any page — including homepage, landing pages, pricing pages, feature pages, about pages, or product pages. Also use when the user says "
+- `emails`: Email Sequence Design — --- name: emails description: When the user wants to create or optimize an email sequence, drip campaign, automated email flow, or lifecycle email program. Also use when the user mentions "email sequence," "drip campaign," "nurture sequence
+- `humanizer`: Humanizer: Remove AI Writing Patterns — --- name: humanizer description: | Remove signs of AI-generated writing from text. Use when editing or reviewing text to make it sound more natural and human-written. Based on Wikipedia's comprehensive "Signs of AI writing" guide. Detects a
+- `product-marketing`: Product Marketing Context — --- name: product-marketing description: "When the user wants to create or update their product marketing context document. Also use when the user mentions 'product context,' 'marketing context,' 'set up context,' 'positioning,' 'who is my
+- `social`: Social Content — --- name: social description: "When the user wants help creating, scheduling, or optimizing social media content for LinkedIn, Twitter/X, Instagram, TikTok, Facebook, or other platforms, or wants to do social listening and engagement triage
