@@ -367,69 +367,50 @@
     "license": "MIT",
     "install_policy": "auto"
   },
-  "agent-orchestration-advisor": {
-    "id": "agent-orchestration-advisor",
-    "source": "pm",
-    "source_path": "skills/agent-orchestration-advisor",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "competitor-profiling": {
+    "id": "competitor-profiling", "source": "marketing", "source_path": "skills/competitor-profiling", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto"
   },
-  "customer-journey-map": {
-    "id": "customer-journey-map",
-    "source": "pm",
-    "source_path": "skills/customer-journey-map",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "marketing-plan": {
+    "id": "marketing-plan", "source": "marketing", "source_path": "skills/marketing-plan", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto"
   },
-  "discovery-process": {
-    "id": "discovery-process",
-    "source": "pm",
-    "source_path": "skills/discovery-process",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "pricing": {
+    "id": "pricing", "source": "marketing", "source_path": "skills/pricing", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto"
   },
-  "positioning-statement": {
-    "id": "positioning-statement",
-    "source": "pm",
-    "source_path": "skills/positioning-statement",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "attribution": {
+    "id": "attribution", "source": "marketing", "source_path": "skills/attribution", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto"
   },
-  "prd-development": {
-    "id": "prd-development",
-    "source": "pm",
-    "source_path": "skills/prd-development",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "content-strategy": {
+    "id": "content-strategy", "source": "marketing", "source_path": "skills/content-strategy", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto"
   },
-  "prioritization-advisor": {
-    "id": "prioritization-advisor",
-    "source": "pm",
-    "source_path": "skills/prioritization-advisor",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "copy-editing": {
+    "id": "copy-editing", "source": "marketing", "source_path": "skills/copy-editing", "entry": "SKILL.md", "license": "MIT", "install_policy": "auto"
   },
-  "user-story": {
-    "id": "user-story",
-    "source": "pm",
-    "source_path": "skills/user-story",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "pm-deliver-prd": {
+    "id": "pm-deliver-prd", "source": "pm-skills", "source_path": "skills/deliver-prd", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
   },
-  "user-story-mapping": {
-    "id": "user-story-mapping",
-    "source": "pm",
-    "source_path": "skills/user-story-mapping",
-    "entry": "SKILL.md",
-    "license": "CC-BY-NC-SA-4.0",
-    "install_policy": "manual_accept_noncommercial"
+  "pm-discover-market-sizing": {
+    "id": "pm-discover-market-sizing", "source": "pm-skills", "source_path": "skills/discover-market-sizing", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
+  },
+  "pm-discover-competitive-analysis": {
+    "id": "pm-discover-competitive-analysis", "source": "pm-skills", "source_path": "skills/discover-competitive-analysis", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
+  },
+  "pm-develop-solution-brief": {
+    "id": "pm-develop-solution-brief", "source": "pm-skills", "source_path": "skills/develop-solution-brief", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
+  },
+  "pm-foundation-lean-canvas": {
+    "id": "pm-foundation-lean-canvas", "source": "pm-skills", "source_path": "skills/foundation-lean-canvas", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
+  },
+  "pm-foundation-meeting-synthesize": {
+    "id": "pm-foundation-meeting-synthesize", "source": "pm-skills", "source_path": "skills/foundation-meeting-synthesize", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
+  },
+  "pm-critic": {
+    "id": "pm-critic", "source": "pm-skills", "source_path": "skills/utility-pm-critic", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
+  },
+  "pm-deliver-user-stories": {
+    "id": "pm-deliver-user-stories", "source": "pm-skills", "source_path": "skills/deliver-user-stories", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
+  },
+  "pm-deliver-acceptance-criteria": {
+    "id": "pm-deliver-acceptance-criteria", "source": "pm-skills", "source_path": "skills/deliver-acceptance-criteria", "entry": "SKILL.md", "license": "Apache-2.0", "install_policy": "auto"
   },
   "ui-ux-pro-max": {
     "id": "ui-ux-pro-max",
@@ -495,5 +476,13 @@
     "single_file": true,
     "license": "MIT",
     "install_policy": "auto"
+  },
+  "document-artifact-production": {
+    "id": "document-artifact-production",
+    "source": "local",
+    "source_path": "employees/service-knowledge/DOCS/skills/document-artifact-production",
+    "entry": "SKILL.md",
+    "license": "Proprietary",
+    "install_policy": "local"
   }
 }

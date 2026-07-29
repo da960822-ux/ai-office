@@ -17,7 +17,6 @@ skill_loading: local_files_progressive
 - `@./ROLE.md`
 - `@./SOP.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/ui-ux-pro-max/SKILL.md`
 - `@./skills/cro/SKILL.md`
 - `@./skills/customer-research/SKILL.md`
 - `@./skills/onboarding/SKILL.md`

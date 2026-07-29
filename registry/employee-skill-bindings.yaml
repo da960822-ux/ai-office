@@ -1,175 +1,168 @@
-NAVI:
-  required:
-  - using-agent-skills
-  - planning-and-task-breakdown
-  - executing-plans
-  optional:
-  - agent-orchestration-advisor
-ROUTE:
-  required:
-  - planning-and-task-breakdown
-  - dispatching-parallel-agents
-  - using-git-worktrees
-  - git-workflow-and-versioning
-  optional: []
-CLOCK:
-  required:
-  - observability-and-instrumentation
-  - debugging-and-error-recovery
-  - code-simplification
-  optional: []
-FRAME:
-  required:
-  - planning-and-task-breakdown
-  - source-driven-development
-  - writing-plans
-  optional:
-  - prd-development
-  - discovery-process
-  - prioritization-advisor
-  - user-story
-FLOW:
-  required:
-  - ui-ux-pro-max
-  - source-driven-development
-  - customer-research
-  optional:
-  - customer-journey-map
-  - user-story-mapping
-  - discovery-process
-MOSS:
-  required:
-  - ui-ux-pro-max
-  - impeccable
-  - design-first-ui-prompting
-  - humanizer
-  optional:
-  - gsap-core
-  - gsap-timeline
-BUILD:
-  required:
-  - incremental-implementation
-  - code-simplification
-  - code-review-and-quality
-  - git-workflow-and-versioning
-  optional: []
-FRONT:
-  required:
-  - frontend-ui-engineering
-  - browser-testing-with-devtools
-  - ui-ux-pro-max
-  - gsap-react
-  - gsap-performance
-  optional: []
-BACK:
-  required:
-  - api-and-interface-design
-  - auth-implementation-patterns
-  - sql-optimization-patterns
-  - security-and-hardening
-  optional: []
-LINK:
-  required:
-  - prompt-engineering-patterns
-  - llm-evaluation
-  - rag-implementation
-  optional:
-  - agent-orchestration-advisor
-SIGNAL:
-  required:
-  - embedding-strategies
-  - hybrid-search-implementation
-  - rag-implementation
-  - sql-optimization-patterns
-  optional: []
-EVAL:
-  required:
-  - llm-evaluation
-  - doubt-driven-development
-  - verification-before-completion
-  - security-and-hardening
-  optional: []
-SHIP:
-  required:
-  - ci-cd-and-automation
-  - shipping-and-launch
-  - git-workflow-and-versioning
-  - verification-before-completion
-  optional: []
-SRE:
-  required:
-  - observability-and-instrumentation
-  - debugging-and-error-recovery
-  - systematic-debugging
-  - ci-cd-and-automation
-  optional: []
-COST:
-  required:
-  - observability-and-instrumentation
-  - code-simplification
-  - source-driven-development
-  optional: []
-GUARD:
-  required:
-  - code-review-and-quality
-  - verification-before-completion
-  - security-and-hardening
-  - code-review-excellence
-  optional: []
-TRACE:
-  required:
-  - test-driven-development
-  - systematic-debugging
-  - e2e-testing-patterns
-  - verification-before-completion
-  optional: []
-SHIELD:
-  required:
-  - security-and-hardening
-  - auth-implementation-patterns
-  - source-driven-development
-  - doubt-driven-development
-  optional: []
-GROW:
-  required:
-  - product-marketing
-  - launch
-  - customer-research
-  optional:
-  - positioning-statement
-VOICE:
-  required:
-  - copywriting
-  - humanizer
-  - product-marketing
-  - design-first-ui-prompting
-  optional: []
-PULSE:
-  required:
-  - analytics
-  - ab-testing
-  - cro
-  - seo-audit
-  optional: []
-LENS:
-  required:
-  - code-review-and-quality
-  - verification-before-completion
-  - impeccable
-  - ui-ux-pro-max
-  optional: []
-JOURNEY:
-  required:
-  - ui-ux-pro-max
-  - cro
-  - customer-research
-  - onboarding
-  optional:
-  - customer-journey-map
-DOCS:
-  required:
-  - documentation-and-adrs
-  - writing-skills
-  - source-driven-development
-  - humanizer
-  optional: []
+"NAVI":
+  "required":
+    - "using-agent-skills"
+    - "planning-and-task-breakdown"
+    - "executing-plans"
+  "optional": []
+"ROUTE":
+  "required":
+    - "planning-and-task-breakdown"
+    - "dispatching-parallel-agents"
+    - "git-workflow-and-versioning"
+  "optional":
+    - "using-git-worktrees"
+"CLOCK":
+  "required":
+    - "observability-and-instrumentation"
+    - "debugging-and-error-recovery"
+  "optional": []
+"FRAME":
+  "required":
+    - "planning-and-task-breakdown"
+    - "writing-plans"
+  "optional":
+    - "pm-deliver-prd"
+    - "pm-develop-solution-brief"
+    - "pm-foundation-lean-canvas"
+    - "pm-foundation-meeting-synthesize"
+    - "pm-deliver-user-stories"
+"FLOW":
+  "required":
+    - "source-driven-development"
+    - "customer-research"
+  "optional":
+    - "pm-deliver-user-stories"
+"MOSS":
+  "required":
+    - "ui-ux-pro-max"
+    - "impeccable"
+    - "design-first-ui-prompting"
+    - "humanizer"
+  "optional": []
+"BUILD":
+  "required":
+    - "incremental-implementation"
+    - "code-simplification"
+    - "code-review-and-quality"
+    - "git-workflow-and-versioning"
+  "optional":
+    - "documentation-and-adrs"
+"FRONT":
+  "required":
+    - "frontend-ui-engineering"
+    - "browser-testing-with-devtools"
+    - "ui-ux-pro-max"
+    - "gsap-react"
+    - "gsap-performance"
+  "optional": []
+"BACK":
+  "required":
+    - "api-and-interface-design"
+    - "auth-implementation-patterns"
+    - "sql-optimization-patterns"
+    - "security-and-hardening"
+  "optional": []
+"LINK":
+  "required":
+    - "prompt-engineering-patterns"
+    - "llm-evaluation"
+    - "rag-implementation"
+  "optional": []
+"SIGNAL":
+  "required":
+    - "embedding-strategies"
+    - "hybrid-search-implementation"
+    - "rag-implementation"
+    - "sql-optimization-patterns"
+  "optional": []
+"EVAL":
+  "required":
+    - "llm-evaluation"
+    - "doubt-driven-development"
+    - "verification-before-completion"
+    - "security-and-hardening"
+  "optional": []
+"SHIP":
+  "required":
+    - "ci-cd-and-automation"
+    - "shipping-and-launch"
+    - "git-workflow-and-versioning"
+    - "verification-before-completion"
+  "optional": []
+"SRE":
+  "required":
+    - "observability-and-instrumentation"
+    - "systematic-debugging"
+    - "ci-cd-and-automation"
+  "optional":
+    - "debugging-and-error-recovery"
+"COST":
+  "required":
+    - "observability-and-instrumentation"
+  "optional":
+    - "source-driven-development"
+"GUARD":
+  "required":
+    - "code-review-and-quality"
+    - "verification-before-completion"
+    - "security-and-hardening"
+  "optional":
+    - "code-review-excellence"
+"TRACE":
+  "required":
+    - "test-driven-development"
+    - "systematic-debugging"
+    - "e2e-testing-patterns"
+    - "verification-before-completion"
+  "optional": []
+"SHIELD":
+  "required":
+    - "security-and-hardening"
+    - "auth-implementation-patterns"
+    - "doubt-driven-development"
+  "optional": []
+"GROW":
+  "required":
+    - "product-marketing"
+    - "customer-research"
+  "optional":
+    - "launch"
+    - "pm-discover-market-sizing"
+    - "pm-discover-competitive-analysis"
+    - "competitor-profiling"
+    - "marketing-plan"
+    - "pricing"
+"VOICE":
+  "required":
+    - "copywriting"
+    - "humanizer"
+    - "product-marketing"
+  "optional":
+    - "content-strategy"
+    - "copy-editing"
+"PULSE":
+  "required":
+    - "analytics"
+  "optional":
+    - "ab-testing"
+    - "cro"
+    - "seo-audit"
+    - "attribution"
+"LENS":
+  "required":
+    - "code-review-and-quality"
+    - "verification-before-completion"
+  "optional":
+    - "pm-critic"
+    - "pm-deliver-acceptance-criteria"
+"JOURNEY":
+  "required":
+    - "cro"
+    - "customer-research"
+    - "onboarding"
+  "optional": []
+"DOCS":
+  "required":
+    - "document-artifact-production"
+  "optional":
+    - "documentation-and-adrs"

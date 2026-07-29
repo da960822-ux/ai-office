@@ -19,8 +19,6 @@ skill_loading: local_files_progressive
 - `@./skills/_local-role-core/SKILL.md`
 - `@./skills/code-review-and-quality/SKILL.md`
 - `@./skills/verification-before-completion/SKILL.md`
-- `@./skills/impeccable/SKILL.md`
-- `@./skills/ui-ux-pro-max/SKILL.md`
 
 ## 조건부 스킬
 

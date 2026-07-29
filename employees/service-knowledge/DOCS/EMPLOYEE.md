@@ -21,6 +21,7 @@ skill_loading: local_files_progressive
 - `@./skills/writing-skills/SKILL.md`
 - `@./skills/source-driven-development/SKILL.md`
 - `@./skills/humanizer/SKILL.md`
+- `@./skills/document-artifact-production/SKILL.md`
 
 ## 조건부 스킬
 

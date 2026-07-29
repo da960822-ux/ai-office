@@ -1,0 +1,42 @@
+{
+  "market_decision_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Executive decision", "Single recommended item", "Alternatives compared", "Evidence and sources", "Target customer", "Business model", "MVP scope", "90-day validation plan", "Economics and KPI", "Risks and assumptions"],
+    "rules": ["Choose exactly one recommendation", "Explain why alternatives lost", "Separate sourced facts from estimates", "Do not infer from unrelated personal workspace files"]
+  },
+  "business_document": {
+    "filename": "FINAL.md",
+    "required_sections": ["Purpose", "Audience", "Decision or requested action", "Body", "Evidence", "Owner and next step"],
+    "rules": ["Use requested format", "Use DOCX render QA when DOCX is requested", "Use explicit headings and document metadata"]
+  },
+  "product_design_spec": {
+    "filename": "FINAL.md",
+    "required_sections": ["Problem", "Users", "Scope and non-goals", "User flows", "States and exceptions", "Accessibility", "Acceptance criteria"],
+    "rules": ["Do not implement code", "Tie design choices to user evidence"]
+  },
+  "implementation_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Implemented scope", "Changed files", "Verification", "Known risks", "Handoff"],
+    "rules": ["Reference actual files", "Never claim completion without passing verification"]
+  },
+  "ai_system_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Architecture", "Data flow", "Evaluation", "Failure modes", "Security", "Operations"],
+    "rules": ["Separate measured results from proposals"]
+  },
+  "release_operations_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Release scope", "Artifact", "Checks", "Rollback", "Observability", "Approval"],
+    "rules": ["No deployment claim without execution evidence"]
+  },
+  "assurance_report": {
+    "filename": "FINAL.md",
+    "required_sections": ["Scope", "Evidence", "Findings", "Severity", "Decision", "Required remediation"],
+    "rules": ["Remain independent from implementation owner"]
+  },
+  "go_to_market_plan": {
+    "filename": "FINAL.md",
+    "required_sections": ["ICP", "Positioning", "Channels", "Messaging", "Experiment plan", "Metrics", "Budget and risks"],
+    "rules": ["Do not redefine product scope without FRAME handoff"]
+  }
+}

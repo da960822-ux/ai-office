@@ -1,435 +1,912 @@
-using-agent-skills:
-  id: using-agent-skills
-  source: addy
-  source_path: skills/using-agent-skills
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-planning-and-task-breakdown:
-  id: planning-and-task-breakdown
-  source: addy
-  source_path: skills/planning-and-task-breakdown
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-api-and-interface-design:
-  id: api-and-interface-design
-  source: addy
-  source_path: skills/api-and-interface-design
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-browser-testing-with-devtools:
-  id: browser-testing-with-devtools
-  source: addy
-  source_path: skills/browser-testing-with-devtools
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-ci-cd-and-automation:
-  id: ci-cd-and-automation
-  source: addy
-  source_path: skills/ci-cd-and-automation
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-code-review-and-quality:
-  id: code-review-and-quality
-  source: addy
-  source_path: skills/code-review-and-quality
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-code-simplification:
-  id: code-simplification
-  source: addy
-  source_path: skills/code-simplification
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-debugging-and-error-recovery:
-  id: debugging-and-error-recovery
-  source: addy
-  source_path: skills/debugging-and-error-recovery
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-documentation-and-adrs:
-  id: documentation-and-adrs
-  source: addy
-  source_path: skills/documentation-and-adrs
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-doubt-driven-development:
-  id: doubt-driven-development
-  source: addy
-  source_path: skills/doubt-driven-development
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-frontend-ui-engineering:
-  id: frontend-ui-engineering
-  source: addy
-  source_path: skills/frontend-ui-engineering
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-git-workflow-and-versioning:
-  id: git-workflow-and-versioning
-  source: addy
-  source_path: skills/git-workflow-and-versioning
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-incremental-implementation:
-  id: incremental-implementation
-  source: addy
-  source_path: skills/incremental-implementation
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-observability-and-instrumentation:
-  id: observability-and-instrumentation
-  source: addy
-  source_path: skills/observability-and-instrumentation
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-security-and-hardening:
-  id: security-and-hardening
-  source: addy
-  source_path: skills/security-and-hardening
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-shipping-and-launch:
-  id: shipping-and-launch
-  source: addy
-  source_path: skills/shipping-and-launch
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-source-driven-development:
-  id: source-driven-development
-  source: addy
-  source_path: skills/source-driven-development
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-test-driven-development:
-  id: test-driven-development
-  source: addy
-  source_path: skills/test-driven-development
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-dispatching-parallel-agents:
-  id: dispatching-parallel-agents
-  source: superpowers
-  source_path: skills/dispatching-parallel-agents
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-executing-plans:
-  id: executing-plans
-  source: superpowers
-  source_path: skills/executing-plans
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-systematic-debugging:
-  id: systematic-debugging
-  source: superpowers
-  source_path: skills/systematic-debugging
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-using-git-worktrees:
-  id: using-git-worktrees
-  source: superpowers
-  source_path: skills/using-git-worktrees
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-verification-before-completion:
-  id: verification-before-completion
-  source: superpowers
-  source_path: skills/verification-before-completion
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-writing-plans:
-  id: writing-plans
-  source: superpowers
-  source_path: skills/writing-plans
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-writing-skills:
-  id: writing-skills
-  source: superpowers
-  source_path: skills/writing-skills
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-embedding-strategies:
-  id: embedding-strategies
-  source: wshobson
-  source_path: plugins/llm-application-dev/skills/embedding-strategies
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-hybrid-search-implementation:
-  id: hybrid-search-implementation
-  source: wshobson
-  source_path: plugins/llm-application-dev/skills/hybrid-search-implementation
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-llm-evaluation:
-  id: llm-evaluation
-  source: wshobson
-  source_path: plugins/llm-application-dev/skills/llm-evaluation
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-prompt-engineering-patterns:
-  id: prompt-engineering-patterns
-  source: wshobson
-  source_path: plugins/llm-application-dev/skills/prompt-engineering-patterns
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-rag-implementation:
-  id: rag-implementation
-  source: wshobson
-  source_path: plugins/llm-application-dev/skills/rag-implementation
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-auth-implementation-patterns:
-  id: auth-implementation-patterns
-  source: wshobson
-  source_path: plugins/developer-essentials/skills/auth-implementation-patterns
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-code-review-excellence:
-  id: code-review-excellence
-  source: wshobson
-  source_path: plugins/developer-essentials/skills/code-review-excellence
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-debugging-strategies:
-  id: debugging-strategies
-  source: wshobson
-  source_path: plugins/developer-essentials/skills/debugging-strategies
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-e2e-testing-patterns:
-  id: e2e-testing-patterns
-  source: wshobson
-  source_path: plugins/developer-essentials/skills/e2e-testing-patterns
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-error-handling-patterns:
-  id: error-handling-patterns
-  source: wshobson
-  source_path: plugins/developer-essentials/skills/error-handling-patterns
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-git-advanced-workflows:
-  id: git-advanced-workflows
-  source: wshobson
-  source_path: plugins/developer-essentials/skills/git-advanced-workflows
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-sql-optimization-patterns:
-  id: sql-optimization-patterns
-  source: wshobson
-  source_path: plugins/developer-essentials/skills/sql-optimization-patterns
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-ab-testing:
-  id: ab-testing
-  source: marketing
-  source_path: skills/ab-testing
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-analytics:
-  id: analytics
-  source: marketing
-  source_path: skills/analytics
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-copywriting:
-  id: copywriting
-  source: marketing
-  source_path: skills/copywriting
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-cro:
-  id: cro
-  source: marketing
-  source_path: skills/cro
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-customer-research:
-  id: customer-research
-  source: marketing
-  source_path: skills/customer-research
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-launch:
-  id: launch
-  source: marketing
-  source_path: skills/launch
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-onboarding:
-  id: onboarding
-  source: marketing
-  source_path: skills/onboarding
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-product-marketing:
-  id: product-marketing
-  source: marketing
-  source_path: skills/product-marketing
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-seo-audit:
-  id: seo-audit
-  source: marketing
-  source_path: skills/seo-audit
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-agent-orchestration-advisor:
-  id: agent-orchestration-advisor
-  source: pm
-  source_path: skills/agent-orchestration-advisor
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-customer-journey-map:
-  id: customer-journey-map
-  source: pm
-  source_path: skills/customer-journey-map
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-discovery-process:
-  id: discovery-process
-  source: pm
-  source_path: skills/discovery-process
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-positioning-statement:
-  id: positioning-statement
-  source: pm
-  source_path: skills/positioning-statement
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-prd-development:
-  id: prd-development
-  source: pm
-  source_path: skills/prd-development
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-prioritization-advisor:
-  id: prioritization-advisor
-  source: pm
-  source_path: skills/prioritization-advisor
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-user-story:
-  id: user-story
-  source: pm
-  source_path: skills/user-story
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-user-story-mapping:
-  id: user-story-mapping
-  source: pm
-  source_path: skills/user-story-mapping
-  entry: SKILL.md
-  license: CC-BY-NC-SA-4.0
-  install_policy: manual_accept_noncommercial
-ui-ux-pro-max:
-  id: ui-ux-pro-max
-  source: uiux
-  source_path: .claude/skills/ui-ux-pro-max
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-impeccable:
-  id: impeccable
-  source: impeccable
-  source_path: .agents/skills/impeccable
-  entry: SKILL.md
-  license: Apache-2.0
-  install_policy: auto
-design-first-ui-prompting:
-  id: design-first-ui-prompting
-  source: mengto
-  source_path: agent-skills/ui/design-first-ui-prompting
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-gsap-core:
-  id: gsap-core
-  source: gsap
-  source_path: skills/gsap-core
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-gsap-timeline:
-  id: gsap-timeline
-  source: gsap
-  source_path: skills/gsap-timeline
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-gsap-react:
-  id: gsap-react
-  source: gsap
-  source_path: skills/gsap-react
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-gsap-performance:
-  id: gsap-performance
-  source: gsap
-  source_path: skills/gsap-performance
-  entry: SKILL.md
-  license: MIT
-  install_policy: auto
-humanizer:
-  id: humanizer
-  source: humanizer
-  source_path: SKILL.md
-  entry: SKILL.md
-  single_file: true
-  license: MIT
-  install_policy: auto
+"using-agent-skills":
+  "id":
+    "using-agent-skills"
+  "source":
+    "addy"
+  "source_path":
+    "skills/using-agent-skills"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"planning-and-task-breakdown":
+  "id":
+    "planning-and-task-breakdown"
+  "source":
+    "addy"
+  "source_path":
+    "skills/planning-and-task-breakdown"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"api-and-interface-design":
+  "id":
+    "api-and-interface-design"
+  "source":
+    "addy"
+  "source_path":
+    "skills/api-and-interface-design"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"browser-testing-with-devtools":
+  "id":
+    "browser-testing-with-devtools"
+  "source":
+    "addy"
+  "source_path":
+    "skills/browser-testing-with-devtools"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"ci-cd-and-automation":
+  "id":
+    "ci-cd-and-automation"
+  "source":
+    "addy"
+  "source_path":
+    "skills/ci-cd-and-automation"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"code-review-and-quality":
+  "id":
+    "code-review-and-quality"
+  "source":
+    "addy"
+  "source_path":
+    "skills/code-review-and-quality"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"code-simplification":
+  "id":
+    "code-simplification"
+  "source":
+    "addy"
+  "source_path":
+    "skills/code-simplification"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"debugging-and-error-recovery":
+  "id":
+    "debugging-and-error-recovery"
+  "source":
+    "addy"
+  "source_path":
+    "skills/debugging-and-error-recovery"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"documentation-and-adrs":
+  "id":
+    "documentation-and-adrs"
+  "source":
+    "addy"
+  "source_path":
+    "skills/documentation-and-adrs"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"doubt-driven-development":
+  "id":
+    "doubt-driven-development"
+  "source":
+    "addy"
+  "source_path":
+    "skills/doubt-driven-development"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"frontend-ui-engineering":
+  "id":
+    "frontend-ui-engineering"
+  "source":
+    "addy"
+  "source_path":
+    "skills/frontend-ui-engineering"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"git-workflow-and-versioning":
+  "id":
+    "git-workflow-and-versioning"
+  "source":
+    "addy"
+  "source_path":
+    "skills/git-workflow-and-versioning"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"incremental-implementation":
+  "id":
+    "incremental-implementation"
+  "source":
+    "addy"
+  "source_path":
+    "skills/incremental-implementation"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"observability-and-instrumentation":
+  "id":
+    "observability-and-instrumentation"
+  "source":
+    "addy"
+  "source_path":
+    "skills/observability-and-instrumentation"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"security-and-hardening":
+  "id":
+    "security-and-hardening"
+  "source":
+    "addy"
+  "source_path":
+    "skills/security-and-hardening"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"shipping-and-launch":
+  "id":
+    "shipping-and-launch"
+  "source":
+    "addy"
+  "source_path":
+    "skills/shipping-and-launch"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"source-driven-development":
+  "id":
+    "source-driven-development"
+  "source":
+    "addy"
+  "source_path":
+    "skills/source-driven-development"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"test-driven-development":
+  "id":
+    "test-driven-development"
+  "source":
+    "addy"
+  "source_path":
+    "skills/test-driven-development"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"dispatching-parallel-agents":
+  "id":
+    "dispatching-parallel-agents"
+  "source":
+    "superpowers"
+  "source_path":
+    "skills/dispatching-parallel-agents"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"executing-plans":
+  "id":
+    "executing-plans"
+  "source":
+    "superpowers"
+  "source_path":
+    "skills/executing-plans"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"systematic-debugging":
+  "id":
+    "systematic-debugging"
+  "source":
+    "superpowers"
+  "source_path":
+    "skills/systematic-debugging"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"using-git-worktrees":
+  "id":
+    "using-git-worktrees"
+  "source":
+    "superpowers"
+  "source_path":
+    "skills/using-git-worktrees"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"verification-before-completion":
+  "id":
+    "verification-before-completion"
+  "source":
+    "superpowers"
+  "source_path":
+    "skills/verification-before-completion"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"writing-plans":
+  "id":
+    "writing-plans"
+  "source":
+    "superpowers"
+  "source_path":
+    "skills/writing-plans"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"writing-skills":
+  "id":
+    "writing-skills"
+  "source":
+    "superpowers"
+  "source_path":
+    "skills/writing-skills"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"embedding-strategies":
+  "id":
+    "embedding-strategies"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/llm-application-dev/skills/embedding-strategies"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"hybrid-search-implementation":
+  "id":
+    "hybrid-search-implementation"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/llm-application-dev/skills/hybrid-search-implementation"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"llm-evaluation":
+  "id":
+    "llm-evaluation"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/llm-application-dev/skills/llm-evaluation"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"prompt-engineering-patterns":
+  "id":
+    "prompt-engineering-patterns"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/llm-application-dev/skills/prompt-engineering-patterns"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"rag-implementation":
+  "id":
+    "rag-implementation"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/llm-application-dev/skills/rag-implementation"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"auth-implementation-patterns":
+  "id":
+    "auth-implementation-patterns"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/developer-essentials/skills/auth-implementation-patterns"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"code-review-excellence":
+  "id":
+    "code-review-excellence"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/developer-essentials/skills/code-review-excellence"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"debugging-strategies":
+  "id":
+    "debugging-strategies"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/developer-essentials/skills/debugging-strategies"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"e2e-testing-patterns":
+  "id":
+    "e2e-testing-patterns"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/developer-essentials/skills/e2e-testing-patterns"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"error-handling-patterns":
+  "id":
+    "error-handling-patterns"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/developer-essentials/skills/error-handling-patterns"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"git-advanced-workflows":
+  "id":
+    "git-advanced-workflows"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/developer-essentials/skills/git-advanced-workflows"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"sql-optimization-patterns":
+  "id":
+    "sql-optimization-patterns"
+  "source":
+    "wshobson"
+  "source_path":
+    "plugins/developer-essentials/skills/sql-optimization-patterns"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"ab-testing":
+  "id":
+    "ab-testing"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/ab-testing"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"analytics":
+  "id":
+    "analytics"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/analytics"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"copywriting":
+  "id":
+    "copywriting"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/copywriting"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"cro":
+  "id":
+    "cro"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/cro"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"customer-research":
+  "id":
+    "customer-research"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/customer-research"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"launch":
+  "id":
+    "launch"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/launch"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"onboarding":
+  "id":
+    "onboarding"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/onboarding"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"product-marketing":
+  "id":
+    "product-marketing"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/product-marketing"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"seo-audit":
+  "id":
+    "seo-audit"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/seo-audit"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"competitor-profiling":
+  "id":
+    "competitor-profiling"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/competitor-profiling"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"marketing-plan":
+  "id":
+    "marketing-plan"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/marketing-plan"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"pricing":
+  "id":
+    "pricing"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/pricing"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"attribution":
+  "id":
+    "attribution"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/attribution"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"content-strategy":
+  "id":
+    "content-strategy"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/content-strategy"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"copy-editing":
+  "id":
+    "copy-editing"
+  "source":
+    "marketing"
+  "source_path":
+    "skills/copy-editing"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"pm-deliver-prd":
+  "id":
+    "pm-deliver-prd"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/deliver-prd"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-discover-market-sizing":
+  "id":
+    "pm-discover-market-sizing"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/discover-market-sizing"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-discover-competitive-analysis":
+  "id":
+    "pm-discover-competitive-analysis"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/discover-competitive-analysis"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-develop-solution-brief":
+  "id":
+    "pm-develop-solution-brief"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/develop-solution-brief"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-foundation-lean-canvas":
+  "id":
+    "pm-foundation-lean-canvas"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/foundation-lean-canvas"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-foundation-meeting-synthesize":
+  "id":
+    "pm-foundation-meeting-synthesize"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/foundation-meeting-synthesize"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-critic":
+  "id":
+    "pm-critic"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/utility-pm-critic"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-deliver-user-stories":
+  "id":
+    "pm-deliver-user-stories"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/deliver-user-stories"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"pm-deliver-acceptance-criteria":
+  "id":
+    "pm-deliver-acceptance-criteria"
+  "source":
+    "pm-skills"
+  "source_path":
+    "skills/deliver-acceptance-criteria"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"ui-ux-pro-max":
+  "id":
+    "ui-ux-pro-max"
+  "source":
+    "uiux"
+  "source_path":
+    ".claude/skills/ui-ux-pro-max"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"impeccable":
+  "id":
+    "impeccable"
+  "source":
+    "impeccable"
+  "source_path":
+    ".agents/skills/impeccable"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Apache-2.0"
+  "install_policy":
+    "auto"
+"design-first-ui-prompting":
+  "id":
+    "design-first-ui-prompting"
+  "source":
+    "mengto"
+  "source_path":
+    "agent-skills/ui/design-first-ui-prompting"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"gsap-core":
+  "id":
+    "gsap-core"
+  "source":
+    "gsap"
+  "source_path":
+    "skills/gsap-core"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"gsap-timeline":
+  "id":
+    "gsap-timeline"
+  "source":
+    "gsap"
+  "source_path":
+    "skills/gsap-timeline"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"gsap-react":
+  "id":
+    "gsap-react"
+  "source":
+    "gsap"
+  "source_path":
+    "skills/gsap-react"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"gsap-performance":
+  "id":
+    "gsap-performance"
+  "source":
+    "gsap"
+  "source_path":
+    "skills/gsap-performance"
+  "entry":
+    "SKILL.md"
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"humanizer":
+  "id":
+    "humanizer"
+  "source":
+    "humanizer"
+  "source_path":
+    "SKILL.md"
+  "entry":
+    "SKILL.md"
+  "single_file":
+    true
+  "license":
+    "MIT"
+  "install_policy":
+    "auto"
+"document-artifact-production":
+  "id":
+    "document-artifact-production"
+  "source":
+    "local"
+  "source_path":
+    "employees/service-knowledge/DOCS/skills/document-artifact-production"
+  "entry":
+    "SKILL.md"
+  "license":
+    "Proprietary"
+  "install_policy":
+    "local"

@@ -51,7 +51,8 @@ class WorkflowE2E(unittest.TestCase):
         task = self.post("/api/tasks", {"title": "UI 오류 수정", "request": "frontend UI 오류를 수정하고 검토한다", "selected_employees": ["NAVI", "FRAME", "BUILD", "FRONT", "TRACE"]})
         task_id = task["id"]
         self.post(f"/api/tasks/{task_id}/contract", {"allowed_paths": ["."], "allowed_commands": [], "acceptance_criteria": ["UI 정상 동작"]})
-        planned = self.post(f"/api/tasks/{task_id}/plan", {})
+        with patch("apps.api.main.select_roster_with_model", return_value=(["FRAME"], [("FRAME", "UI 수정 범위 결정")], "동적 계획 테스트", None)):
+            planned = self.post(f"/api/tasks/{task_id}/plan", {})
         self.assertEqual(planned["meetings"], [])
         self.assertEqual(planned["state"], "planning")
         manual_review = self.client.post(f"/api/tasks/{task_id}/reviews", json={"reviewer_id": "BUILD", "verdict": "pass", "findings": "manual"})
@@ -88,7 +89,7 @@ class WorkflowE2E(unittest.TestCase):
     def test_planning_blocks_when_required_skill_is_not_ready(self) -> None:
         task = self.post("/api/tasks", {"title": "스킬 게이트", "request": "frontend UI 변경", "selected_employees": ["NAVI", "FRAME", "BUILD", "FRONT", "TRACE"]})
         self.post(f"/api/tasks/{task['id']}/contract", {"allowed_paths": ["."], "allowed_commands": [], "acceptance_criteria": ["스킬 검증"]})
-        with patch("apps.api.main.employee_security", return_value={"ready": False}):
+        with patch("apps.api.main.select_roster_with_model", return_value=(["FRAME"], [("FRAME", "UI 변경 범위 결정")], "동적 계획 테스트", None)), patch("apps.api.main.employee_security", return_value={"ready": False}):
             response = self.client.post(f"/api/tasks/{task['id']}/plan", json={})
         self.assertEqual(response.status_code, 409)
         self.assertIn("Required skills are not ready", response.text)

@@ -39,15 +39,15 @@
     "archive_url": "https://github.com/coreyhaines31/marketingskills/archive/refs/heads/{branch}.zip",
     "homepage": "https://github.com/coreyhaines31/marketingskills"
   },
-  "pm": {
-    "id": "pm",
-    "repo": "deanpeters/Product-Manager-Skills",
+  "pm-skills": {
+    "id": "pm-skills",
+    "repo": "product-on-purpose/pm-skills",
     "branch": "main",
-    "license": "CC-BY-NC-SA-4.0",
-    "policy": "manual_accept_noncommercial",
+    "license": "Apache-2.0",
+    "policy": "auto",
     "license_path": "LICENSE",
-    "archive_url": "https://github.com/deanpeters/Product-Manager-Skills/archive/refs/heads/{branch}.zip",
-    "homepage": "https://github.com/deanpeters/Product-Manager-Skills"
+    "archive_url": "https://github.com/product-on-purpose/pm-skills/archive/refs/heads/{branch}.zip",
+    "homepage": "https://github.com/product-on-purpose/pm-skills"
   },
   "uiux": {
     "id": "uiux",

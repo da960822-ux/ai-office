@@ -1,4 +1,6 @@
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -51,7 +53,7 @@ class DurableJobWorkflowE2E(unittest.TestCase):
         with main.database() as db:
             db.execute(
                 "INSERT INTO workspaces VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (f"WS-{task['id'].split('-')[-1]}", task["id"], str(self.workspace), str(self.workspace), "copy", "ready", main.utc_now()),
+                (f"WS-{task['id'].split('-')[-1]}", task["id"], str(self.workspace), str(self.workspace), "in_place", "ready", main.utc_now()),
             )
         return task
 
@@ -61,6 +63,44 @@ class DurableJobWorkflowE2E(unittest.TestCase):
         worker.process(job)
         return job
 
+    def test_glm_builds_dynamic_cross_department_plan(self):
+        output = """{
+          "summary":"공식·산업·고객 근거를 교차 검증해 하나의 사업안을 결정한다.",
+          "artifact_kind":"market_decision_report",
+          "final_owner":"FRAME",
+          "workspace_context":"none",
+          "requires_web_research":true,
+          "evidence_strategy":"최신 공식 통계, 산업 자료, 고객 문제 근거를 독립 출처로 교차 검증한다.",
+          "phases":[
+            {"id":"research","department":"growth-marketing","lead_id":"GROW","objective":"시장·고객·경쟁 대안을 조사한다.","output":"출처가 연결된 대안 비교표","handoff_to":"FRAME","depends_on":[]},
+            {"id":"decision","department":"product-experience","lead_id":"FRAME","objective":"근거를 평가해 단일 추천안을 결정한다.","output":"최종 의사결정 보고서","handoff_to":null,"depends_on":["research"]}
+          ],
+          "reason":"조사와 제품 의사결정을 분리하고 명시적으로 인계한다."
+        }"""
+        with patch.object(main, "model_key", return_value="configured"), patch.object(main, "model_client", return_value=FakeModelClient([output])):
+            roster, items, reason, usage = main.select_roster_with_model("새로운 기회를 조사하고 실행 가능한 사업안을 제안해줘")
+        self.assertEqual(roster, ["GROW", "FRAME"])
+        self.assertEqual([owner for owner, _ in items], ["GROW", "FRAME"])
+        self.assertEqual(reason, "공식·산업·고객 근거를 교차 검증해 하나의 사업안을 결정한다.")
+        self.assertTrue(usage["plan"]["requires_web_research"])
+        self.assertEqual(usage["plan"]["workspace_context"], "none")
+        self.assertEqual(usage["plan"]["phases"][1]["depends_on"], ["research"])
+
+    def test_scheduler_never_expands_to_unproposed_workers(self):
+        task = self.create_task("팀장 직접 실행", "조사 결과를 통합해 결정")
+        with main.database() as db:
+            db.execute("INSERT INTO task_assignments VALUES (?, ?)", (task["id"], "FRAME"))
+            db.execute(
+                "INSERT INTO action_items VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                ("ACT-001-01", task["id"], None, "FRAME", "FRAME 팀장 직접 통합", 1, "[]", "proposed"),
+            )
+            db.execute("UPDATE tasks SET state = 'awaiting_worker_selection' WHERE id = ?", (task["id"],))
+        worker.schedule_autonomous_tasks()
+        scheduled = self.client.get(f"/api/tasks/{task['id']}").json()
+        execute = next(job for job in scheduled["jobs"] if job["kind"] == "execute")
+        self.assertEqual(execute["payload"]["employee_ids"], ["FRAME"])
+        self.assertNotIn("MOSS", execute["payload"]["employee_ids"])
+
     def test_navi_to_review_completes_with_one_user_choice(self):
         task = self.create_task()
         queued = self.client.post(f"/api/tasks/{task['id']}/jobs/plan", json={})
@@ -69,6 +109,9 @@ class DurableJobWorkflowE2E(unittest.TestCase):
         fake_client = FakeModelClient([
             "실제 요청 기준으로 회의를 시작합니다.",
             '{"message":"성장 관점 조사를 PULSE에게 맡깁니다.","assignments":[{"worker_id":"PULSE","description":"시장 규모와 경쟁 근거를 웹 검색해 보고서 작성"}]}',
+            "# 최종 추천안\n\n## 추천\n소상공인 AI 비서를 단일 추천안으로 선택한다.\n\n## 대안\n자격증 플랫폼은 고객 획득비용 불확실성 때문에 제외한다.\n\n## 출처\nhttps://example.com/source\n",
+            '{"verdict":"changes_requested","findings":"90일 검증 계획과 KPI를 보강하세요."}',
+            "# 최종 추천안\n\n## 추천\n소상공인 AI 비서를 단일 추천안으로 선택한다.\n\n## 대안\n자격증 플랫폼은 고객 획득비용 불확실성 때문에 제외한다.\n\n## 90일 검증 계획\n30일 고객 인터뷰, 60일 MVP, 90일 유료 전환 검증.\n\n## KPI\n유료 전환율과 고객 획득비용을 측정한다.\n\n## 출처\nhttps://example.com/source\n",
             '{"verdict":"pass","findings":"웹 출처와 실행 결과 확인 완료"}',
         ])
 
@@ -82,12 +125,22 @@ class DurableJobWorkflowE2E(unittest.TestCase):
                     "INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)",
                     (task_id, payload.employee_id, "run", "시장 조사 결과와 출처 URL", main.utc_now()),
                 )
+                deliverable = main.persist_deliverable(
+                    db,
+                    self.workspace,
+                    task_id,
+                    payload.employee_id,
+                    "department_draft",
+                    "# 부서 조사\n\n근거 기반 시장 조사 결과\n",
+                    filename=f"departments/{payload.employee_id}.md",
+                    status="department_draft",
+                )
             return {
                 "employee_id": payload.employee_id,
                 "tier": "worker",
                 "model": "mock",
                 "summary": "시장 조사 결과와 출처 URL",
-                "changed_files": [],
+                "changed_files": [deliverable["path"]],
                 "commands": [],
                 "evidence_id": f"EVD-{task_id}-WEB",
                 "state": "executing",
@@ -119,7 +172,19 @@ class DurableJobWorkflowE2E(unittest.TestCase):
 
             self.claim_and_process()
             reviewing = self.client.get(f"/api/tasks/{task['id']}").json()
-            self.assertEqual(reviewing["state"], "lead_review_running")
+            self.assertEqual(reviewing["state"], "synthesizing")
+
+            self.claim_and_process()
+            reviewing = self.client.get(f"/api/tasks/{task['id']}").json()
+            self.assertEqual(reviewing["state"], "lead_review_running", reviewing["jobs"])
+
+            self.claim_and_process()
+            reworking = self.client.get(f"/api/tasks/{task['id']}").json()
+            self.assertEqual(reworking["state"], "synthesizing")
+
+            self.claim_and_process()
+            rereviewing = self.client.get(f"/api/tasks/{task['id']}").json()
+            self.assertEqual(rereviewing["state"], "lead_review_running")
 
             self.claim_and_process()
 
@@ -129,6 +194,10 @@ class DurableJobWorkflowE2E(unittest.TestCase):
         self.assertTrue(any(message["kind"] == "meeting" for message in completed["agent_messages"]))
         self.assertTrue(any(item["type"] == "lead_review" and item["status"] == "pass" for item in completed["evidence"]))
         self.assertTrue(any(item["status"] == "completed" for item in completed["action_items"]))
+        self.assertEqual([review["verdict"] for review in reversed(completed["reviews"])], ["changes_requested", "pass"])
+        final = next(item for item in completed["deliverables"] if item["status"] == "approved")
+        self.assertEqual(final["path"], f"AI_OFFICE_OUTPUTS/{task['id']}/FINAL.md")
+        self.assertTrue((self.workspace / final["path"]).is_file())
 
     def test_pause_resume_cancel_and_orphan_recovery(self):
         task = self.create_task("제어 테스트", "파일 검토")
@@ -191,6 +260,35 @@ class DurableJobWorkflowE2E(unittest.TestCase):
         self.assertEqual(retried.json()["state"], "queued")
         refreshed = self.client.get(f"/api/tasks/{task['id']}").json()
         self.assertEqual(refreshed["state"], "executing")
+
+    def test_pending_model_call_obeys_cancel_without_deadline(self):
+        task = self.create_task("취소 가능한 호출", "긴 모델 호출")
+        with main.database() as db:
+            job = main.enqueue_job(db, task["id"], "lead_review", {"lead_id": "BUILD"})
+            db.execute("UPDATE jobs SET state = 'running' WHERE id = ?", (job["id"],))
+
+        started = threading.Event()
+        release = threading.Event()
+
+        class BlockingResponses:
+            def create(self, **_kwargs):
+                started.set()
+                release.wait(5)
+                return SimpleNamespace(output_text="late")
+
+        def request_cancel():
+            started.wait(2)
+            with main.database() as db:
+                db.execute("UPDATE jobs SET state = 'cancel_requested' WHERE id = ?", (job["id"],))
+
+        controller = threading.Thread(target=request_cancel)
+        controller.start()
+        began = time.monotonic()
+        with self.assertRaises(main.JobControlSignal):
+            main.cancellable_model_response(SimpleNamespace(responses=BlockingResponses()), task["id"], job["id"], model="mock", input="test")
+        self.assertLess(time.monotonic() - began, 2)
+        release.set()
+        controller.join(timeout=2)
 
 
 if __name__ == "__main__":

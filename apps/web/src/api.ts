@@ -63,6 +63,12 @@ export type ModelUsage = { id:number; task_id:string; model:string; input_tokens
 export type ResearchSource = { id:number; task_id:string; employee_id:string; query:string; title:string; url:string; snippet:string; created_at:string };
 export type Job = { id:string; task_id:string; kind:string; payload:Record<string,unknown>; state:string; step:number; lease_owner?:string|null; heartbeat_at?:string|null; error?:string|null; created_at:string; updated_at:string };
 export type JobEvent = { id:number; task_id:string; job_id:string|null; agent_id:string|null; type:string; summary:string; payload:Record<string,unknown>; created_at:string };
+export type AgentRun = { id:string; task_id:string; job_id:string; employee_id:string; state:string; model:string|null; started_at:string; finished_at:string|null; summary:string|null };
+export type ToolCall = { id:number; task_id:string; job_id:string; agent_id:string; tool_name:string; input_summary:string; output_summary:string; status:string; duration_ms:number|null; created_at:string };
+export type Deliverable = { id:string; task_id:string; owner:string; kind:string; path:string; status:string; artifact_sha256:string; created_at:string; updated_at:string };
+export type ExecutionPhase = { id:string; department:string; lead_id:string; objective:string; output:string; handoff_to:string|null; depends_on:string[] };
+export type ExecutionPlan = { summary:string; artifact_kind:string; final_owner:string; workspace_context:'none'|'read'|'write'; requires_web_research:boolean; evidence_strategy:string; reason:string; phases:ExecutionPhase[] };
+export type AgentScope = { task_id:string; employee_id:string; assignment:string; skill_ids:string[]; deliverable:string; handoff_to:string|null; dependencies:string[]; sequence:number };
 export type RuntimeVersion = { api_build_id:string; worker_build_id:string|null; schema_version:number; running_jobs:number };
 
 export type Task = {
@@ -76,6 +82,9 @@ export type Task = {
   assigned_employees: string[];
   events: Event[];
   evidence: Evidence[];
+  deliverables: Deliverable[];
+  execution_plan: { task_id:string; plan_json:string; summary:string; plan:ExecutionPlan; created_at:string; updated_at:string } | null;
+  agent_scopes: AgentScope[];
   meetings: Meeting[];
   action_items: ActionItem[];
   reviews: Review[];
@@ -87,6 +96,8 @@ export type Task = {
   research_sources: ResearchSource[];
   jobs: Job[];
   job_events: JobEvent[];
+  agent_runs: AgentRun[];
+  tool_calls: ToolCall[];
   checkpoints: { id:number; label:string; snapshot:{state:string;updated_at:string}; created_at:string }[];
   budget_spent: number;
   contract: {
@@ -110,7 +121,7 @@ export type Workspace = {
   id: string;
   task_id: string;
   path: string;
-  strategy: 'copy' | 'worktree';
+  strategy: 'copy' | 'worktree' | 'in_place';
   status: string;
 };
 
@@ -128,6 +139,7 @@ export type UsageSummary = {
   input_tokens: number;
   output_tokens: number;
   cost_usd: number;
+  cost_known: boolean;
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -195,9 +207,10 @@ export const api = {
         allowed_paths: ['.'],
         allowed_commands: ['npm test', 'npm run build', 'pytest', 'python -m pytest'],
         acceptance_criteria: [
-          '요청 범위 충족',
-          '선택한 프로젝트 내부만 변경',
-          '검증 결과와 근거 기록',
+          '요청 범위를 충족한다',
+          '선택한 프로젝트 폴더에 실제 산출물 파일을 생성한다',
+          '부서별 결과를 하나의 최종 산출물로 통합한다',
+          '검증 결과와 근거를 기록한다',
         ],
       }),
     }),
@@ -230,7 +243,7 @@ export const api = {
   createWorkspace: (
     taskId: string,
     projectId: string,
-    strategy: 'copy' | 'worktree' = 'copy',
+    strategy: 'copy' | 'worktree' | 'in_place' = 'copy',
   ) =>
     request<Workspace>(`/tasks/${taskId}/workspace`, {
       method: 'POST',

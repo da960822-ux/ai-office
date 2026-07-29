@@ -22,6 +22,23 @@ def api_json(url):
 def download(url):
     req=urllib.request.Request(url,headers={'User-Agent':'Corporate-OS-v6.2-skill-installer'})
     with urllib.request.urlopen(req,timeout=120) as r: return r.read()
+
+def extract_selected(zdata, destination, source_id, definitions):
+    """Extract only requested skill trees to avoid Windows path-length failures."""
+    wanted = tuple(
+        d["source_path"].strip("/") + "/"
+        for d in definitions.values() if d["source"] == source_id
+    )
+    with zipfile.ZipFile(io.BytesIO(zdata)) as archive:
+        names = [name for name in archive.namelist() if name and not name.endswith("/")]
+        root = names[0].split("/", 1)[0]
+        for name in names:
+            relative = name.split("/", 1)[1] if "/" in name else ""
+            if relative in {"LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"} or relative.startswith(wanted):
+                target = destination / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(name) as source, target.open("wb") as output:
+                    shutil.copyfileobj(source, output)
 def resolve(source):
     repo=source['repo']; branch=source.get('branch','main')
     try: return api_json(f'https://api.github.com/repos/{repo}/commits/{branch}')['sha'], branch
@@ -61,7 +78,7 @@ def main():
         if not edir.exists():
             data=download(f'https://github.com/{src["repo"]}/archive/{sha}.zip')
             zpath.write_bytes(data)
-            with zipfile.ZipFile(io.BytesIO(data)) as z: z.extractall(edir)
+            extract_selected(data, edir, source_id, defs)
         roots=[p for p in edir.iterdir() if p.is_dir()]
         if len(roots)!=1: raise RuntimeError(f'Unexpected archive layout: {src["repo"]}')
         repo_roots[source_id]=roots[0]

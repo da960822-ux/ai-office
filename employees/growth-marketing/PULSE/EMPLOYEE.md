@@ -18,9 +18,6 @@ skill_loading: local_files_progressive
 - `@./SOP.md`
 - `@./skills/_local-role-core/SKILL.md`
 - `@./skills/analytics/SKILL.md`
-- `@./skills/ab-testing/SKILL.md`
-- `@./skills/cro/SKILL.md`
-- `@./skills/seo-audit/SKILL.md`
 
 ## 조건부 스킬
 

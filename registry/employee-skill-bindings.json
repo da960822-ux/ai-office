@@ -5,50 +5,43 @@
       "planning-and-task-breakdown",
       "executing-plans"
     ],
-    "optional": [
-      "agent-orchestration-advisor"
-    ]
+    "optional": []
   },
   "ROUTE": {
     "required": [
       "planning-and-task-breakdown",
       "dispatching-parallel-agents",
-      "using-git-worktrees",
       "git-workflow-and-versioning"
     ],
-    "optional": []
+    "optional": ["using-git-worktrees"]
   },
   "CLOCK": {
     "required": [
       "observability-and-instrumentation",
-      "debugging-and-error-recovery",
-      "code-simplification"
+      "debugging-and-error-recovery"
     ],
     "optional": []
   },
   "FRAME": {
     "required": [
       "planning-and-task-breakdown",
-      "source-driven-development",
       "writing-plans"
     ],
     "optional": [
-      "prd-development",
-      "discovery-process",
-      "prioritization-advisor",
-      "user-story"
+      "pm-deliver-prd",
+      "pm-develop-solution-brief",
+      "pm-foundation-lean-canvas",
+      "pm-foundation-meeting-synthesize",
+      "pm-deliver-user-stories"
     ]
   },
   "FLOW": {
     "required": [
-      "ui-ux-pro-max",
       "source-driven-development",
       "customer-research"
     ],
     "optional": [
-      "customer-journey-map",
-      "user-story-mapping",
-      "discovery-process"
+      "pm-deliver-user-stories"
     ]
   },
   "MOSS": {
@@ -58,10 +51,7 @@
       "design-first-ui-prompting",
       "humanizer"
     ],
-    "optional": [
-      "gsap-core",
-      "gsap-timeline"
-    ]
+    "optional": []
   },
   "BUILD": {
     "required": [
@@ -70,7 +60,7 @@
       "code-review-and-quality",
       "git-workflow-and-versioning"
     ],
-    "optional": []
+    "optional": ["documentation-and-adrs"]
   },
   "FRONT": {
     "required": [
@@ -97,9 +87,7 @@
       "llm-evaluation",
       "rag-implementation"
     ],
-    "optional": [
-      "agent-orchestration-advisor"
-    ]
+    "optional": []
   },
   "SIGNAL": {
     "required": [
@@ -131,28 +119,24 @@
   "SRE": {
     "required": [
       "observability-and-instrumentation",
-      "debugging-and-error-recovery",
       "systematic-debugging",
       "ci-cd-and-automation"
     ],
-    "optional": []
+    "optional": ["debugging-and-error-recovery"]
   },
   "COST": {
     "required": [
-      "observability-and-instrumentation",
-      "code-simplification",
-      "source-driven-development"
+      "observability-and-instrumentation"
     ],
-    "optional": []
+    "optional": ["source-driven-development"]
   },
   "GUARD": {
     "required": [
       "code-review-and-quality",
       "verification-before-completion",
-      "security-and-hardening",
-      "code-review-excellence"
+      "security-and-hardening"
     ],
-    "optional": []
+    "optional": ["code-review-excellence"]
   },
   "TRACE": {
     "required": [
@@ -167,7 +151,6 @@
     "required": [
       "security-and-hardening",
       "auth-implementation-patterns",
-      "source-driven-development",
       "doubt-driven-development"
     ],
     "optional": []
@@ -175,58 +158,55 @@
   "GROW": {
     "required": [
       "product-marketing",
-      "launch",
       "customer-research"
     ],
     "optional": [
-      "positioning-statement"
+      "launch",
+      "pm-discover-market-sizing",
+      "pm-discover-competitive-analysis",
+      "competitor-profiling",
+      "marketing-plan",
+      "pricing"
     ]
   },
   "VOICE": {
     "required": [
       "copywriting",
       "humanizer",
-      "product-marketing",
-      "design-first-ui-prompting"
+      "product-marketing"
     ],
-    "optional": []
+    "optional": ["content-strategy", "copy-editing"]
   },
   "PULSE": {
     "required": [
-      "analytics",
+      "analytics"
+    ],
+    "optional": [
       "ab-testing",
       "cro",
-      "seo-audit"
-    ],
-    "optional": []
+      "seo-audit",
+      "attribution"
+    ]
   },
   "LENS": {
     "required": [
       "code-review-and-quality",
-      "verification-before-completion",
-      "impeccable",
-      "ui-ux-pro-max"
+      "verification-before-completion"
     ],
-    "optional": []
+    "optional": ["pm-critic", "pm-deliver-acceptance-criteria"]
   },
   "JOURNEY": {
     "required": [
-      "ui-ux-pro-max",
       "cro",
       "customer-research",
       "onboarding"
     ],
-    "optional": [
-      "customer-journey-map"
-    ]
+    "optional": []
   },
   "DOCS": {
     "required": [
-      "documentation-and-adrs",
-      "writing-skills",
-      "source-driven-development",
-      "humanizer"
+      "document-artifact-production"
     ],
-    "optional": []
+    "optional": ["documentation-and-adrs"]
   }
 }

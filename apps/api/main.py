@@ -12,6 +12,10 @@ import urllib.error
 import urllib.parse
 import re
 import time
+import ipaddress
+import socket
+from queue import Queue
+from threading import Thread
 from html import unescape
 from xml.etree import ElementTree
 from contextlib import contextmanager
@@ -32,6 +36,8 @@ ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "ai-office.sqlite3"
 REGISTRY_PATH = ROOT / "registry" / "employees.json"
 SKILL_BINDINGS_PATH = ROOT / "registry" / "employee-skill-bindings.json"
+DEPARTMENT_BOUNDARIES_PATH = ROOT / "registry" / "department-boundaries.json"
+DELIVERABLE_STANDARDS_PATH = ROOT / "registry" / "deliverable-standards.json"
 SKILLS_LOCK_PATH = ROOT / "registry" / "skills.lock.json"
 SETTINGS_PATH = ROOT / ".ai-office" / "settings.json"
 KEYRING_SERVICE = "AI-Automation-Office"
@@ -39,14 +45,15 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODELS_URL = f"{OPENROUTER_BASE_URL}/models"
 NAVI_MODEL = "z-ai/glm-5.2"
 MODELS_CACHE_PATH = ROOT / "data" / "openrouter-models.json"
-BUILD_ID = "ai-office-jobs-v3"
-SCHEMA_VERSION = 2
+BUILD_ID = "ai-office-jobs-v8-dynamic-orchestration"
+SCHEMA_VERSION = 3
 JOB_STATES = {"queued", "running", "pause_requested", "paused", "cancel_requested", "cancelled", "succeeded", "failed", "interrupted"}
 TASK_STATES = {
     "draft", "contracting", "planning", "meeting", "assigned", "running",
     "team_review", "cross_review", "verifying", "reflecting", "awaiting_approval",
     "completed", "blocked", "failed", "cancelled", "paused", "budget_exceeded", "escalated",
     "awaiting_lead_selection", "meeting_ready", "meeting_running", "awaiting_worker_selection", "executing", "lead_review_running",
+    "synthesizing",
 }
 ACTION_TO_STATE = {
     "contract": "contracting", "plan": "planning", "meeting": "meeting",
@@ -62,7 +69,7 @@ STATE_LABELS = {
     "completed": "완료", "blocked": "차단", "failed": "실패", "cancelled": "취소", "paused": "일시 정지",
     "budget_exceeded": "예산 초과", "escalated": "에스컬레이션",
     "awaiting_lead_selection": "팀장 선택 대기", "meeting_ready": "회의 시작 대기", "meeting_running": "팀장 회의", "awaiting_worker_selection": "실행자 선택 대기",
-    "executing": "실행 중", "lead_review_running": "팀장 리뷰",
+    "executing": "실행 중", "synthesizing": "최종 산출물 통합", "lead_review_running": "팀장 리뷰",
 }
 STATUS_TO_ZONE = {
     "draft": "desk", "contracting": "meeting", "planning": "meeting", "meeting": "meeting",
@@ -70,6 +77,7 @@ STATUS_TO_ZONE = {
     "verifying": "qa", "reflecting": "review", "awaiting_approval": "ceo", "completed": "desk",
     "blocked": "ceo", "failed": "qa", "cancelled": "desk", "paused": "ceo", "budget_exceeded": "ceo", "escalated": "ceo",
     "awaiting_lead_selection": "ceo", "meeting_ready": "ceo", "meeting_running": "meeting", "awaiting_worker_selection": "ceo", "executing": "desk", "lead_review_running": "qa",
+    "synthesizing": "review",
 }
 
 
@@ -149,7 +157,7 @@ class ProjectInput(BaseModel):
 
 class WorkspaceInput(BaseModel):
     project_id: str
-    strategy: Literal["worktree", "copy"] = "copy"
+    strategy: Literal["worktree", "copy", "in_place"] = "copy"
 
 
 class RunInput(BaseModel):
@@ -161,6 +169,7 @@ class AgentRunInput(BaseModel):
     workspace_id: str
     employee_id: str = Field(min_length=1, max_length=40)
     instruction: str = Field(default="", max_length=4000)
+    skill_ids: list[str] = Field(default_factory=list, max_length=3)
     managed_by_job: bool = False
     job_id: str | None = Field(default=None, max_length=80)
 
@@ -260,6 +269,36 @@ def model_client() -> OpenAI:
     return OpenAI(api_key=model_key(), base_url=OPENROUTER_BASE_URL, timeout=httpx.Timeout(None, connect=15.0), max_retries=0, default_headers={"HTTP-Referer": "http://localhost:5175", "X-Title": "AI Automation Office"})
 
 
+class JobControlSignal(RuntimeError):
+    """A user paused or cancelled a Job while its provider call was pending."""
+
+
+def cancellable_model_response(client: OpenAI, task_id: str, job_id: str | None, **kwargs):
+    """Wait without a generation deadline, but abandon late output on pause/cancel."""
+    if not job_id:
+        return client.responses.create(**kwargs)
+    result: Queue[tuple[bool, object]] = Queue(maxsize=1)
+
+    def invoke() -> None:
+        try:
+            result.put((True, client.responses.create(**kwargs)))
+        except BaseException as error:
+            result.put((False, error))
+
+    call_thread = Thread(target=invoke, daemon=True, name=f"model-{job_id}")
+    call_thread.start()
+    while call_thread.is_alive():
+        call_thread.join(timeout=0.5)
+        with database() as db:
+            row = db.execute("SELECT state FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if row and row["state"] in {"pause_requested", "cancel_requested", "paused", "cancelled"}:
+            raise JobControlSignal(f"Job control requested during model call: {row['state']}")
+    succeeded, value = result.get()
+    if succeeded:
+        return value
+    raise value
+
+
 def public_model_settings() -> dict:
     settings = model_settings()
     return {"provider": settings["provider"], "lead_model": settings["lead_model"], "worker_model": settings["worker_model"], "configured": bool(model_key())}
@@ -280,13 +319,47 @@ def openrouter_models() -> list[dict]:
         return [{"id": "openai/gpt-5", "name": "GPT-5", "context_length": 0}, {"id": "openai/gpt-5-mini", "name": "GPT-5 mini", "context_length": 0}]
 
 
-def employee_security(employee_id: str) -> dict:
+def department_policy(employee_id: str) -> dict:
+    employee = registry()[employee_id]
+    return json.loads(DEPARTMENT_BOUNDARIES_PATH.read_text(encoding="utf-8"))[employee["team"]]
+
+
+def deliverable_spec(request: str) -> tuple[str, dict]:
+    standards = json.loads(DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
+    return "business_document", standards["business_document"]
+
+
+def skill_ids_for_task(employee_id: str, request: str) -> list[str]:
+    return []
+
+
+def validate_selected_skills(employee_id: str, skill_ids: list[str], limit: int = 3) -> list[str]:
+    if not isinstance(skill_ids, list):
+        raise HTTPException(422, "skill_ids must be a list")
+    if len(skill_ids) > limit:
+        raise HTTPException(422, f"At most {limit} skills may be selected")
+    selected = list(dict.fromkeys(skill for skill in skill_ids if isinstance(skill, str)))
+    bindings = json.loads(SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))[employee_id]
+    unknown = sorted(set(selected) - set(bindings["required"] + bindings["optional"]))
+    if unknown:
+        raise HTTPException(403, f"Skills are not bound to {employee_id}: {', '.join(unknown)}")
+    security = employee_security(employee_id, selected)
+    missing = [check["skill_id"] for check in security["skills"] if not check["valid"]]
+    if missing:
+        raise HTTPException(409, f"Selected skills are not ready for {employee_id}: {', '.join(missing)}")
+    return selected
+
+
+def employee_security(employee_id: str, skill_ids: list[str] | None = None) -> dict:
     employee = registry()[employee_id]
     base = ROOT / Path(employee["profile_path"]).parent
     permissions = __import__("yaml").safe_load((base / "PERMISSIONS.yaml").read_text(encoding="utf-8"))
     bindings = json.loads(SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))[employee_id]
     lock = json.loads(SKILLS_LOCK_PATH.read_text(encoding="utf-8"))["installed"]
-    required = bindings["required"]
+    required = skill_ids if skill_ids is not None else bindings["required"]
+    unknown = sorted(set(required) - set(bindings["required"] + bindings["optional"]))
+    if unknown:
+        raise HTTPException(500, f"Task profile has unbound skills for {employee_id}: {', '.join(unknown)}")
     checks = []
     for skill_id in required:
         path = base / "skills" / skill_id / "SKILL.md"
@@ -295,14 +368,15 @@ def employee_security(employee_id: str) -> dict:
     return {"employee_id": employee_id, "permissions": permissions, "skills": checks, "ready": all(check["valid"] for check in checks)}
 
 
-def require_skill_ready(employee_ids: list[str]) -> None:
-    unavailable = [employee_id for employee_id in employee_ids if not employee_security(employee_id)["ready"]]
+def require_skill_ready(employee_ids: list[str], request: str = "") -> None:
+    unavailable = [employee_id for employee_id in employee_ids if not employee_security(employee_id, skill_ids_for_task(employee_id, request))["ready"]]
     if unavailable:
         raise HTTPException(409, f"Required skills are not ready for: {', '.join(unavailable)}")
 
 
-def employee_skill_context(employee_id: str, per_skill_limit: int = 3000) -> dict:
-    security = employee_security(employee_id)
+def employee_skill_context(employee_id: str, request: str, per_skill_limit: int = 3000, selected_skill_ids: list[str] | None = None) -> dict:
+    skill_ids = validate_selected_skills(employee_id, selected_skill_ids, 3) if selected_skill_ids is not None else skill_ids_for_task(employee_id, request)
+    security = employee_security(employee_id, skill_ids)
     if not security["ready"]:
         raise HTTPException(409, f"Required skills are not ready for {employee_id}")
     content: list[dict] = []
@@ -310,7 +384,7 @@ def employee_skill_context(employee_id: str, per_skill_limit: int = 3000) -> dic
         path = ROOT / skill["path"]
         text = path.read_text(encoding="utf-8", errors="replace")[:per_skill_limit]
         content.append({"id": skill["skill_id"], "path": skill["path"], "instructions": text})
-    return {"permissions": security["permissions"], "required_skills": content}
+    return {"permissions": security["permissions"], "required_skills": content, "profile_skill_ids": skill_ids}
 
 
 def safe_project_root(raw_path: str) -> Path:
@@ -357,6 +431,51 @@ def safe_workspace_file(workspace: Path, relative_path: str, allowed_paths: list
     if not permitted:
         raise HTTPException(403, "Agent file path is outside TaskContract allowed_paths")
     return candidate
+
+
+def validate_task_workspace(workspace: sqlite3.Row) -> tuple[Path, bool, str]:
+    path = Path(workspace["path"]).resolve()
+    root = Path(workspace["source_root"] if workspace["strategy"] == "in_place" else ROOT / "data" / "workspaces").resolve()
+    allowed, reason = validate_path(root, path)
+    return path, allowed, reason
+
+
+def persist_deliverable(
+    db: sqlite3.Connection,
+    workspace: Path,
+    task_id: str,
+    owner: str,
+    kind: str,
+    content: str,
+    *,
+    filename: str,
+    status: str,
+) -> dict:
+    output_root = (workspace / "AI_OFFICE_OUTPUTS" / task_id).resolve()
+    if not output_root.is_relative_to(workspace):
+        raise HTTPException(403, "Deliverable path escapes workspace")
+    path = (output_root / filename).resolve()
+    if not path.is_relative_to(output_root):
+        raise HTTPException(403, "Invalid deliverable filename")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    normalized = content.strip() + "\n"
+    path.write_text(normalized, encoding="utf-8")
+    artifact_sha256 = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    relative_path = str(path.relative_to(workspace)).replace("\\", "/")
+    deliverable_id = f"DEL-{task_id.split('-')[-1]}-{hashlib.sha256(relative_path.encode()).hexdigest()[:12]}"
+    now = utc_now()
+    db.execute(
+        "INSERT INTO deliverables (id, task_id, owner, kind, path, status, artifact_sha256, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id, path) DO UPDATE SET "
+        "owner=excluded.owner, kind=excluded.kind, status=excluded.status, "
+        "artifact_sha256=excluded.artifact_sha256, updated_at=excluded.updated_at",
+        (deliverable_id, task_id, owner, kind, relative_path, status, artifact_sha256, now, now),
+    )
+    db.execute(
+        "INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (f"EVD-{task_id.split('-')[-1]}-DEL-{artifact_sha256[:12]}", task_id, None, "deliverable", "pass", artifact_sha256, 0, now),
+    )
+    return {"id": deliverable_id, "path": relative_path, "sha256": artifact_sha256, "status": status}
 
 
 def workspace_copy_ignore(source: str, names: list[str]) -> set[str]:
@@ -432,6 +551,47 @@ def web_search(query: str, limit: int = 5) -> list[dict]:
     return results
 
 
+def read_public_web_source(raw_url: str, limit: int = 12000) -> dict:
+    parsed = urllib.parse.urlparse(raw_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise HTTPException(422, "Only public HTTP(S) source URLs are allowed")
+    try:
+        addresses = {item[4][0] for item in socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))}
+    except socket.gaierror as error:
+        raise HTTPException(502, f"Source hostname resolution failed: {error}") from error
+    for address in addresses:
+        ip = ipaddress.ip_address(address)
+        if not ip.is_global:
+            raise HTTPException(403, "Private or local source addresses are not allowed")
+    request = urllib.request.Request(
+        raw_url,
+        headers={"User-Agent": "Mozilla/5.0 AI-Automation-Office/1.0", "Accept": "text/html,text/plain,application/json"},
+    )
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            raise urllib.error.HTTPError(req.full_url, code, "Source redirects are not followed", headers, fp)
+    try:
+        with urllib.request.build_opener(NoRedirect).open(request, timeout=25) as response:
+            final_url = response.geturl()
+            content_type = response.headers.get_content_type()
+            raw = response.read(2_000_000).decode(response.headers.get_content_charset() or "utf-8", errors="replace")
+    except (urllib.error.URLError, TimeoutError, ValueError) as error:
+        raise HTTPException(502, f"Source read failed: {error}") from error
+    final_host = urllib.parse.urlparse(final_url).hostname
+    if not final_host:
+        raise HTTPException(502, "Source redirected to an invalid URL")
+    if content_type == "text/html":
+        title_match = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
+        title = unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", title_match.group(1)))).strip() if title_match else final_host
+        cleaned = re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", " ", raw, flags=re.I | re.S)
+        text = unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", cleaned))).strip()
+    else:
+        title, text = final_host, re.sub(r"\s+", " ", raw).strip()
+    if len(text) < 200:
+        raise HTTPException(502, "Source contains too little readable text")
+    return {"title": title[:300], "url": final_url[:2000], "content_type": content_type, "text": text[:limit]}
+
+
 def init_db() -> None:
     with database() as db:
         db.executescript("""
@@ -441,6 +601,16 @@ def init_db() -> None:
         );
         CREATE TABLE IF NOT EXISTS task_assignments (
             task_id TEXT NOT NULL, employee_id TEXT NOT NULL,
+            PRIMARY KEY (task_id, employee_id)
+        );
+        CREATE TABLE IF NOT EXISTS task_plans (
+            task_id TEXT PRIMARY KEY, plan_json TEXT NOT NULL, summary TEXT NOT NULL,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS task_agent_scopes (
+            task_id TEXT NOT NULL, employee_id TEXT NOT NULL, assignment TEXT NOT NULL,
+            skill_ids TEXT NOT NULL, deliverable TEXT NOT NULL, handoff_to TEXT,
+            dependencies TEXT NOT NULL, sequence INTEGER NOT NULL,
             PRIMARY KEY (task_id, employee_id)
         );
         CREATE TABLE IF NOT EXISTS events (
@@ -487,6 +657,12 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS evidence (
             id TEXT PRIMARY KEY, task_id TEXT NOT NULL, run_id TEXT, type TEXT NOT NULL, status TEXT NOT NULL,
             artifact_sha256 TEXT NOT NULL, stale INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS deliverables (
+            id TEXT PRIMARY KEY, task_id TEXT NOT NULL, owner TEXT NOT NULL, kind TEXT NOT NULL,
+            path TEXT NOT NULL, status TEXT NOT NULL, artifact_sha256 TEXT NOT NULL,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+            UNIQUE(task_id, path)
         );
         CREATE TABLE IF NOT EXISTS retry_attempts (
             id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, failure_class TEXT NOT NULL,
@@ -567,6 +743,14 @@ def init_db() -> None:
         ensure_column(db, "tasks", "parent_task_id", "TEXT")
         # Old plan rows were placeholders, not real meetings. Preserve audit, hide from runtime.
         db.execute("UPDATE meetings SET status = 'superseded' WHERE status = 'concluded' AND type = 'team_lead' AND id NOT IN (SELECT DISTINCT m.id FROM meetings m JOIN agent_messages a ON a.task_id = m.task_id WHERE a.kind = 'meeting')")
+        # Older tool events stored raw file/command output in a UI summary. Keep
+        # audit metadata while removing content that must never reach bubbles.
+        db.execute("UPDATE job_events SET summary = '파일 읽기 완료 · 기존 상세 내용 제거' WHERE type IN ('tool.completed','tool.failed') AND payload LIKE '%read_file%'")
+        db.execute("UPDATE job_events SET summary = '파일 목록 확인 완료 · 기존 상세 내용 제거' WHERE type IN ('tool.completed','tool.failed') AND payload LIKE '%list_files%'")
+        db.execute("UPDATE job_events SET summary = '검증 명령 완료 · 기존 상세 출력 제거' WHERE type IN ('tool.completed','tool.failed') AND payload LIKE '%run_verification%'")
+        db.execute("UPDATE tool_calls SET output_summary = '파일 읽기 완료 · 기존 상세 내용 제거' WHERE tool_name = 'read_file'")
+        db.execute("UPDATE tool_calls SET output_summary = '파일 목록 확인 완료 · 기존 상세 내용 제거' WHERE tool_name = 'list_files'")
+        db.execute("UPDATE tool_calls SET output_summary = '검증 명령 완료 · 기존 상세 출력 제거' WHERE tool_name = 'run_verification'")
 
 
 def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
@@ -591,8 +775,17 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
     checkpoints = [dict(row) | {"snapshot": json.loads(row["snapshot"])} for row in db.execute("SELECT * FROM task_checkpoints WHERE task_id = ? ORDER BY id DESC", (task_id,))]
     jobs = [dict(row) | {"payload": json.loads(row["payload"])} for row in db.execute("SELECT * FROM jobs WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     job_events = [dict(row) | {"payload": json.loads(row["payload"])} for row in db.execute("SELECT * FROM job_events WHERE task_id = ? ORDER BY id DESC LIMIT 120", (task_id,))]
+    agent_runs = [dict(row) for row in db.execute("SELECT * FROM agent_runs WHERE task_id = ? ORDER BY started_at DESC", (task_id,))]
+    tool_calls = [dict(row) for row in db.execute("SELECT * FROM tool_calls WHERE task_id = ? ORDER BY id DESC LIMIT 120", (task_id,))]
+    deliverables = [dict(row) for row in db.execute("SELECT * FROM deliverables WHERE task_id = ? ORDER BY updated_at DESC", (task_id,))]
+    plan_row = db.execute("SELECT * FROM task_plans WHERE task_id = ?", (task_id,)).fetchone()
+    execution_plan = (dict(plan_row) | {"plan": json.loads(plan_row["plan_json"])}) if plan_row else None
+    agent_scopes = [
+        dict(row) | {"skill_ids": json.loads(row["skill_ids"]), "dependencies": json.loads(row["dependencies"])}
+        for row in db.execute("SELECT * FROM task_agent_scopes WHERE task_id = ? ORDER BY sequence", (task_id,))
+    ]
     budget_spent = sum(item["input_tokens"] + item["output_tokens"] for item in model_usage)
-    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "state_label": STATE_LABELS[task["state"]], "contract": (dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")}) if contract else None, "meetings": meetings, "action_items": items, "reviews": reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "budget_spent": budget_spent}
+    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "deliverables": deliverables, "execution_plan": execution_plan, "agent_scopes": agent_scopes, "state_label": STATE_LABELS[task["state"]], "contract": (dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")}) if contract else None, "meetings": meetings, "action_items": items, "reviews": reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "agent_runs": agent_runs, "tool_calls": tool_calls, "budget_spent": budget_spent}
 
 
 def emit_job_event(db: sqlite3.Connection, task_id: str, event_type: str, summary: str, *, job_id: str | None = None, agent_id: str | None = None, payload: dict | None = None) -> None:
@@ -609,57 +802,162 @@ def enqueue_job(db: sqlite3.Connection, task_id: str, kind: str, payload: dict) 
 
 
 def planned_roster(request: str) -> tuple[list[str], list[tuple[str, str]]]:
-    text = request.lower()
-    research_terms = ("\uc2dc\uc7a5\uc870\uc0ac", "\uc2dc\uc7a5 \uc870\uc0ac", "\uc2dc\uc7a5\ubd84\uc11d", "\uc2dc\uc7a5 \ubd84\uc11d", "\ub9ac\uc11c\uce58", "\uc870\uc0ac", "\ubd84\uc11d", "\uc0ac\uc5c5\uc544\uc774\ud15c", "\uc0ac\uc5c5 \uc544\uc774\ud15c", "market research", "market analysis", "research")
-    if any(word in text for word in research_terms):
-        return ["NAVI", "FRAME", "JOURNEY", "PULSE", "GROW", "VOICE"], [
-            ("JOURNEY", "Research market, customers, competitors; cite sources"),
-            ("PULSE", "Analyze research data and summarize insights"),
-            ("GROW", "Identify channels, opportunities, and testable hypotheses"),
-            ("VOICE", "Draft target positioning and message"),
-            ("FRAME", "Synthesize findings and prioritize next actions"),
-        ]
-    if any(word in text for word in ("시장조사", "시장 조사", "시장분석", "시장 분석", "리서치", "조사해", "조사해줘", "market research", "market analysis", "research")):
-        return ["NAVI", "FRAME", "JOURNEY", "PULSE", "GROW", "VOICE"], [
-            ("JOURNEY", "시장·고객·경쟁사 조사 범위와 근거 수집"),
-            ("PULSE", "조사 자료 정량 분석과 핵심 인사이트 정리"),
-            ("GROW", "채널·성장 기회와 실행 가설 도출"),
-            ("VOICE", "타깃 메시지와 포지셔닝 초안 작성"),
-            ("FRAME", "조사 결과 통합, 우선순위와 다음 action 확정"),
-        ]
-    if any(word in text for word in ("문서", "documentation", "readme")):
-        return ["NAVI", "DOCS", "EVAL"], [("DOCS", "문서 산출물 작성"), ("EVAL", "acceptance 기준 검토")]
-    if any(word in text for word in ("api", "backend", "백엔드", "database", "서버")):
-        return ["NAVI", "FRAME", "BUILD", "BACK", "TRACE", "GUARD"], [("FRAME", "요구사항과 acceptance 확정"), ("BACK", "백엔드 변경 구현"), ("BUILD", "통합 검토"), ("TRACE", "테스트 실행"), ("GUARD", "권한·보안 검토")]
-    if any(word in text for word in ("ui", "ux", "frontend", "프론트", "화면")):
-        return ["NAVI", "FRAME", "BUILD", "FRONT", "TRACE"], [("FRAME", "제품 범위와 acceptance 확정"), ("FRONT", "UI 구현"), ("BUILD", "통합 검토"), ("TRACE", "테스트 실행")]
-    return ["NAVI", "FRAME", "BUILD", "FRONT", "BACK", "TRACE", "GUARD"], [("FRAME", "업무 분해와 acceptance 확정"), ("FRONT", "프런트엔드 작업"), ("BACK", "백엔드 작업"), ("BUILD", "통합 검토"), ("TRACE", "QA 검증"), ("GUARD", "보안·권한 검토")]
+    return ["FRAME"], [("FRAME", "요청을 재검토하고 최소 실행 범위와 인계 지점을 확정")]
 
 
-def select_roster_with_model(request: str) -> tuple[list[str], list[tuple[str, str]], str, dict | None]:
+def select_roster_with_model(request: str, task_id: str = "", job_id: str | None = None) -> tuple[list[str], list[tuple[str, str]], str, dict | None]:
     fallback_roster, fallback_items = planned_roster(request)
-    fallback_leads = [employee_id for employee_id in fallback_roster if employee_id in LEAD_IDS and employee_id != "NAVI"][:3] or ["FRAME"]
-    fallback_items = [(leader, f"{leader} team scope, delegation, and acceptance plan") for leader in fallback_leads]
     if not model_key():
-        return fallback_leads, fallback_items, "Model unavailable; used deterministic fallback.", None
-    available = [{"id": employee_id, "title": employee["title"], "team": employee["team"], "responsibility": agent_role(employee_id)["responsibility"]} for employee_id, employee in registry().items() if employee_id in LEAD_IDS and employee_id != "NAVI"]
+        return fallback_roster, fallback_items, "판단 모델을 사용할 수 없어 FRAME이 요청 재검토를 맡습니다.", None
+    people = registry()
+    bindings = json.loads(SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))
+    boundaries = json.loads(DEPARTMENT_BOUNDARIES_PATH.read_text(encoding="utf-8"))
+    standards = json.loads(DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
+    organization = []
+    for department, boundary in boundaries.items():
+        members = [boundary["lead"], *boundary["workers"]]
+        organization.append({
+            "department": department,
+            "owns": boundary["owns"],
+            "must_handoff": boundary["must_handoff"],
+            "lead": boundary["lead"],
+            "members": [
+                {
+                    "id": employee,
+                    "title": people[employee]["title"],
+                    "required_skills": bindings[employee]["required"],
+                    "optional_skills": bindings[employee]["optional"],
+                }
+                for employee in members
+            ],
+        })
     instructions = (
-        "Select the minimum capable agent set for this task. Do not select security, QA, or engineering roles unless task scope requires them. "
-        "Return JSON only: {\"agents\":[\"ID\"],\"action_items\":[{\"owner\":\"ID\",\"description\":\"...\"}],\"reason\":\"...\"}. "
-        "Choose 1 to 3 department leads. Each action owner must be selected."
+        "You are the operating chief. Think through the request and design a minimal, adaptive company workflow; do not classify by keywords. "
+        "Use department ownership as constraints, not as a canned workflow. Add a department only when its output changes the result. "
+        "Represent cross-department work as explicit dependencies and handoffs. Choose one accountable final owner. "
+        "For research, define source quality, recency, triangulation, and decision criteria. For implementation, define verification and independent review proportional to risk. "
+        "Choose an artifact kind from the supplied standards. Decide workspace_context as none, read, or write based on whether local project files are relevant. "
+        "Return strict JSON only with: summary (<=160 Korean chars), artifact_kind, final_owner, workspace_context, requires_web_research (boolean), evidence_strategy, "
+        "phases:[{id,department,lead_id,objective,output,handoff_to,depends_on,skill_ids}], reason. "
+        "For each phase select zero to three skill_ids only from that lead's listed skills. Select only skills that materially help its exact objective/output; do not select UI or design skills for market research, planning, document writing, or review. "
+        "Select 1-4 leads. Every lead_id must be the listed lead of its department. final_owner must be selected. No worker assignment yet."
     )
-    response = model_client().responses.create(model=NAVI_MODEL, instructions=instructions, input=json.dumps({"request": request, "available_department_leads": available}, ensure_ascii=False))
+    client = model_client()
+    response = cancellable_model_response(
+        client, task_id, job_id, model=model_settings()["lead_model"], instructions=instructions,
+        input=json.dumps({"request": request, "organization": organization, "artifact_standards": standards}, ensure_ascii=False),
+    )
     match = re.search(r"\{.*\}", response.output_text, re.S)
     if not match:
         raise ValueError("Planner returned no JSON object")
     payload = json.loads(match.group())
-    agents = list(dict.fromkeys(agent for agent in payload.get("agents", []) if agent in LEAD_IDS and agent != "NAVI"))[:3]
-    raw_items = payload.get("action_items", [])
-    items = [(item["owner"], item["description"].strip()[:500]) for item in raw_items if isinstance(item, dict) and item.get("owner") in agents and isinstance(item.get("description"), str) and item["description"].strip()]
-    if not agents or not items:
-        raise ValueError("Planner returned no valid assignments")
+    valid_leads = {boundary["lead"]: department for department, boundary in boundaries.items() if boundary["lead"] != "NAVI"}
+    phases = []
+    for index, phase in enumerate(payload.get("phases", [])[:4], 1):
+        if not isinstance(phase, dict):
+            continue
+        lead = phase.get("lead_id")
+        if lead not in valid_leads:
+            continue
+        objective = str(phase.get("objective") or "").strip()
+        output = str(phase.get("output") or "").strip()
+        if not objective or not output:
+            continue
+        selected_skills = validate_selected_skills(lead, phase.get("skill_ids", []), 3)
+        phases.append({
+            "id": str(phase.get("id") or f"phase-{index}")[:80],
+            "department": valid_leads[lead],
+            "lead_id": lead,
+            "objective": objective[:800],
+            "output": output[:500],
+            "handoff_to": str(phase.get("handoff_to") or "")[:40] or None,
+            "depends_on": [str(item)[:80] for item in phase.get("depends_on", []) if isinstance(item, str)][:6],
+            "skill_ids": selected_skills,
+        })
+    agents = list(dict.fromkeys(phase["lead_id"] for phase in phases))
+    final_owner = payload.get("final_owner")
+    artifact_kind = payload.get("artifact_kind")
+    if not agents:
+        raise ValueError(
+            f"Planner returned an invalid workflow: leads={agents}, final_owner={final_owner}, "
+            f"artifact_kind={artifact_kind}, phase_count={len(payload.get('phases', []))}"
+        )
+    if final_owner not in agents:
+        final_owner = agents[-1]
+    if artifact_kind not in standards:
+        artifact_kind = "business_document"
+    workspace_context = payload.get("workspace_context")
+    if workspace_context not in {"none", "read", "write"}:
+        workspace_context = "read"
+    plan = {
+        "summary": str(payload.get("summary") or "동적 실행 계획")[:160],
+        "artifact_kind": artifact_kind,
+        "final_owner": final_owner,
+        "workspace_context": workspace_context,
+        "requires_web_research": bool(payload.get("requires_web_research")),
+        "evidence_strategy": str(payload.get("evidence_strategy") or "")[:1200],
+        "phases": phases,
+        "reason": str(payload.get("reason") or "")[:1200],
+    }
+    items = [(phase["lead_id"], f"{phase['objective']} → {phase['output']}") for phase in phases]
     usage = getattr(response, "usage", None)
-    return agents, items, str(payload.get("reason", "Model selected minimum capable team."))[:800], {"model": NAVI_MODEL, "input_tokens": getattr(usage, "input_tokens", 0) if usage else 0, "output_tokens": getattr(usage, "output_tokens", 0) if usage else 0}
+    return agents, items, plan["summary"], {
+        "model": model_settings()["lead_model"],
+        "input_tokens": getattr(usage, "input_tokens", 0) if usage else 0,
+        "output_tokens": getattr(usage, "output_tokens", 0) if usage else 0,
+        "plan": plan,
+    }
+
+
+def store_execution_plan(db: sqlite3.Connection, task_id: str, plan: dict) -> None:
+    now = utc_now()
+    summary = str(plan.get("summary") or "실행 계획")[:160]
+    db.execute(
+        "INSERT INTO task_plans (task_id, plan_json, summary, created_at, updated_at) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(task_id) DO UPDATE SET plan_json=excluded.plan_json, summary=excluded.summary, updated_at=excluded.updated_at",
+        (task_id, json.dumps(plan, ensure_ascii=False), summary, now, now),
+    )
+    for sequence, phase in enumerate(plan.get("phases", []), 1):
+        lead = phase.get("lead_id")
+        if lead not in registry():
+            continue
+        db.execute(
+            "INSERT INTO task_agent_scopes (task_id, employee_id, assignment, skill_ids, deliverable, handoff_to, dependencies, sequence) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id, employee_id) DO UPDATE SET "
+            "assignment=excluded.assignment, skill_ids=excluded.skill_ids, deliverable=excluded.deliverable, handoff_to=excluded.handoff_to, "
+            "dependencies=excluded.dependencies, sequence=excluded.sequence",
+            (
+                task_id, lead, str(phase.get("objective") or "")[:800], json.dumps(phase.get("skill_ids", []), ensure_ascii=False),
+                str(phase.get("output") or "")[:500], phase.get("handoff_to"),
+                json.dumps(phase.get("depends_on", []), ensure_ascii=False), sequence,
+            ),
+        )
+
+
+def fallback_execution_plan(roster: list[str], items: list[tuple[str, str]]) -> dict:
+    leads = [employee for employee in roster if employee in LEAD_IDS and employee != "NAVI"] or ["FRAME"]
+    return {
+        "summary": "판단 모델 실패로 최소 재검토 계획을 사용합니다.",
+        "artifact_kind": "business_document",
+        "final_owner": leads[0],
+        "workspace_context": "read",
+        "requires_web_research": False,
+        "evidence_strategy": "요청에 필요한 근거를 실행자가 식별하고 출처와 검증 결과를 남긴다.",
+        "reason": "모델 응답이 유효하지 않아 확장 작업 전 재검토가 필요하다.",
+        "phases": [
+            {
+                "id": f"fallback-{index}",
+                "department": registry()[lead]["team"],
+                "lead_id": lead,
+                "objective": next((description for owner, description in items if owner == lead), "요청을 재검토한다."),
+                "output": "검증 가능한 부서 산출물",
+                "handoff_to": leads[0],
+                "depends_on": [],
+                "skill_ids": [],
+            }
+            for index, lead in enumerate(leads, 1)
+        ],
+    }
 
 
 def office_projection(task: dict | None) -> list[dict]:
@@ -680,7 +978,8 @@ def office_projection(task: dict | None) -> list[dict]:
 app = FastAPI(title="AI Office API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1):\d+",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -723,8 +1022,8 @@ def event_stream(task_id: str, after: int = 0) -> StreamingResponse:
 @app.get("/api/usage/summary")
 def usage_summary() -> dict:
     with database() as db:
-        row = db.execute("SELECT COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0), COALESCE(SUM(cost_usd), 0) FROM model_usage").fetchone()
-        return {"input_tokens": row[0], "output_tokens": row[1], "cost_usd": row[2]}
+        row = db.execute("SELECT COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0), COALESCE(SUM(cost_usd), 0), COUNT(*) FROM model_usage").fetchone()
+        return {"input_tokens": row[0], "output_tokens": row[1], "cost_usd": row[2], "cost_known": bool(row[3] and row[2] > 0)}
 
 
 @app.get("/api/settings/model")
@@ -973,10 +1272,15 @@ def queue_lead_review(task_id: str) -> dict:
             raise HTTPException(409, "A lead review Job is already active")
         if not any(item["status"] == "pass" for item in task["evidence"]):
             raise HTTPException(409, "Lead review requires passing Evidence")
+        if not any(item["status"] == "final_candidate" for item in task["deliverables"]):
+            raise HTTPException(409, "Lead review requires an actual final_candidate file")
         lead = task.get("lead_id") or next((employee for employee in task["assigned_employees"] if employee in LEAD_IDS and employee != "NAVI"), None)
         if not lead:
             raise HTTPException(409, "No responsible team lead")
-        job = enqueue_job(db, task_id, "lead_review", {"lead_id": lead})
+        workspace = db.execute("SELECT id FROM workspaces WHERE task_id = ? ORDER BY created_at DESC LIMIT 1", (task_id,)).fetchone()
+        if not workspace:
+            raise HTTPException(409, "Lead review requires a workspace")
+        job = enqueue_job(db, task_id, "lead_review", {"lead_id": lead, "workspace_id": workspace["id"]})
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("lead_review_running", utc_now(), task_id))
         return job | {"task": task_payload(db, task_id)}
 
@@ -996,7 +1300,7 @@ def control_job(job_id: str, payload: JobControlInput) -> dict:
             if task:
                 db.execute("INSERT INTO task_controls (task_id, state_before_pause, pause_requested, cancel_requested, updated_at) VALUES (?, ?, 1, 0, ?) ON CONFLICT(task_id) DO UPDATE SET state_before_pause=excluded.state_before_pause, pause_requested=1, cancel_requested=0, updated_at=excluded.updated_at", (job["task_id"], task["state"], utc_now()))
         elif payload.action == "resume":
-            resume_state = {"plan": "planning", "direct_plan": "planning", "meeting": "meeting_running", "execute": "executing", "lead_review": "lead_review_running"}.get(job["kind"], "planning")
+            resume_state = {"plan": "planning", "direct_plan": "planning", "meeting": "meeting_running", "execute": "executing", "synthesize": "synthesizing", "lead_review": "lead_review_running"}.get(job["kind"], "planning")
             db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (resume_state, utc_now(), job["task_id"]))
             db.execute("UPDATE task_controls SET pause_requested = 0, updated_at = ? WHERE task_id = ?", (utc_now(), job["task_id"]))
         emit_job_event(db, job["task_id"], f"job.{payload.action}_requested", f"{payload.action} 요청", job_id=job_id)
@@ -1023,6 +1327,7 @@ def retry_job(job_id: str) -> dict:
             "direct_plan": "planning",
             "meeting": "meeting_running",
             "execute": "executing",
+            "synthesize": "synthesizing",
             "lead_review": "lead_review_running",
         }.get(job["kind"], "planning")
         now = utc_now()
@@ -1048,7 +1353,14 @@ def create_contract(task_id: str, payload: ContractInput) -> dict:
     with database() as db:
         task_payload(db, task_id)
         now = utc_now()
-        db.execute("INSERT INTO task_contracts VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id) DO UPDATE SET allowed_paths=excluded.allowed_paths, allowed_commands=excluded.allowed_commands, acceptance_criteria=excluded.acceptance_criteria, retry_limit=excluded.retry_limit, token_limit=excluded.token_limit, updated_at=excluded.updated_at", (task_id, json.dumps(payload.allowed_paths), json.dumps(payload.allowed_commands), json.dumps(payload.acceptance_criteria), payload.retry_limit, payload.token_limit, now, now))
+        mandatory = [
+            "요청을 직접 충족한다",
+            "선택한 프로젝트 안에 실제 산출물 파일이 존재한다",
+            "부서별 결과가 하나의 최종안으로 통합된다",
+            "검증 근거와 최종 검수 결과가 기록된다",
+        ]
+        acceptance_criteria = list(dict.fromkeys([*payload.acceptance_criteria, *mandatory]))
+        db.execute("INSERT INTO task_contracts VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id) DO UPDATE SET allowed_paths=excluded.allowed_paths, allowed_commands=excluded.allowed_commands, acceptance_criteria=excluded.acceptance_criteria, retry_limit=excluded.retry_limit, token_limit=excluded.token_limit, updated_at=excluded.updated_at", (task_id, json.dumps(payload.allowed_paths), json.dumps(payload.allowed_commands), json.dumps(acceptance_criteria, ensure_ascii=False), payload.retry_limit, payload.token_limit, now, now))
         db.execute("UPDATE tasks SET state = 'contracting', updated_at = ? WHERE id = ?", (now, task_id))
         db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "contract", None, "contracting", "NAVI", "TaskContract 생성", json.dumps(["NAVI"]), now))
         return task_payload(db, task_id)
@@ -1069,8 +1381,10 @@ def plan(task_id: str) -> dict:
             selection_reason, selection_usage = f"Model selection failed; used deterministic fallback: {error}", None
             if model_key():
                 db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, model_settings()["lead_model"], 0, 0, 0, str(error), utc_now()))
-        require_skill_ready(roster)
+        require_skill_ready(roster, task["request"])
         now = utc_now()
+        execution_plan = selection_usage.get("plan") if selection_usage and selection_usage.get("plan") else fallback_execution_plan(roster, items)
+        store_execution_plan(db, task_id, execution_plan)
         db.execute("DELETE FROM task_assignments WHERE task_id = ?", (task_id,))
         db.executemany("INSERT INTO task_assignments VALUES (?, ?)", [(task_id, employee) for employee in roster])
         # Planning is not a meeting. Remove legacy placeholder rows that falsely showed "meeting complete".
@@ -1140,7 +1454,7 @@ def direct_dispatch(task_id: str, payload: DirectDispatchInput) -> dict:
     with database() as db:
         require_runnable(db, task_id)
         task = task_payload(db, task_id)
-        require_skill_ready([payload.lead_id])
+        require_skill_ready([payload.lead_id], task["request"])
         now = utc_now()
         db.execute("DELETE FROM task_assignments WHERE task_id = ?", (task_id,))
         db.execute("INSERT INTO task_assignments VALUES (?, ?)", (task_id, payload.lead_id))
@@ -1361,18 +1675,21 @@ def create_workspace(task_id: str, payload: WorkspaceInput) -> dict:
             raise HTTPException(404, "Project not found")
         source = safe_project_root(project["root_path"])
         workspace_id = f"WS-{task_id.split('-')[-1]}"
-        destination = (ROOT / "data" / "workspaces" / workspace_id).resolve()
-        allowed, reason = validate_path((ROOT / "data" / "workspaces").resolve(), destination)
-        if not allowed:
-            raise HTTPException(403, reason)
+        destination = source if payload.strategy == "in_place" else (ROOT / "data" / "workspaces" / workspace_id).resolve()
+        if payload.strategy != "in_place":
+            allowed, reason = validate_path((ROOT / "data" / "workspaces").resolve(), destination)
+            if not allowed:
+                raise HTTPException(403, reason)
         existing = db.execute("SELECT * FROM workspaces WHERE task_id = ? ORDER BY created_at DESC LIMIT 1", (task_id,)).fetchone()
         if existing:
             return dict(existing)
-        if destination.exists():
+        if payload.strategy != "in_place" and destination.exists():
             raise HTTPException(409, "Workspace path exists without a matching database record")
         strategy = payload.strategy
         try:
-            if strategy == "worktree" and (source / ".git").exists():
+            if strategy == "in_place":
+                pass
+            elif strategy == "worktree" and (source / ".git").exists():
                 subprocess.run(["git", "worktree", "add", "--detach", str(destination)], cwd=source, check=True, capture_output=True, text=True)
             else:
                 strategy = "copy"
@@ -1381,7 +1698,7 @@ def create_workspace(task_id: str, payload: WorkspaceInput) -> dict:
             raise HTTPException(500, f"Workspace creation failed: {error}") from error
         now = utc_now()
         db.execute("INSERT INTO workspaces VALUES (?, ?, ?, ?, ?, ?, ?)", (workspace_id, task_id, str(source), str(destination), strategy, "ready", now))
-        db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "workspace", task["state"], task["state"], "ROUTE", f"격리 workspace 준비: {strategy}", json.dumps(task["assigned_employees"]), now))
+        db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "workspace", task["state"], task["state"], "ROUTE", f"작업 프로젝트 준비: {strategy}", json.dumps(task["assigned_employees"]), now))
         return {"id": workspace_id, "task_id": task_id, "path": str(destination), "strategy": strategy, "status": "ready"}
 
 
@@ -1421,8 +1738,7 @@ def run_command(task_id: str, payload: RunInput) -> dict:
         workspace = db.execute("SELECT * FROM workspaces WHERE id = ? AND task_id = ?", (payload.workspace_id, task_id)).fetchone()
         if not workspace:
             raise HTTPException(404, "Workspace not found")
-        workspace_path = Path(workspace["path"]).resolve()
-        safe_path, path_reason = validate_path((ROOT / "data" / "workspaces").resolve(), workspace_path)
+        workspace_path, safe_path, path_reason = validate_task_workspace(workspace)
         safe_command, command_reason = validate_command(payload.command, task["contract"]["allowed_commands"])
         now = utc_now()
         if not safe_path or not safe_command:
@@ -1461,31 +1777,45 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         workspace_row = db.execute("SELECT * FROM workspaces WHERE id = ? AND task_id = ?", (payload.workspace_id, task_id)).fetchone()
         if not workspace_row:
             raise HTTPException(404, "Workspace not found")
-        workspace = Path(workspace_row["path"]).resolve()
-        safe, reason = validate_path((ROOT / "data" / "workspaces").resolve(), workspace)
+        workspace, safe, reason = validate_task_workspace(workspace_row)
         if not safe:
             raise HTTPException(403, reason)
 
         role = agent_role(payload.employee_id)
-        request_text = (payload.instruction or task["request"]).lower()
-        research_task = any(term in request_text for term in ("market research", "market analysis", "research", "\uc2dc\uc7a5\uc870\uc0ac", "\uc2dc\uc7a5 \uc870\uc0ac", "\uc2dc\uc7a5\ubd84\uc11d", "\ub9ac\uc11c\uce58", "\uc870\uc0ac", "\ubd84\uc11d", "\uc0ac\uc5c5\uc544\uc774\ud15c", "\uc0ac\uc5c5 \uc544\uc774\ud15c"))
-        skill_context = employee_skill_context(payload.employee_id)
+        effective_request = payload.instruction or task["request"]
+        dynamic_plan = task["execution_plan"]["plan"] if task.get("execution_plan") else {}
+        evidence_strategy = str(dynamic_plan.get("evidence_strategy") or "")
+        research_task = bool(dynamic_plan.get("requires_web_research"))
+        workspace_context = dynamic_plan.get("workspace_context", "read")
+        allow_workspace_context = workspace_context in {"read", "write"}
+        standards = json.loads(DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
+        artifact_kind = dynamic_plan.get("artifact_kind")
+        if artifact_kind in standards:
+            artifact_standard = standards[artifact_kind]
+        else:
+            artifact_kind, artifact_standard = deliverable_spec(effective_request)
+        boundary = department_policy(payload.employee_id)
+        skill_context = employee_skill_context(payload.employee_id, effective_request, selected_skill_ids=payload.skill_ids or None)
         settings = model_settings()
         model = settings[role["model_role"]]
         changed_files: list[str] = []
         command_results: list[dict] = []
         web_search_used = False
+        verified_web_sources = 0
         required_skill_ids = {skill["id"] for skill in skill_context["required_skills"]}
         applied_skill_ids: set[str] = set()
         skill_paths = {skill["id"]: ROOT / skill["path"] for skill in skill_context["required_skills"]}
         tools = [
-            {"type": "function", "name": "read_required_skill", "description": "Read full instruction text for one required skill. You must read every required skill before changing files, running verification, or using MCP.", "parameters": {"type": "object", "properties": {"skill_id": {"type": "string", "enum": sorted(required_skill_ids)}}, "required": ["skill_id"], "additionalProperties": False}},
-            {"type": "function", "name": "list_files", "description": "List project files in isolated workspace.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
-            {"type": "function", "name": "read_file", "description": "Read UTF-8 text file from isolated workspace.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"], "additionalProperties": False}},
-            {"type": "function", "name": "write_file", "description": "Create or replace UTF-8 text file in isolated workspace. Use only for requested work.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"], "additionalProperties": False}},
-            {"type": "function", "name": "run_verification", "description": "Run an allowed TaskContract verification command in isolated workspace.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"], "additionalProperties": False}},
-            {"type": "function", "name": "web_search", "description": "Search public web for current, citable sources. Results are leads; report title and URL for each factual claim.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "minLength": 2, "maxLength": 300}}, "required": ["query"], "additionalProperties": False}},
+            {"type": "function", "name": "read_required_skill", "description": "Read one task-relevant skill immediately before using it. Do not read unrelated skills.", "parameters": {"type": "object", "properties": {"skill_id": {"type": "string", "enum": sorted(required_skill_ids)}}, "required": ["skill_id"], "additionalProperties": False}},
+            {"type": "function", "name": "list_files", "description": "List files in the assigned project workspace.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
+            {"type": "function", "name": "read_file", "description": "Read a UTF-8 text file from the assigned project workspace.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"], "additionalProperties": False}},
+            {"type": "function", "name": "write_file", "description": "Create or replace a UTF-8 text file in the assigned project workspace. Use only for requested work.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"], "additionalProperties": False}},
+            {"type": "function", "name": "run_verification", "description": "Run a TaskContract-approved verification command in the assigned project workspace.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"], "additionalProperties": False}},
+            {"type": "function", "name": "web_search", "description": "Discover candidate public sources. Search snippets are not evidence; read selected originals with read_web_source.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "minLength": 2, "maxLength": 300}}, "required": ["query"], "additionalProperties": False}},
+            {"type": "function", "name": "read_web_source", "description": "Read and verify the original public page for a selected source URL.", "parameters": {"type": "object", "properties": {"url": {"type": "string", "minLength": 8, "maxLength": 2000}}, "required": ["url"], "additionalProperties": False}},
         ]
+        if not allow_workspace_context:
+            tools = [tool for tool in tools if tool["name"] not in {"list_files", "read_file", "write_file", "run_verification"}]
         mcp_tool_map: dict[str, tuple[sqlite3.Row, str, str | None]] = {}
         for connection in db.execute("SELECT * FROM mcp_connections WHERE status IN ('configured', 'connected')"):
             try:
@@ -1503,8 +1833,11 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         instructions = (
             f"You are {payload.employee_id}, {role['title']} in an AI automation office. "
             f"Your role: {role['responsibility']}. Work only on task request. "
-            + ("This is a research task: call web_search before writing your conclusion, then cite source URLs in Korean. " if research_task else "")
-            + "Required skill instructions and permissions are included in your context. You must call read_required_skill for every listed required skill before changing files, running verification, or using MCP. Follow them; do not replace them with generic behavior. "
+            f"Department owns: {boundary['owns']}. Must hand off: {boundary['must_handoff']}. "
+            "Do not redefine the task, perform another department's work, or make the final cross-department decision. Produce one bounded department contribution. "
+            + ("This is a research task: follow the evidence strategy, discover candidates with web_search, read selected original pages with read_web_source, then cite verified URLs. Search snippets alone are not evidence. " if research_task else "")
+            + ("Workspace files are intentionally unavailable for this task. Do not infer user needs from unrelated local files. " if not allow_workspace_context else "")
+            + "Only task-relevant skills are available. Read a skill only when it directly supports the bounded assignment. "
             "Use tools before claiming a change. Never access credentials, parent folders, or delete unrelated files. Use web_search for external research; cite returned URLs and never invent sources. Network access beyond web_search is allowed only through configured MCP tools. "
             "For leads: inspect work, give precise review or debugging changes. For workers: implement smallest safe change. "
             "Finish with Korean summary: changed files, verification run, remaining risk."
@@ -1513,7 +1846,18 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             "permissions": skill_context["permissions"],
             "required_skills": [{"id": skill["id"], "path": skill["path"]} for skill in skill_context["required_skills"]],
         }
-        context = json.dumps({"task": task["title"], "request": payload.instruction or task["request"], "contract": task["contract"], "files": workspace_files(workspace), "role": role, "skill_context": skill_manifest}, ensure_ascii=False)
+        context = json.dumps({
+            "task": task["title"],
+            "request": effective_request,
+            "contract": task["contract"],
+            "files": workspace_files(workspace) if allow_workspace_context else [],
+            "role": role,
+            "department_boundary": boundary,
+            "execution_plan_summary": dynamic_plan.get("summary"),
+            "evidence_strategy": evidence_strategy,
+            "deliverable_standard": artifact_standard,
+            "skill_context": skill_manifest,
+        }, ensure_ascii=False)
         total_input_tokens = 0
         total_output_tokens = 0
 
@@ -1532,7 +1876,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
 
         try:
             client = model_client()
-            response = client.responses.create(model=model, instructions=instructions, input=context, tools=tools)
+            response = cancellable_model_response(client, task_id, payload.job_id, model=model, instructions=instructions, input=context, tools=tools)
             add_usage(response)
             tool_history: list[dict] = []
             for _ in range(12):
@@ -1561,9 +1905,6 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                             path = safe_workspace_file(workspace, args["path"], task["contract"]["allowed_paths"])
                             result = path.read_text(encoding="utf-8", errors="replace")[:50000] if path.exists() else {"missing": True}
                         elif call.name == "write_file":
-                            missing_skills = sorted(required_skill_ids - applied_skill_ids)
-                            if missing_skills:
-                                raise HTTPException(409, f"Read all required skills before writing files: {', '.join(missing_skills)}")
                             path = safe_workspace_file(workspace, args["path"], task["contract"]["allowed_paths"])
                             content = args["content"]
                             if len(content.encode("utf-8")) > 100000:
@@ -1575,9 +1916,6 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                                 changed_files.append(relative)
                             result = {"written": relative, "bytes": len(content.encode("utf-8"))}
                         elif call.name == "run_verification":
-                            missing_skills = sorted(required_skill_ids - applied_skill_ids)
-                            if missing_skills:
-                                raise HTTPException(409, f"Read all required skills before verification: {', '.join(missing_skills)}")
                             command = args["command"]
                             allowed, command_reason = validate_command(command, task["contract"]["allowed_commands"])
                             if not allowed:
@@ -1591,13 +1929,22 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                             now = utc_now()
                             for source in results:
                                 db.execute("INSERT INTO research_sources (task_id, employee_id, query, title, url, snippet, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, payload.employee_id, args["query"], source["title"], source["url"], source["snippet"], now))
-                                source_hash = hashlib.sha256(source["url"].encode("utf-8")).hexdigest()
-                                db.execute("INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (f"EVD-{task_id.split('-')[-1]}-WEB-{source_hash[:12]}", task_id, None, "web_source", "pass", source_hash, 0, now))
                             result = {"query": args["query"], "sources": results}
+                        elif call.name == "read_web_source":
+                            source = read_public_web_source(args["url"])
+                            verified_web_sources += 1
+                            now = utc_now()
+                            db.execute(
+                                "INSERT INTO research_sources (task_id, employee_id, query, title, url, snippet, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                (task_id, payload.employee_id, "verified-original", source["title"], source["url"], source["text"][:1000], now),
+                            )
+                            source_hash = hashlib.sha256((source["url"] + source["text"]).encode("utf-8")).hexdigest()
+                            db.execute(
+                                "INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                (f"EVD-{task_id.split('-')[-1]}-WEB-{source_hash[:12]}", task_id, None, "verified_web_source", "pass", source_hash, 0, now),
+                            )
+                            result = source
                         elif call.name in mcp_tool_map:
-                            missing_skills = sorted(required_skill_ids - applied_skill_ids)
-                            if missing_skills:
-                                raise HTTPException(409, f"Read all required skills before MCP use: {', '.join(missing_skills)}")
                             connection, remote_name, session_id = mcp_tool_map[call.name]
                             result, next_session = mcp_http_call(connection, "tools/call", {"name": remote_name, "arguments": args}, session_id)
                             mcp_tool_map[call.name] = (connection, remote_name, next_session)
@@ -1624,7 +1971,9 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                     elif call.name == "run_verification" and isinstance(result, dict):
                         output_summary = f"{args.get('command', '')} · exit {result.get('exit_code', 'unknown')}"
                     elif call.name == "web_search" and isinstance(result, dict):
-                        output_summary = f"{args.get('query', '')} · {len(result.get('sources', []))}개 출처"
+                        output_summary = f"{args.get('query', '')} · {len(result.get('sources', []))}개 후보"
+                    elif call.name == "read_web_source" and isinstance(result, dict):
+                        output_summary = f"원문 확인 · {result.get('title', '')} · {result.get('url', '')}"
                     db.execute(
                         "INSERT INTO tool_calls (task_id, job_id, agent_id, tool_name, input_summary, output_summary, status, duration_ms, created_at) "
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1648,19 +1997,22 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                 db.commit()
                 # OpenRouter Responses API rejects previous_response_id. Continue statelessly
                 # with the complete explicit tool transcript instead.
-                response = client.responses.create(model=model, input=json.dumps({"original_context": json.loads(context), "tool_history": tool_history}, ensure_ascii=False), tools=tools, instructions=instructions)
+                response = cancellable_model_response(client, task_id, payload.job_id, model=model, input=json.dumps({"original_context": json.loads(context), "tool_history": tool_history}, ensure_ascii=False), tools=tools, instructions=instructions)
                 add_usage(response)
             else:
                 # Stop an endless tool-call loop without treating partial work as
                 # completion. Ask for one final evidence-grounded result, no tools.
-                response = client.responses.create(
+                response = cancellable_model_response(
+                    client,
+                    task_id,
+                    payload.job_id,
                     model=model,
                     input=json.dumps({"original_context": json.loads(context), "tool_history": tool_history}, ensure_ascii=False),
                     instructions=instructions + " Tool phase is closed. Return the final Korean result using only recorded tool results.",
                 )
                 add_usage(response)
-            if research_task and not web_search_used:
-                raise HTTPException(422, "Research agent must call web_search before returning a conclusion")
+            if research_task and (not web_search_used or verified_web_sources < 1):
+                raise HTTPException(422, "Research completion requires search plus at least one verified original source")
             summary = response.output_text
         except HTTPException:
             raise
@@ -1676,6 +2028,18 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         now = utc_now()
         if not summary.strip():
             raise HTTPException(502, "Model returned no final output")
+        department_deliverable = persist_deliverable(
+            db,
+            workspace,
+            task_id,
+            payload.employee_id,
+            artifact_kind,
+            summary,
+            filename=f"departments/{payload.employee_id}.md",
+            status="department_draft",
+        )
+        if department_deliverable["path"] not in changed_files:
+            changed_files.append(department_deliverable["path"])
         state = "team_review" if role["tier"] == "lead" else "verifying"
         artifact = hashlib.sha256(json.dumps({"files": changed_files, "commands": command_results, "summary": summary}, ensure_ascii=False).encode()).hexdigest()
         evidence_id = f"EVD-{task_id.split('-')[-1]}-AGENT-{payload.employee_id}"
@@ -1688,7 +2052,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (state, now, task_id))
             db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "agent_run", task["state"], state, payload.employee_id, summary[:800], json.dumps([payload.employee_id]), now))
         checkpoint(db, task_id, f"agent:{payload.employee_id}")
-        return {"employee_id": payload.employee_id, "tier": role["tier"], "model": model, "summary": summary, "changed_files": changed_files, "commands": command_results, "evidence_id": evidence_id, "state": task["state"] if payload.managed_by_job else state}
+        return {"employee_id": payload.employee_id, "tier": role["tier"], "model": model, "summary": summary, "changed_files": changed_files, "commands": command_results, "evidence_id": evidence_id, "deliverable": department_deliverable, "state": task["state"] if payload.managed_by_job else state}
 
 
 @app.post("/api/tasks/{task_id}/retry")

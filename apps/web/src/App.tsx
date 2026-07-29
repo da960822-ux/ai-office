@@ -48,7 +48,7 @@ export default function App() {
   const [model, setModel] = useState<ModelSettings>({provider:'openrouter',lead_model:'openai/gpt-5',worker_model:'openai/gpt-5-mini',configured:false});
   const [providerModels, setProviderModels] = useState<ProviderModel[]>([]);
   const [mcpConnections, setMcpConnections] = useState<McpConnection[]>([]);
-  const [usage, setUsage] = useState<UsageSummary>({input_tokens:0,output_tokens:0,cost_usd:0});
+  const [usage, setUsage] = useState<UsageSummary>({input_tokens:0,output_tokens:0,cost_usd:0,cost_known:false});
   const [requestText, setRequestText] = useState('');
   const [projectPath, setProjectPath] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -127,9 +127,12 @@ export default function App() {
     if (age < life && !bubbleByAgent.has(event.agent_id)) bubbleByAgent.set(event.agent_id, event);
   }
   const runtimeReady = runtime?.api_build_id === runtime?.worker_build_id && runtime?.schema_version === 2;
-  const completedRunIds = new Set(task?.events.filter(event => event.action === 'agent_run').flatMap(event => event.employee_ids) ?? []);
+  const executionJobIds = new Set(task?.jobs.filter(job=>job.kind==='execute').map(job=>job.id) ?? []);
+  const completedRunIds = new Set((task?.agent_runs ?? []).filter(run=>run.state==='succeeded'&&executionJobIds.has(run.job_id)).map(run=>run.employee_id));
   const failedModelUsage = task?.model_usage?.filter(item => item.error) ?? [];
-  const latestExecution = task?.events.find(event => event.action === 'agent_run');
+  const latestExecutionResult = task?.agent_messages.find(message=>message.kind==='run');
+  const latestReview = task?.reviews[0];
+  const terminalTask = ['completed','cancelled'].includes(task?.state ?? '');
   const directTaskLead = task?.events.find(event => event.action === 'direct_dispatch')?.employee_ids[0];
   const approvalCount = task?.state === 'awaiting_approval' ? 1 : 0;
   const activeTaskCount = tasks.filter(item=>item.jobs.some(job=>['queued','running','pause_requested','cancel_requested'].includes(job.state)) || ['awaiting_lead_selection','awaiting_approval'].includes(item.state)).length;
@@ -153,6 +156,7 @@ export default function App() {
   }, [task?.state]);
   useEffect(() => { const interval=window.setInterval(()=>setWalkFrame(current=>!current), 180); return ()=>window.clearInterval(interval); }, []);
   const focusZone = (zone: string) => {
+    setFocusedId('');
     setFocusedZone(zone);
   };
   const locateZone = (zone: string) => {
@@ -170,6 +174,7 @@ export default function App() {
     focusZone(ids[(current+direction+ids.length)%ids.length]);
   };
   const focusEmployee = (id: string) => {
+    setFocusedZone('');
     setFocusedId(id);
   };
   const zoomCamera = (delta:number) => setCamera(current => ({...current, zoom: Math.max(1, Math.min(2.35, current.zoom + delta))}));
@@ -215,7 +220,7 @@ export default function App() {
       const created = await api.create(title, requestText.trim(), initialAgents, directLeadId === 'NAVI' ? 'navi' : 'direct_lead', directLeadId === 'NAVI' ? undefined : directLeadId); setTasks(current=>[created,...current]);
       if (directLeadId !== 'NAVI') {
         await api.contract(created.id); setTask(created);
-        const prepared = await api.createWorkspace(created.id, selectedProject.id, selectedProject.git_available ? 'worktree' : 'copy'); setWorkspace(prepared);
+        const prepared = await api.createWorkspace(created.id, selectedProject.id, 'in_place'); setWorkspace(prepared);
         await api.queuePlan(created.id);
         setBrief(`${personas[directLeadId]?.name ?? directLeadId} 팀장 판단 Job을 대기열에 넣었습니다. worker 제안 뒤 대표가 실행자를 선택합니다.`);
         setRequestText(''); setModal('task'); return;
@@ -225,7 +230,7 @@ export default function App() {
         setBrief('NAVI 계획 Job을 대기열에 넣었습니다. 실행자 호출과 작업공간 생성은 하지 않습니다.');
         setRequestText(''); setModal('task'); return;
       }
-      const prepared = await api.createWorkspace(created.id, selectedProject.id, selectedProject.git_available ? 'worktree' : 'copy'); setWorkspace(prepared);
+      const prepared = await api.createWorkspace(created.id, selectedProject.id, 'in_place'); setWorkspace(prepared);
       setBrief('NAVI가 필요한 부서 팀장을 판단 중입니다. 완료되면 팀장 선택이 열립니다.');
       setRequestText(''); setModal('task');
     } catch (cause) { setError(friendlyError(cause)); }
@@ -268,7 +273,7 @@ export default function App() {
   const preparePlan = async () => { if (!task) return; setBusy('NAVI 계획 Job을 대기열에 넣는 중'); try { await api.queuePlan(task.id); setBrief('NAVI가 팀장 후보를 다시 판단 중입니다.'); setError(''); } catch(cause) { setError(friendlyError(cause)); } finally { setBusy(''); } };
   const startLeadReview = async () => { if (!task) return; try { await api.queueReview(task.id); setBrief('팀장 실제 리뷰 Job을 시작했습니다.'); setError(''); } catch(cause) { setError(friendlyError(cause)); } };
   const openLeadCommand = (leadId:string) => { setDirectCommandLeadId(leadId); setDirectCommandTitle(''); setDirectCommandText(''); setModal('leadCommand'); };
-  const submitLeadCommand = async (leadId=directCommandLeadId, title=directCommandTitle, prompt=directCommandText) => { if (!selectedProject || !leadId || !title.trim() || !prompt.trim()) return; setBusy('팀장 직접 업무를 등록하는 중'); try { const created=await api.create(title.trim(), prompt.trim(), [], 'direct_lead', leadId); setTasks(current=>[created,...current]); await api.contract(created.id); const prepared=await api.createWorkspace(created.id, selectedProject.id, selectedProject.git_available ? 'worktree' : 'copy'); setWorkspace(prepared); await api.queuePlan(created.id); setTask(created); setModal('task'); setBrief(`${personas[leadId]?.name ?? leadId} 팀장이 실행자를 자동 배정하고 별도 리뷰합니다.`); } catch(cause) { setError(friendlyError(cause)); } finally { setBusy(''); } };
+  const submitLeadCommand = async (leadId=directCommandLeadId, title=directCommandTitle, prompt=directCommandText) => { if (!selectedProject || !leadId || !title.trim() || !prompt.trim()) return; setBusy('팀장 직접 업무를 등록하는 중'); try { const created=await api.create(title.trim(), prompt.trim(), [], 'direct_lead', leadId); setTasks(current=>[created,...current]); await api.contract(created.id); const prepared=await api.createWorkspace(created.id, selectedProject.id, 'in_place'); setWorkspace(prepared); await api.queuePlan(created.id); setTask(created); setModal('task'); setBrief(`${personas[leadId]?.name ?? leadId} 팀장이 실행자를 자동 배정하고 별도 리뷰합니다.`); } catch(cause) { setError(friendlyError(cause)); } finally { setBusy(''); } };
   const submitReview = async (verdict:'pass'|'changes_requested'|'blocked') => {
     if (!task || !reviewerId) return;
     setBusy('리뷰를 기록하는 중');
@@ -295,13 +300,13 @@ export default function App() {
 
   return <main className="product-shell">
     <header className="product-header">
-      <button className="company-mark" onClick={() => setFocusedId('NAVI')}><span>A</span><b>AI OFFICE</b></button>
+      <button className="company-mark" onClick={() => focusEmployee('NAVI')}><span>A</span><b>AI OFFICE</b></button>
       <div className="header-actions">
         <select className="header-task-select" aria-label="현재 업무 선택" value={task?.id ?? ''} onChange={event=>void api.task(event.target.value).then(setTask).catch(cause=>setError(friendlyError(cause)))}><option value="">업무 선택</option>{tasks.map(item=><option key={item.id} value={item.id}>{item.id} · {item.title}</option>)}</select>
         <button className="header-project" onClick={() => setModal('project')}><small>현재 프로젝트</small><b>{selectedProject?.name ?? '프로젝트 연결'}</b></button>
         <button className="header-new" onClick={() => { setRequestText(''); setDirectLeadId('NAVI'); setModal('request'); }}>+ 새 업무</button>
         <button className="header-brief" onClick={() => setModal('task')}><small>CEO 브리핑</small><b>{task?.title ?? '대기 중'}</b></button>
-        <span className="header-cost"><small>비용</small><b>${usage.cost_usd.toFixed(2)}</b></span>
+        <span className="header-cost"><small>비용</small><b>{usage.cost_known ? `$${usage.cost_usd.toFixed(2)}` : 'unknown'}</b></span>
         <button className="header-settings" onClick={() => setModal('settings')}>설정</button>
       </div>
     </header>
@@ -310,15 +315,15 @@ export default function App() {
     {!runtimeReady && <div className="toast-error"><b>실행기 버전 불일치</b><span>API와 worker 준비 상태를 확인할 수 없습니다. AI Office 실행기를 다시 시작하세요.</span></div>}
 
     <section className="execution-console" aria-label="실제 실행 현황">
-      <div className="execution-heading"><span>LIVE EXECUTION</span><b>{activeJob ? '실행 중' : failedJob ? '실행 실패' : latestExecution ? '최근 실행 완료' : '실행 대기'}</b></div>
+      <div className="execution-heading"><span>LIVE EXECUTION</span><b>{activeJob ? '실행 중' : failedJob ? '실행 실패' : task?.state==='completed' ? '업무 완료' : task?.state==='cancelled' ? '업무 취소' : completedRunIds.size ? '최근 실행 완료' : '실행 대기'}</b></div>
       <div className="execution-metrics"><div><small>실행 중</small><b>{activeIds.size}</b></div><div><small>완료 실행</small><b>{completedRunIds.size}</b></div><div><small>검증 증거</small><b>{task?.evidence.length ?? 0}</b></div><div className={failedModelUsage.length ? 'metric-alert' : ''}><small>실패</small><b>{failedModelUsage.length}</b></div></div>
       <div className="execution-detail">
         <b>{task?.title ?? '선택된 업무 없음'}</b>
-        <span>{activeJob ? `${activeJob.kind} · step ${activeJob.step} · ${activeJob.state}${activeJob.heartbeat_at ? ` · heartbeat ${new Date(activeJob.heartbeat_at).toLocaleTimeString()}` : ''}` : failedJob ? `${failedJob.kind} · step ${failedJob.step} · ${failedJob.error ?? '원인 미상'}` : latestExecution ? `${latestExecution.actor} · ${latestExecution.note}` : '아직 실제 모델 실행·파일 변경·명령 결과가 없습니다.'}</span>
+        <span>{activeJob ? `${activeJob.kind} · step ${activeJob.step} · ${activeJob.state}${activeJob.heartbeat_at ? ` · heartbeat ${new Date(activeJob.heartbeat_at).toLocaleTimeString()}` : ''}` : failedJob ? `${failedJob.kind} · step ${failedJob.step} · ${failedJob.error ?? '원인 미상'}` : latestReview ? `팀장 리뷰 ${latestReview.verdict} · ${compactText(latestReview.findings, 180)}` : latestExecutionResult ? `${personas[latestExecutionResult.employee_id]?.name ?? latestExecutionResult.employee_id} 실행 완료 · ${compactText(latestExecutionResult.content, 180)}` : '아직 실제 모델 실행·파일 변경·명령 결과가 없습니다.'}</span>
       </div>
       {task && <div className="execution-controls">{task.state==='awaiting_lead_selection'&&<button className="solid-button" onClick={beginPlannedExecution}>팀장 선택</button>}{failedJob?<button className="solid-button" onClick={retryFailedJob} disabled={Boolean(busy)}>실패 단계 재시도</button>:task.jobs.some(job=>['paused','interrupted'].includes(job.state))?<button className="solid-button" onClick={()=>controlTask('resume')}>재개</button>:<button className="text-button" onClick={()=>controlTask('pause')} disabled={['completed','cancelled'].includes(task.state)}>일시 정지</button>}<button className="danger-button" onClick={()=>controlTask('cancel')} disabled={['completed','cancelled'].includes(task.state)}>취소</button></div>}
       {failedModelUsage[0] && <div className="execution-error"><b>마지막 실패</b><span>{failedModelUsage[0].error}</span></div>}
-      <div className="execution-list">{task?.agent_messages?.slice(0, 3).map(message => <div key={message.id}><b>{personas[message.employee_id]?.name ?? message.employee_id}</b><span>{message.kind === 'run' ? '실행 결과' : message.kind === 'dispatch' ? '배정 판단' : message.kind === 'meeting' ? '회의 발언' : '브리핑'} · {new Date(message.created_at).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})}</span><p>{message.content}</p></div>) ?? <span>실행 기록 없음</span>}</div>
+      <div className="execution-list">{task?.agent_messages?.slice(0, 4).map(message => <div key={message.id}><b>{personas[message.employee_id]?.name ?? message.employee_id}</b><span>{message.kind === 'run' ? '실행 결과' : message.kind === 'dispatch' ? '배정 판단' : message.kind === 'meeting' ? '회의 발언' : '브리핑'} · {new Date(message.created_at).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})}</span><p>{compactText(message.content, 260)}</p></div>) ?? <span>실행 기록 없음</span>}</div>
     </section>
 
     <section className="office-main">
@@ -328,15 +333,15 @@ export default function App() {
         <div className="office-vignette" />
         <nav className="office-breadcrumb" aria-label="오피스 탐색"><span>전체 오피스</span>{focusedZone && <><i>›</i><b>{teamSigns.find(([id])=>id===focusedZone)?.[1]}</b></>}<div><button onClick={showAllOffice}>전체 보기</button><button onClick={()=>moveTeam(-1)}>이전 팀</button><button onClick={()=>moveTeam(1)}>다음 팀</button></div></nav>
         <div className="camera-controls"><button aria-label="확대" style={cameraButton} onClick={() => zoomCamera(.16)}>＋</button><button aria-label="축소" style={cameraButton} onClick={() => zoomCamera(-.16)}>－</button></div>
-        <button className="room-marker marker-ceo" onClick={() => setModal('approval')}><span>CEO OFFICE</span><b>대표 승인 {approvalCount ? `· ${approvalCount}` : ''}</b></button>
+        <button className="room-marker marker-ceo" onClick={() => setModal('approval')}><span>CEO OFFICE</span><b>{task?.state==='completed' ? '업무 완료' : approvalCount ? `대표 승인 · ${approvalCount}` : '대표 대기'}</b></button>
         <button className="room-marker marker-meeting" onClick={() => setModal('meeting')}><span>MEETING HUB</span><b>{currentMeeting ? 'NAVI 회의 진행 중' : latestMeeting ? '실제 회의 완료' : '회의 없음'}</b></button>
         <button className="room-marker marker-qa" onClick={() => setModal('evidence')}><span>QA LAB</span><b>{task?.evidence.length ? `${task.evidence.length}건 검증` : '검증·보안'}</b></button>
         <div className="room-marker marker-work"><span>WORK FLOOR</span><b>{task?.title ?? '업무 대기'}</b></div>
-        {teamSigns.map(([id,title]) => <button key={id} className={`team-sign sign-${id} ${focusedZone===id?'selected':''} ${(task?.assigned_employees.some(agentId=>teamForAgent(agentId)===id))?'active-team':''}`} style={teamSignStyle(id)} onClick={() => focusZone(id)}><span>{title} · {employees.filter(employee=>teamForAgent(employee.id)===id).length}명 · {teamStatus(id,task)}</span></button>)}
+        {teamSigns.map(([id,title]) => <button key={id} className={`team-sign sign-${id} ${focusedZone===id?'selected':''} ${(!terminalTask&&task?.assigned_employees.some(agentId=>teamForAgent(agentId)===id))?'active-team':''}`} style={teamSignStyle(id)} onClick={() => focusZone(id)}><span>{title} · {employees.filter(employee=>teamForAgent(employee.id)===id).length}명 · {teamStatus(id,task)}</span></button>)}
         {employees.map(employee => {
           const motion=motions[employee.id];
           const position:[number,number]=[motion?.target.x ?? 50,motion?.target.y ?? 50];
-          const activity=task?.action_items.find(item=>item.owner===employee.id)?.description ?? liveAgentEvents.get(employee.id)?.summary ?? '';
+          const activity=activeIds.has(employee.id) ? liveAgentEvents.get(employee.id)?.summary ?? task?.action_items.find(item=>item.owner===employee.id)?.description ?? '' : '';
           return <FloorAgent key={employee.id} employee={employee} active={activeIds.has(employee.id)} activity={activity} position={position} action={motion?.action ?? 'idle'} walkFrame={walkFrame} selected={focusedId===employee.id} bubble={bubbleByAgent.get(employee.id)} onFocus={focusEmployee} />;
         })}
         </div>
@@ -350,7 +355,7 @@ export default function App() {
       <button className={`bar-stat ${approvalCount?'urgent':''}`} onClick={()=>setModal('approval')}><small>승인 필요</small><b>{approvalCount}</b></button>
     </footer> : <footer className="project-connect-cta"><span>프로젝트를 연결해야 업무를 시작할 수 있습니다.</span><button className="solid-button" onClick={()=>setModal('project')}>프로젝트 연결</button></footer>}
 
-    {focusedEmployee && <ProfilePanel employee={focusedEmployee} active={activeIds.has(focusedEmployee.id)} activity={task?.action_items.find(item=>item.owner===focusedEmployee.id)?.description ?? liveAgentEvents.get(focusedEmployee.id)?.summary ?? ''} result={task?.agent_messages.find(message=>message.employee_id===focusedEmployee.id&&message.kind==='run')?.content ?? ''} evidenceCount={task?.evidence.length ?? 0} busy={Boolean(busy)} onSubmitCommand={submitLeadCommand} onClose={() => setFocusedId('')} />}
+    {focusedEmployee && <ProfilePanel employee={focusedEmployee} active={activeIds.has(focusedEmployee.id)} activity={activeIds.has(focusedEmployee.id) ? liveAgentEvents.get(focusedEmployee.id)?.summary ?? task?.action_items.find(item=>item.owner===focusedEmployee.id)?.description ?? '' : ''} result={task?.agent_messages.find(message=>message.employee_id===focusedEmployee.id&&message.kind==='run')?.content ?? ''} evidenceCount={task?.evidence.length ?? 0} busy={Boolean(busy)} onSubmitCommand={submitLeadCommand} onClose={() => setFocusedId('')} />}
     {focusedZone && <TeamPanel teamId={focusedZone} members={employees.filter(employee=>teamForAgent(employee.id)===focusedZone)} lead={employees.find(employee=>teamForAgent(employee.id)===focusedZone&&leadIds.has(employee.id))} task={task} onClose={()=>setFocusedZone('')} onFocus={()=>locateZone(focusedZone)} />}
 
     {modal === 'project' && <Dialog title="작업 프로젝트" onClose={() => setModal(null)}>
@@ -397,11 +402,11 @@ export default function App() {
       <p className="dialog-copy">{brief || (task ? `${task.title} · ${task.state_label} · 실제 실행 ${completedRunIds.size}건` : 'NAVI가 새 업무를 기다리고 있습니다.')}</p>
       <div className="brief-primary-actions"><button className="solid-button" onClick={()=>{setRequestText('');setDirectLeadId('NAVI');setModal('request')}}>+ 새 업무 / 대화</button><button className="text-button" onClick={()=>task&&setModal('evidence')} disabled={!task}>실행 근거 보기</button></div>
       {task && <section className="brief-live"><div><small>현재 Job</small><b>{task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state)) ? `${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.kind} · ${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.state}` : '없음'}</b></div><div><small>다음 행동</small><b>{mainAction.label}</b></div><div><small>최근 실제 이벤트</small><b>{task.job_events[0] ? `${task.job_events[0].type} · ${task.job_events[0].summary}` : '아직 실제 이벤트 없음'}</b></div></section>}
-      {task && <><InfoBlock label="현재 업무" value={task.title} /><InfoBlock label="담당 팀" value={task.assigned_employees.map(id => personas[id]?.name ?? id).join(' · ')} /><InfoBlock label="모델 예산" value={`${task.budget_spent.toLocaleString()} / ${(task.contract?.token_limit ?? 0).toLocaleString()} tokens`} /><div className="decision-row">{task.state==='paused'?<button className="solid-button" onClick={()=>controlTask('resume')} disabled={Boolean(busy)}>재개</button>:<button className="text-button" onClick={()=>controlTask('pause')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>일시 정지</button>}<button className="danger-button" onClick={()=>controlTask('cancel')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>업무 취소</button></div>{task.state==='planning'&&!workspace&&<button className="solid-button wide" onClick={beginPlannedExecution} disabled={Boolean(busy)}>계획을 실행 단계로 전환</button>}<button className="text-button" onClick={() => setModal('evidence')}>TaskContract와 Evidence 보기 →</button><button className="text-button" onClick={() => setModal('review')}>리뷰 기록 →</button><button className="text-button" onClick={() => setModal('reflection')}>회고와 회사 기억 →</button></>}
+      {task && <><InfoBlock label="현재 업무" value={task.title} />{task.execution_plan&&<><InfoBlock label="AI 실행 판단" value={task.execution_plan.plan.summary} /><InfoBlock label="부서 인계 흐름" value={task.execution_plan.plan.phases.map(phase=>`${personas[phase.lead_id]?.name??phase.lead_id}: ${compactText(phase.objective,100)} → ${phase.handoff_to?personas[phase.handoff_to]?.name??phase.handoff_to:'최종 산출물'}`).join('\n')} /></>}<InfoBlock label="담당 팀" value={task.assigned_employees.map(id => personas[id]?.name ?? id).join(' · ')} /><InfoBlock label="모델 예산" value={`${task.budget_spent.toLocaleString()} / ${(task.contract?.token_limit ?? 0).toLocaleString()} tokens`} /><div className="decision-row">{task.state==='paused'?<button className="solid-button" onClick={()=>controlTask('resume')} disabled={Boolean(busy)}>재개</button>:<button className="text-button" onClick={()=>controlTask('pause')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>일시 정지</button>}<button className="danger-button" onClick={()=>controlTask('cancel')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>업무 취소</button></div>{task.state==='planning'&&!workspace&&<button className="solid-button wide" onClick={beginPlannedExecution} disabled={Boolean(busy)}>계획을 실행 단계로 전환</button>}<button className="text-button" onClick={() => setModal('evidence')}>산출물·근거 상세 보기 →</button><button className="text-button" onClick={() => setModal('review')}>리뷰 기록 →</button><button className="text-button" onClick={() => setModal('reflection')}>회고와 회사 기억 →</button></>}
     </Dialog>}
 
     {modal === 'evidence' && <Dialog title="업무 근거와 검증" onClose={() => setModal(null)}>
-      {!task ? <p className="dialog-copy">업무가 시작되면 TaskContract와 검증 근거가 표시됩니다.</p> : <><InfoBlock label="TaskContract" value={task.contract?.acceptance_criteria.join(' · ') || '계약 준비 중'} /><InfoBlock label="Evidence" value={task.evidence.length ? task.evidence.map(item => `${item.id} · ${item.status}`).join('\n') : '아직 검증 근거가 없습니다.'} /><InfoBlock label="웹 조사 근거" value={task.research_sources.length ? task.research_sources.slice(0, 8).map(source => `${source.title}\n${source.url}`).join('\n\n') : '아직 웹 조사 근거가 없습니다.'} /><InfoBlock label="작업 항목" value={task.action_items.map(item => `${item.owner}: ${item.description}`).join('\n') || '작업 항목 준비 중'} /><InfoBlock label="리뷰" value={task.reviews.length ? task.reviews.map(item=>`${item.reviewer_id} · ${item.verdict} · ${item.findings||'의견 없음'}`).join('\n') : '아직 리뷰가 없습니다.'} />{workspace && <InfoBlock label="격리 작업공간" value={workspace.path} />}</>}
+      {!task ? <p className="dialog-copy">업무가 시작되면 산출물과 검증 근거가 표시됩니다.</p> : <>{task.execution_plan&&<><InfoBlock label="판단 요약" value={task.execution_plan.plan.summary} /><InfoBlock label="근거 전략" value={task.execution_plan.plan.evidence_strategy||'실행 단계에서 결정'} /></>}<InfoBlock label="실제 산출물" value={task.deliverables.length ? task.deliverables.map(item => `${item.status} · ${item.owner}\n${workspace ? `${workspace.path}\\${item.path.replaceAll('/', '\\')}` : item.path}`).join('\n\n') : '아직 생성된 산출물 파일이 없습니다.'} /><InfoBlock label="검증 상태" value={task.evidence.length ? task.evidence.map(item => `${item.type} · ${item.status}`).join('\n') : '아직 검증 근거가 없습니다.'} /><InfoBlock label="원문 확인 웹 근거" value={task.research_sources.filter(source=>source.query==='verified-original').length ? task.research_sources.filter(source=>source.query==='verified-original').slice(0, 5).map(source => `${source.title}\n${source.url}`).join('\n\n') : '확인된 원문 근거 없음'} /><InfoBlock label="실행 범위" value={task.agent_scopes.map(scope=>`${personas[scope.employee_id]?.name??scope.employee_id}: ${compactText(scope.assignment,120)}\n산출물: ${scope.deliverable}`).join('\n\n')||'범위 결정 중'} /><InfoBlock label="최종 리뷰" value={task.reviews.length ? `${task.reviews[0].reviewer_id} · ${task.reviews[0].verdict}\n${task.reviews[0].findings||'의견 없음'}` : '아직 리뷰가 없습니다.'} />{workspace && <InfoBlock label="작업 프로젝트" value={workspace.path} />}</>}
     </Dialog>}
 
     {modal === 'approval' && <Dialog title="대표 의사결정" onClose={() => setModal(null)}>
@@ -429,7 +434,7 @@ function FloorAgent({employee, active, activity, position, action, walkFrame, se
   const team=teamForAgent(employee.id);
   const pose=action==='walk' ? (walkFrame?'walk-b':'walk-a') : action==='idle'?'sit':action;
   const genericBubble=!bubble || ['모델 작업 시작','작업 중 · 실제 Job 처리 중'].includes(bubble.summary);
-  const bubbleText=(genericBubble ? activity : bubble?.summary)?.slice(0, 140) ?? (active ? `${behavior} · 실제 Job 처리 중` : '');
+  const bubbleText=active ? ((genericBubble ? activity : bubble?.summary)?.slice(0, 140) || `${behavior} · 실제 Job 처리 중`) : (bubble?.summary.slice(0, 140) ?? '');
   return <button aria-label={`${personas[employee.id]?.name ?? employee.id}, ${behavior}`} className={`floor-agent ${active ? 'working' : ''} ${lead ? 'team-lead' : 'sub-agent'} team-${team} ${selected ? 'selected' : ''} action-${action}`} style={{'--x':`${position[0]}%`,'--y':`${position[1]}%`,'--agent-tone':personas[employee.id]?.palette ?? '#7d9271'} as CSSProperties} onClick={() => onFocus(employee.id)}><span className="agent-shadow"/>{bubbleText && <span className="agent-bubble">{bubbleText}</span>}<Avatar id={employee.id} pose={pose}/>{lead&&<b className="lead-mark" aria-label="팀장">◆</b>}{icon&&<span className="agent-state-icon" aria-hidden="true">{icon}</span>}<span className="agent-name"><i/>{personas[employee.id]?.name ?? employee.id}<em>{behavior}</em></span></button>;
 }
 
@@ -439,7 +444,8 @@ function actionLabel(action:AgentAction){return action==='idle'?'대기':action=
 function agentStateKey(behavior:string){return behavior==='계획 중'?'planning':behavior==='회의 중'?'meeting':behavior==='QA 검토'?'reviewing':behavior==='차단'?'blocked':behavior==='CEO 보고'?'approval':behavior==='팀 작업 중'?'running':behavior==='업무 완료'?'done':'idle';}
 function stateIcon(behavior:string){return behavior==='계획 중'?'▤':behavior==='회의 중'?'◌':behavior==='QA 검토'?'⌕':behavior==='차단'?'!':behavior==='CEO 보고'?'✓':behavior==='팀 작업 중'?'◔':behavior==='업무 완료'?'✓':'';}
 function agentRole(id:string,lead:boolean){const roles:Record<string,string>={NAVI:'CEO',FRAME:'PM',BUILD:'TECH LEAD',LINK:'AI LEAD',SHIP:'OPS LEAD',GUARD:'QA LEAD',GROW:'GROWTH LEAD',LENS:'REVIEW LEAD',MOSS:'DESIGNER',FRONT:'FRONTEND',BACK:'BACKEND',SIGNAL:'DATA',EVAL:'AI EVAL',SRE:'SRE',TRACE:'QA',SHIELD:'SECURITY',VOICE:'BRAND',PULSE:'ANALYST',DOCS:'DOCS',JOURNEY:'RESEARCH',ROUTE:'PLANNER',CLOCK:'OPS',FLOW:'UX',COST:'FINOPS'};return roles[id] ?? (lead?'TEAM LEAD':'SPECIALIST');}
-function teamStatus(id:string, task:Task|null){const count=task?.assigned_employees.filter(agentId=>teamForAgent(agentId)===id).length??0;if(!count)return '대기';if(task?.state==='meeting')return '회의 중';if(['contracting','planning'].includes(task?.state??''))return `실행 대기 ${count}`;if(['verifying','failed','team_review','cross_review'].includes(task?.state??''))return '검토 중';if(task?.state==='awaiting_approval')return '승인 대기';if(task?.state==='blocked')return '차단';if(task?.state==='running')return `작업 중 ${count}`;return `배정 ${count}`;}
+function compactText(value:string, limit:number){const text=value.replace(/[#*_`|]+/g,' ').replace(/\s+/g,' ').trim();return text.length>limit?`${text.slice(0,limit-1)}…`:text;}
+function teamStatus(id:string, task:Task|null){const count=task?.assigned_employees.filter(agentId=>teamForAgent(agentId)===id).length??0;if(!count||['completed','cancelled'].includes(task?.state??''))return '대기';if(['meeting','meeting_running'].includes(task?.state??''))return '회의 중';if(['contracting','planning','awaiting_lead_selection','awaiting_worker_selection'].includes(task?.state??''))return `실행 대기 ${count}`;if(['verifying','failed','team_review','cross_review','lead_review_running'].includes(task?.state??''))return '검토 중';if(task?.state==='awaiting_approval')return '승인 대기';if(task?.state==='blocked')return '차단';if(['running','executing'].includes(task?.state??''))return `작업 중 ${count}`;return `배정 ${count}`;}
 
 function teamForAgent(id:string) {
   if (['NAVI','ROUTE','CLOCK','FRAME','FLOW'].includes(id)) return 'product';
@@ -484,7 +490,7 @@ function ModelSelect({listId,value,models,onChange}:{listId:string;value:string;
 
 function TeamPanel({teamId,members,lead,task,onClose,onFocus}:{teamId:string;members:Employee[];lead:Employee|undefined;task:Task|null;onClose:()=>void;onFocus:()=>void}) {
   const title=teamSigns.find(item=>item[0]===teamId)?.[1] ?? teamId;
-  const active=task?.assigned_employees.filter(id=>teamForAgent(id)===teamId) ?? [];
+  const active=['completed','cancelled'].includes(task?.state??'') ? [] : task?.assigned_employees.filter(id=>teamForAgent(id)===teamId) ?? [];
   const recent=task?.events.find(event=>event.employee_ids.some(id=>teamForAgent(id)===teamId));
   const meeting=task?.meetings.find(item=>item.participants.some(id=>teamForAgent(id)===teamId));
   const skills=members.flatMap(member=>member.required_skills??[]).filter((value,index,array)=>array.indexOf(value)===index).slice(0,8);

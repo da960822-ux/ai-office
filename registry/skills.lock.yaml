@@ -803,17 +803,6 @@ installed:
     install_path: employees\growth-marketing\VOICE\skills\product-marketing
     tree_sha256: 7234435fb001bb36e7c8fd4bb74aae08f9f25708080e45d80cec5bd1159df264
     optional: false
-  VOICE:design-first-ui-prompting:
-    employee: VOICE
-    skill_id: design-first-ui-prompting
-    source_id: mengto
-    repo: MengTo/Skills
-    commit_sha: 93da48f13fb1b91bdbf4718d0f49df1a469edb45
-    license: MIT
-    source_path: agent-skills/ui/design-first-ui-prompting
-    install_path: employees\growth-marketing\VOICE\skills\design-first-ui-prompting
-    tree_sha256: 0aca0037b76648c79e34a5a1b6f0fe7fb871efa5f287bae3e59325ef4501bafb
-    optional: false
   PULSE:analytics:
     employee: PULSE
     skill_id: analytics
@@ -879,39 +868,6 @@ installed:
     source_path: skills/verification-before-completion
     install_path: employees\service-knowledge\LENS\skills\verification-before-completion
     tree_sha256: 89a426c6e82dd7e5f8c2cda146d422dede1e3c70c6436eaf9acc7dc103d0a2ea
-    optional: false
-  LENS:impeccable:
-    employee: LENS
-    skill_id: impeccable
-    source_id: impeccable
-    repo: pbakaus/impeccable
-    commit_sha: 1cf7d7ab0f1ac0bb3319fd20be389a3009f4037d
-    license: Apache-2.0
-    source_path: .agents/skills/impeccable
-    install_path: employees\service-knowledge\LENS\skills\impeccable
-    tree_sha256: c6b8689d54a5ed7b7d4aee9b9b9a146f339b0ddf8b0eb02c8e333ebb94dddfe0
-    optional: false
-  LENS:ui-ux-pro-max:
-    employee: LENS
-    skill_id: ui-ux-pro-max
-    source_id: uiux
-    repo: nextlevelbuilder/ui-ux-pro-max-skill
-    commit_sha: 4857a2c5ef989794751a0f66b8545a4a49566286
-    license: MIT
-    source_path: .claude/skills/ui-ux-pro-max
-    install_path: employees\service-knowledge\LENS\skills\ui-ux-pro-max
-    tree_sha256: a839b59bc9f9b3766f60edfb0d7f6d0278cb4eb1ca00a36ba36d1e847bb79625
-    optional: false
-  JOURNEY:ui-ux-pro-max:
-    employee: JOURNEY
-    skill_id: ui-ux-pro-max
-    source_id: uiux
-    repo: nextlevelbuilder/ui-ux-pro-max-skill
-    commit_sha: 4857a2c5ef989794751a0f66b8545a4a49566286
-    license: MIT
-    source_path: .claude/skills/ui-ux-pro-max
-    install_path: employees\service-knowledge\JOURNEY\skills\ui-ux-pro-max
-    tree_sha256: a839b59bc9f9b3766f60edfb0d7f6d0278cb4eb1ca00a36ba36d1e847bb79625
     optional: false
   JOURNEY:cro:
     employee: JOURNEY
@@ -989,4 +945,15 @@ installed:
     source_path: SKILL.md
     install_path: employees\service-knowledge\DOCS\skills\humanizer
     tree_sha256: 51efcd0c4bee071f1c109563ba619c89ca9303f9775b7a6d01c1fa425c31e22e
+    optional: false
+  DOCS:document-artifact-production:
+    employee: DOCS
+    skill_id: document-artifact-production
+    source_id: local
+    repo: workspace
+    commit_sha: local
+    license: Proprietary
+    source_path: employees/service-knowledge/DOCS/skills/document-artifact-production
+    install_path: employees\service-knowledge\DOCS\skills\document-artifact-production
+    tree_sha256: 6270d1d025a7aecc4afff56ec9cc6fecc5e52adbd7f702d096054d7d6d6f9e27
     optional: false

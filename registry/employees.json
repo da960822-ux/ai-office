@@ -10,9 +10,7 @@
       "planning-and-task-breakdown",
       "executing-plans"
     ],
-    "optional_skills": [
-      "agent-orchestration-advisor"
-    ]
+    "optional_skills": []
   },
   "ROUTE": {
     "id": "ROUTE",
@@ -23,10 +21,11 @@
     "required_skills": [
       "planning-and-task-breakdown",
       "dispatching-parallel-agents",
-      "using-git-worktrees",
       "git-workflow-and-versioning"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "using-git-worktrees"
+    ]
   },
   "CLOCK": {
     "id": "CLOCK",
@@ -36,8 +35,7 @@
     "profile_path": "employees/operations-planning/CLOCK/EMPLOYEE.md",
     "required_skills": [
       "observability-and-instrumentation",
-      "debugging-and-error-recovery",
-      "code-simplification"
+      "debugging-and-error-recovery"
     ],
     "optional_skills": []
   },
@@ -49,14 +47,14 @@
     "profile_path": "employees/product-experience/FRAME/EMPLOYEE.md",
     "required_skills": [
       "planning-and-task-breakdown",
-      "source-driven-development",
       "writing-plans"
     ],
     "optional_skills": [
-      "prd-development",
-      "discovery-process",
-      "prioritization-advisor",
-      "user-story"
+      "pm-deliver-prd",
+      "pm-develop-solution-brief",
+      "pm-foundation-lean-canvas",
+      "pm-foundation-meeting-synthesize",
+      "pm-deliver-user-stories"
     ]
   },
   "FLOW": {
@@ -66,14 +64,11 @@
     "runtime": "SPECIALIST",
     "profile_path": "employees/product-experience/FLOW/EMPLOYEE.md",
     "required_skills": [
-      "ui-ux-pro-max",
       "source-driven-development",
       "customer-research"
     ],
     "optional_skills": [
-      "customer-journey-map",
-      "user-story-mapping",
-      "discovery-process"
+      "pm-deliver-user-stories"
     ]
   },
   "MOSS": {
@@ -88,10 +83,7 @@
       "design-first-ui-prompting",
       "humanizer"
     ],
-    "optional_skills": [
-      "gsap-core",
-      "gsap-timeline"
-    ]
+    "optional_skills": []
   },
   "BUILD": {
     "id": "BUILD",
@@ -105,7 +97,9 @@
       "code-review-and-quality",
       "git-workflow-and-versioning"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "documentation-and-adrs"
+    ]
   },
   "FRONT": {
     "id": "FRONT",
@@ -147,9 +141,7 @@
       "llm-evaluation",
       "rag-implementation"
     ],
-    "optional_skills": [
-      "agent-orchestration-advisor"
-    ]
+    "optional_skills": []
   },
   "SIGNAL": {
     "id": "SIGNAL",
@@ -201,11 +193,12 @@
     "profile_path": "employees/platform-reliability/SRE/EMPLOYEE.md",
     "required_skills": [
       "observability-and-instrumentation",
-      "debugging-and-error-recovery",
       "systematic-debugging",
       "ci-cd-and-automation"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "debugging-and-error-recovery"
+    ]
   },
   "COST": {
     "id": "COST",
@@ -214,11 +207,11 @@
     "runtime": "OPERATOR",
     "profile_path": "employees/platform-reliability/COST/EMPLOYEE.md",
     "required_skills": [
-      "observability-and-instrumentation",
-      "code-simplification",
-      "source-driven-development"
+      "observability-and-instrumentation"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "source-driven-development"
+    ]
   },
   "GUARD": {
     "id": "GUARD",
@@ -229,10 +222,11 @@
     "required_skills": [
       "code-review-and-quality",
       "verification-before-completion",
-      "security-and-hardening",
-      "code-review-excellence"
+      "security-and-hardening"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "code-review-excellence"
+    ]
   },
   "TRACE": {
     "id": "TRACE",
@@ -257,7 +251,6 @@
     "required_skills": [
       "security-and-hardening",
       "auth-implementation-patterns",
-      "source-driven-development",
       "doubt-driven-development"
     ],
     "optional_skills": []
@@ -270,11 +263,15 @@
     "profile_path": "employees/growth-marketing/GROW/EMPLOYEE.md",
     "required_skills": [
       "product-marketing",
-      "launch",
       "customer-research"
     ],
     "optional_skills": [
-      "positioning-statement"
+      "launch",
+      "pm-discover-market-sizing",
+      "pm-discover-competitive-analysis",
+      "competitor-profiling",
+      "marketing-plan",
+      "pricing"
     ]
   },
   "VOICE": {
@@ -286,10 +283,12 @@
     "required_skills": [
       "copywriting",
       "humanizer",
-      "product-marketing",
-      "design-first-ui-prompting"
+      "product-marketing"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "content-strategy",
+      "copy-editing"
+    ]
   },
   "PULSE": {
     "id": "PULSE",
@@ -298,12 +297,14 @@
     "runtime": "SPECIALIST",
     "profile_path": "employees/growth-marketing/PULSE/EMPLOYEE.md",
     "required_skills": [
-      "analytics",
+      "analytics"
+    ],
+    "optional_skills": [
       "ab-testing",
       "cro",
-      "seo-audit"
-    ],
-    "optional_skills": []
+      "seo-audit",
+      "attribution"
+    ]
   },
   "LENS": {
     "id": "LENS",
@@ -313,11 +314,12 @@
     "profile_path": "employees/service-knowledge/LENS/EMPLOYEE.md",
     "required_skills": [
       "code-review-and-quality",
-      "verification-before-completion",
-      "impeccable",
-      "ui-ux-pro-max"
+      "verification-before-completion"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "pm-critic",
+      "pm-deliver-acceptance-criteria"
+    ]
   },
   "JOURNEY": {
     "id": "JOURNEY",
@@ -326,14 +328,11 @@
     "runtime": "SPECIALIST",
     "profile_path": "employees/service-knowledge/JOURNEY/EMPLOYEE.md",
     "required_skills": [
-      "ui-ux-pro-max",
       "cro",
       "customer-research",
       "onboarding"
     ],
-    "optional_skills": [
-      "customer-journey-map"
-    ]
+    "optional_skills": []
   },
   "DOCS": {
     "id": "DOCS",
@@ -342,11 +341,10 @@
     "runtime": "BUILDER",
     "profile_path": "employees/service-knowledge/DOCS/EMPLOYEE.md",
     "required_skills": [
-      "documentation-and-adrs",
-      "writing-skills",
-      "source-driven-development",
-      "humanizer"
+      "document-artifact-production"
     ],
-    "optional_skills": []
+    "optional_skills": [
+      "documentation-and-adrs"
+    ]
   }
 }

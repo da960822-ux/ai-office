@@ -17,9 +17,7 @@ skill_loading: local_files_progressive
 - `@./ROLE.md`
 - `@./SOP.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/product-marketing/SKILL.md`
-- `@./skills/launch/SKILL.md`
-- `@./skills/customer-research/SKILL.md`
+- Task Profile이 선택한 스킬만 읽는다. 시장조사는 `customer-research`, `product-marketing`만 후보이며 `launch`는 읽지 않는다.
 
 ## 조건부 스킬
 

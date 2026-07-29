@@ -25,12 +25,13 @@ def team_worker_candidates(lead_ids: list[str], include_lead: bool = False) -> l
     return candidates
 
 
-def worker_candidates_for_lead(lead_id: str) -> list[tuple[str, str]]:
+def worker_candidates_for_lead(lead_id: str, request: str = "") -> list[tuple[str, str]]:
     people = main.registry()
     if lead_id not in people:
         return []
     team = people[lead_id]["team"]
-    return [(employee_id, people[employee_id]["title"]) for employee_id in people if people[employee_id]["team"] == team and employee_id not in main.LEAD_IDS]
+    candidates = [(employee_id, people[employee_id]["title"]) for employee_id in people if people[employee_id]["team"] == team and employee_id not in main.LEAD_IDS]
+    return candidates
 
 
 def heartbeat() -> None:
@@ -87,19 +88,17 @@ def schedule_autonomous_tasks() -> None:
                 continue
             leads = [employee for employee in task["assigned_employees"] if employee in main.LEAD_IDS and employee != "NAVI"]
             proposed = [item["owner"] for item in task["action_items"]]
-            candidates = [employee for employee in proposed if employee not in main.LEAD_IDS]
-            if not candidates:
-                candidates = [employee for employee, _ in team_worker_candidates(leads)]
-            if not candidates:
+            execution_ids = list(dict.fromkeys(proposed or leads))
+            if not execution_ids:
                 db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("blocked", main.utc_now(), task["id"]))
                 main.emit_job_event(db, task["id"], "delegation.blocked", "팀장 제안 실행자가 없습니다.")
                 continue
-            assignments = list(dict.fromkeys(leads + candidates))
+            assignments = list(dict.fromkeys(leads + execution_ids))
             db.execute("DELETE FROM task_assignments WHERE task_id = ?", (task["id"],))
             db.executemany("INSERT INTO task_assignments VALUES (?, ?)", [(task["id"], employee) for employee in assignments])
-            job = main.enqueue_job(db, task["id"], "execute", {"workspace_id": workspace["id"], "employee_ids": candidates, "instruction": task["request"]})
+            job = main.enqueue_job(db, task["id"], "execute", {"workspace_id": workspace["id"], "employee_ids": execution_ids, "instruction": task["request"]})
             db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("executing", main.utc_now(), task["id"]))
-            main.emit_job_event(db, task["id"], "delegation.auto_assigned", "팀장 분배안을 승인해 실행 Job을 자동 시작합니다.", job_id=job["id"], payload={"workers": candidates})
+            main.emit_job_event(db, task["id"], "delegation.auto_assigned", "팀장 분배안을 승인해 실행 Job을 자동 시작합니다.", job_id=job["id"], payload={"workers": execution_ids})
 
 def reconcile_failed_jobs() -> None:
     with main.database() as db:
@@ -114,7 +113,7 @@ def reconcile_failed_jobs() -> None:
         rows = db.execute("SELECT id, task_id, error FROM jobs WHERE state = 'failed'").fetchall()
         for row in rows:
             task = db.execute("SELECT state FROM tasks WHERE id = ?", (row["task_id"],)).fetchone()
-            if task and task["state"] in {"executing", "meeting_running", "lead_review_running"}:
+            if task and task["state"] in {"executing", "meeting_running", "synthesizing", "lead_review_running"}:
                 db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("blocked", main.utc_now(), row["task_id"]))
                 main.emit_job_event(db, row["task_id"], "task.blocked", f"실행 Job 실패: {row['error'] or '원인 미상'}. 재시도 또는 모델 설정을 확인하세요.", job_id=row["id"])
 
@@ -173,13 +172,13 @@ def process_plan(job: dict) -> None:
         main.emit_job_event(db, job["task_id"], "model.started", "업무 범위와 필요한 팀을 판단 중", job_id=job["id"], agent_id=task.get("lead_id") or "NAVI")
     if job["kind"] == "direct_plan":
         roster = [job["payload"]["lead_id"]]
-        candidates = worker_candidates_for_lead(roster[0])
+        candidates = worker_candidates_for_lead(roster[0], task["request"])
         items = [(candidates[0][0], f"{candidates[0][1]} · 팀장 자동 배정") ] if candidates else [(roster[0], "팀장 직접 실행 · 별도 리뷰 필수")]
         reason = "대표가 선택한 팀장이 소규모 업무를 판단합니다."
         usage = None
     else:
         try:
-            roster, items, reason, usage = main.select_roster_with_model(task["request"])
+            roster, items, reason, usage = main.select_roster_with_model(task["request"], job["task_id"], job["id"])
         except Exception as error:
             fallback, _ = main.planned_roster(task["request"])
             roster = [employee for employee in fallback if employee in main.LEAD_IDS and employee != "NAVI"][:3] or ["FRAME"]
@@ -188,7 +187,9 @@ def process_plan(job: dict) -> None:
     if not safe_point(job):
         return
     with main.database() as db:
-        main.require_skill_ready(roster)
+        main.require_skill_ready(roster, task["request"])
+        execution_plan = usage.get("plan") if usage and usage.get("plan") else main.fallback_execution_plan(roster, items)
+        main.store_execution_plan(db, job["task_id"], execution_plan)
         db.execute("DELETE FROM task_assignments WHERE task_id = ?", (job["task_id"],))
         db.executemany("INSERT INTO task_assignments VALUES (?, ?)", [(job["task_id"], employee) for employee in roster])
         db.execute("DELETE FROM action_items WHERE task_id = ?", (job["task_id"],))
@@ -218,7 +219,7 @@ def process_meeting(job: dict) -> None:
         for employee in participants:
             main.emit_job_event(db, job["task_id"], "agent.at_location", "회의실 착석", job_id=job["id"], agent_id=employee, payload={"zone": "meeting", "action": "meeting"})
     transcript: list[str] = []
-    worker_proposals: list[tuple[str, str]] = []
+    worker_proposals: list[dict] = []
     for index, employee in enumerate(participants, 1):
         if not safe_point(job):
             return
@@ -232,16 +233,38 @@ def process_meeting(job: dict) -> None:
             record_step(db, job, index, "meeting_speaker", "running", employee)
             main.emit_job_event(db, job["task_id"], "model.started", "회의 발언 준비", job_id=job["id"], agent_id=employee)
             db.execute("INSERT OR REPLACE INTO agent_runs (id, task_id, job_id, employee_id, state, model, started_at, finished_at, summary) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)", (run_id, job["task_id"], job["id"], employee, "running", model, main.utc_now()))
-        available = worker_candidates_for_lead(employee) if employee != "NAVI" else []
+        available = worker_candidates_for_lead(employee, task["request"]) if employee != "NAVI" else []
+        scope = next((item for item in task.get("agent_scopes", []) if item["employee_id"] == employee), None)
+        selected_skill_ids = scope.get("skill_ids", []) if scope else []
+        skill_context = main.employee_skill_context(employee, task["request"], selected_skill_ids=selected_skill_ids) if selected_skill_ids else {"required_skills": []}
         if available:
+            boundary = main.department_policy(employee)
+            bindings = json.loads(main.SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))
             instructions = (
                 f"You are {employee}, {role['title']}. Discuss the actual task and delegate only necessary workers. "
-                "Return strict JSON: {\"message\":\"concise Korean meeting statement\",\"assignments\":[{\"worker_id\":\"ID\",\"description\":\"specific work\"}]}. "
-                "Choose one worker by default, at most two. Use only available_workers."
+                f"Your department owns: {boundary.get('owns', [])}. "
+                f"Transfer these scopes instead of doing them here: {boundary.get('must_handoff', {})}. "
+                "Reason from the execution plan and current evidence. A worker may be unnecessary. "
+                "Return strict JSON: {\"message\":\"concise Korean decision\",\"assignments\":[{\"worker_id\":\"ID\",\"description\":\"specific work\",\"skill_ids\":[\"ID\"],\"deliverable\":\"file or evidence\",\"handoff_to\":\"ID\",\"depends_on\":[\"phase-id\"]}]}. "
+                "Choose zero to two workers. Select a worker only when that worker's output is necessary for this phase; otherwise keep work with the lead. Use only available_workers. "
+                "Choose zero to three skills from that worker's listed skills; choose only skills directly needed for this assignment. "
+                "Never assign another department's worker or absorb another department's responsibility. Use only the supplied selected skill instructions when they are present."
             )
         else:
             instructions = f"You are {employee}, {role['title']}. Open this meeting with one concise Korean statement grounded in the actual request."
-        response = main.model_client().responses.create(model=model, instructions=instructions, input=json.dumps({"task_request": task["request"], "objective": meeting["objective"], "agenda": agenda, "prior": transcript, "available_workers": [{"id": worker_id, "title": title} for worker_id, title in available]}, ensure_ascii=False))
+        client = main.model_client()
+        response = main.cancellable_model_response(client, job["task_id"], job["id"], model=model, instructions=instructions, input=json.dumps({
+            "task_request": task["request"],
+            "execution_plan": task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else None,
+            "objective": meeting["objective"],
+            "agenda": agenda,
+            "prior": transcript,
+            "selected_skill_instructions": skill_context["required_skills"],
+            "available_workers": [
+                {"id": worker_id, "title": title, "skills": bindings[worker_id]["required"] + bindings[worker_id]["optional"]}
+                for worker_id, title in available
+            ] if available else [],
+        }, ensure_ascii=False))
         raw = response.output_text.strip(); usage = getattr(response, "usage", None)
         content = raw
         if available:
@@ -253,11 +276,27 @@ def process_meeting(job: dict) -> None:
                     worker_id = assignment.get("worker_id")
                     description = str(assignment.get("description") or "").strip()
                     if worker_id in allowed and description:
-                        worker_proposals.append((worker_id, description[:500]))
+                        bound = set(bindings[worker_id]["required"] + bindings[worker_id]["optional"])
+                        skill_ids = [skill for skill in assignment.get("skill_ids", []) if skill in bound][:3]
+                        worker_proposals.append({
+                            "worker_id": worker_id,
+                            "description": description[:500],
+                            "skill_ids": skill_ids,
+                            "deliverable": str(assignment.get("deliverable") or "부서 초안")[:500],
+                            "handoff_to": str(assignment.get("handoff_to") or employee)[:40],
+                            "depends_on": [str(item)[:80] for item in assignment.get("depends_on", []) if isinstance(item, str)][:6],
+                        })
             except Exception:
                 content = raw
-            if not any(worker_id in {candidate[0] for candidate in available} for worker_id, _ in worker_proposals):
-                worker_proposals.append((available[0][0], f"{available[0][1]} · {employee} 팀장 자동 배정"))
+            if not any(item["worker_id"] in {candidate[0] for candidate in available} for item in worker_proposals):
+                worker_proposals.append({
+                    "worker_id": employee,
+                    "description": f"{employee} 팀장 직접 재검토 범위",
+                    "skill_ids": [],
+                    "deliverable": "검증 가능한 부서 초안",
+                    "handoff_to": employee,
+                    "depends_on": [],
+                })
         if not content:
             raise RuntimeError(f"Meeting model returned no statement: {employee}")
         if not safe_point(job):
@@ -274,13 +313,34 @@ def process_meeting(job: dict) -> None:
     with main.database() as db:
         db.execute("UPDATE meetings SET status = ?, decisions = ? WHERE id = ?", ("concluded", json.dumps(["실제 모델 발언 기록 완료"], ensure_ascii=False), job["payload"]["meeting_id"]))
         leads = [employee for employee in participants if employee != "NAVI"]
-        candidates = list(dict.fromkeys(worker_proposals))
+        candidates = list({item["worker_id"]: item for item in worker_proposals}.values())
         if not candidates:
-            candidates = [candidate for lead in leads for candidate in worker_candidates_for_lead(lead)[:1]]
+            candidates = [
+                {
+                    "worker_id": lead,
+                    "description": f"{lead} 팀장 직접 재검토 범위",
+                    "skill_ids": [],
+                    "deliverable": "검증 가능한 부서 초안",
+                    "handoff_to": lead,
+                    "depends_on": [],
+                }
+                for lead in leads
+            ]
         db.execute("DELETE FROM action_items WHERE task_id = ?", (job["task_id"],))
         contract = main.task_payload(db, job["task_id"])["contract"]
-        for index, (owner, description) in enumerate(candidates, 1):
+        for index, scope in enumerate(candidates, 1):
+            owner, description = scope["worker_id"], scope["description"]
             db.execute("INSERT INTO action_items VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (f"ACT-{job['task_id'].split('-')[-1]}-{index:02d}", job["task_id"], job["payload"]["meeting_id"], owner, description, index, json.dumps(contract["acceptance_criteria"]), "proposed"))
+            db.execute(
+                "INSERT INTO task_agent_scopes (task_id, employee_id, assignment, skill_ids, deliverable, handoff_to, dependencies, sequence) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id, employee_id) DO UPDATE SET "
+                "assignment=excluded.assignment, skill_ids=excluded.skill_ids, deliverable=excluded.deliverable, "
+                "handoff_to=excluded.handoff_to, dependencies=excluded.dependencies, sequence=excluded.sequence",
+                (
+                    job["task_id"], owner, description, json.dumps(scope["skill_ids"], ensure_ascii=False),
+                    scope["deliverable"], scope["handoff_to"], json.dumps(scope["depends_on"], ensure_ascii=False), index,
+                ),
+            )
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("awaiting_worker_selection", main.utc_now(), job["task_id"]))
         main.emit_job_event(db, job["task_id"], "meeting.completed", "팀장 회의 발언 기록 완료", job_id=job["id"], agent_id="NAVI")
 
@@ -294,6 +354,9 @@ def process_execute(job: dict) -> None:
             model = main.model_settings()[main.agent_role(employee)["model_role"]]
             assignment = db.execute("SELECT description FROM action_items WHERE task_id = ? AND owner = ? ORDER BY sequence LIMIT 1", (job["task_id"], employee)).fetchone()
             work_summary = assignment["description"] if assignment else "배정된 업무 수행"
+            scope = db.execute("SELECT * FROM task_agent_scopes WHERE task_id = ? AND employee_id = ?", (job["task_id"], employee)).fetchone()
+            skill_ids = json.loads(scope["skill_ids"]) if scope else []
+            handoff = f"Handoff to {scope['handoff_to']}: {scope['deliverable']}" if scope else "Return a verifiable department contribution."
             run_id = f"AR-{job['id']}-{index:02d}"
             existing = db.execute("SELECT state FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
             if existing and existing["state"] == "succeeded":
@@ -309,7 +372,13 @@ def process_execute(job: dict) -> None:
             main.AgentRunInput(
                 workspace_id=payload["workspace_id"],
                 employee_id=employee,
-                instruction=payload.get("instruction", ""),
+                instruction=(
+                    f"Original task:\n{payload.get('instruction', '')}\n\n"
+                    f"Your bounded assignment:\n{work_summary}\n\n"
+                    f"{handoff}\n\n"
+                    "Deliver only this bounded contribution. Do not choose or rewrite the final cross-department recommendation."
+                ),
+                skill_ids=skill_ids,
                 managed_by_job=True,
                 job_id=job["id"],
             ),
@@ -326,15 +395,107 @@ def process_execute(job: dict) -> None:
             main.emit_job_event(db, job["task_id"], "agent.completed", result["summary"], job_id=job["id"], agent_id=employee, payload={"zone": "desk", "action": "work"})
     with main.database() as db:
         task = main.task_payload(db, job["task_id"])
-        lead = task.get("lead_id") or next((employee for employee in task["assigned_employees"] if employee in main.LEAD_IDS and employee != "NAVI"), None)
-        has_evidence = any(item["status"] == "pass" for item in task["evidence"])
-        if lead and has_evidence:
-            review_job = main.enqueue_job(db, job["task_id"], "lead_review", {"lead_id": lead})
-            db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("lead_review_running", main.utc_now(), job["task_id"]))
-            main.emit_job_event(db, job["task_id"], "review.queued", "팀장 리뷰 Job 자동 대기열 등록", job_id=review_job["id"], agent_id=lead)
+        plan = task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else {}
+        lead = task.get("lead_id") or plan.get("final_owner") or next((employee for employee in task["assigned_employees"] if employee in main.LEAD_IDS and employee != "NAVI"), None)
+        department_deliverables = [item for item in task["deliverables"] if item["status"] == "department_draft"]
+        if lead and department_deliverables:
+            synthesize_job = main.enqueue_job(db, job["task_id"], "synthesize", {
+                "lead_id": lead,
+                "workspace_id": payload["workspace_id"],
+                "revision_findings": "",
+            })
+            db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("synthesizing", main.utc_now(), job["task_id"]))
+            main.emit_job_event(db, job["task_id"], "synthesis.queued", "팀장 최종 산출물 통합 Job을 시작합니다.", job_id=synthesize_job["id"], agent_id=lead)
         else:
             db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("blocked", main.utc_now(), job["task_id"]))
-        main.emit_job_event(db, job["task_id"], "execution.completed", "실행 완료. 팀장 리뷰를 시작할 수 있습니다.", job_id=job["id"])
+        main.emit_job_event(db, job["task_id"], "execution.completed", "부서별 산출물 저장 완료.", job_id=job["id"])
+
+
+def process_synthesize(job: dict) -> None:
+    lead = job["payload"]["lead_id"]
+    workspace_id = job["payload"]["workspace_id"]
+    with main.database() as db:
+        task = main.task_payload(db, job["task_id"])
+        workspace_row = db.execute("SELECT * FROM workspaces WHERE id = ? AND task_id = ?", (workspace_id, job["task_id"])).fetchone()
+        if not workspace_row:
+            raise RuntimeError("Synthesis workspace not found")
+        workspace, allowed, reason = main.validate_task_workspace(workspace_row)
+        if not allowed:
+            raise RuntimeError(reason)
+        drafts = [item for item in task["deliverables"] if item["status"] == "department_draft"]
+        if not drafts:
+            raise RuntimeError("No department deliverables to synthesize")
+        contributions = []
+        for item in drafts:
+            path = (workspace / item["path"]).resolve()
+            if not path.is_relative_to(workspace) or not path.exists():
+                raise RuntimeError(f"Department deliverable missing: {item['path']}")
+            contributions.append({"owner": item["owner"], "path": item["path"], "content": path.read_text(encoding="utf-8", errors="replace")[:30000]})
+        sources = [
+            {"title": row["title"], "url": row["url"], "snippet": row["snippet"][:500]}
+            for row in db.execute(
+                "SELECT title, url, MAX(snippet) AS snippet FROM research_sources "
+                "WHERE task_id = ? AND query = 'verified-original' GROUP BY url ORDER BY MIN(created_at) LIMIT 100",
+                (job["task_id"],),
+            )
+        ]
+        plan = task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else {}
+        artifact_kind = plan.get("artifact_kind")
+        standards = json.loads(main.DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
+        if artifact_kind in standards:
+            standard = standards[artifact_kind]
+        else:
+            artifact_kind, standard = main.deliverable_spec(task["request"])
+        revision_findings = job["payload"].get("revision_findings", "")
+        main.emit_job_event(db, job["task_id"], "synthesis.started", "팀장이 부서 결과를 단일 최종안으로 통합합니다.", job_id=job["id"], agent_id=lead)
+    role = main.agent_role(lead)
+    final_scope = next((item for item in task.get("agent_scopes", []) if item["employee_id"] == lead), None)
+    final_skill_ids = final_scope.get("skill_ids", []) if final_scope else []
+    final_skill_context = main.employee_skill_context(lead, task["request"], selected_skill_ids=final_skill_ids) if final_skill_ids else {"required_skills": []}
+    response = main.cancellable_model_response(
+        main.model_client(),
+        job["task_id"],
+        job["id"],
+        model=main.model_settings()[role["model_role"]],
+        instructions=(
+            f"You are {lead}, final integration owner. Produce one Korean Markdown deliverable. "
+            "Reconcile contradictions instead of concatenating drafts. Follow required sections exactly. "
+            "When the standard requires a single recommendation, choose exactly one and explain why alternatives lost. "
+            "Use only supplied source URLs for factual citations. Mark unsupported numbers as estimates. "
+            "Do not mention internal agents, skills, tool calls, or drafts. Apply supplied selected skill instructions silently. Return final document content only."
+        ),
+        input=json.dumps({
+            "task": task["request"],
+            "execution_plan": plan,
+            "artifact_kind": artifact_kind,
+            "standard": standard,
+            "department_contributions": contributions,
+            "sources": sources,
+            "revision_findings": revision_findings,
+            "selected_skill_instructions": final_skill_context["required_skills"],
+        }, ensure_ascii=False),
+    )
+    content = response.output_text.strip()
+    if not content:
+        raise RuntimeError("Synthesis model returned no final deliverable")
+    if not safe_point(job):
+        return
+    with main.database() as db:
+        final = main.persist_deliverable(
+            db,
+            workspace,
+            job["task_id"],
+            lead,
+            artifact_kind,
+            content,
+            filename=standard["filename"],
+            status="final_candidate",
+        )
+        db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (job["task_id"], lead, "synthesis", content, main.utc_now()))
+        review_job = main.enqueue_job(db, job["task_id"], "lead_review", {"lead_id": lead, "workspace_id": workspace_id})
+        db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("lead_review_running", main.utc_now(), job["task_id"]))
+        main.emit_job_event(db, job["task_id"], "synthesis.completed", f"최종 산출물 생성: {final['path']}", job_id=job["id"], agent_id=lead, payload={"deliverable": final})
+        main.emit_job_event(db, job["task_id"], "review.queued", "최종 파일 기준 팀장 리뷰를 시작합니다.", job_id=review_job["id"], agent_id=lead)
 
 
 def process_review(job: dict) -> None:
@@ -342,8 +503,40 @@ def process_review(job: dict) -> None:
     with main.database() as db:
         task = main.task_payload(db, job["task_id"])
         main.emit_job_event(db, job["task_id"], "review.started", "팀장 실제 리뷰 시작", job_id=job["id"], agent_id=lead, payload={"zone": "qa", "action": "review"})
-        evidence = task["evidence"]; messages = task["agent_messages"][:12]
-    response = main.model_client().responses.create(model=model, instructions="You are a team lead. Review actual execution evidence. Return strict JSON only: {\"verdict\":\"pass|changes_requested|blocked\",\"findings\":\"Korean concise review\"}.", input=json.dumps({"task": task["request"], "evidence": evidence, "messages": messages}, ensure_ascii=False))
+        final = next((item for item in task["deliverables"] if item["status"] == "final_candidate"), None)
+        if not final:
+            raise RuntimeError("Lead review requires a final_candidate deliverable")
+        workspace_row = db.execute("SELECT * FROM workspaces WHERE id = ? AND task_id = ?", (job["payload"].get("workspace_id"), job["task_id"])).fetchone()
+        if not workspace_row:
+            raise RuntimeError("Lead review workspace not found")
+        workspace, allowed, reason = main.validate_task_workspace(workspace_row)
+        if not allowed:
+            raise RuntimeError(reason)
+        final_path = (workspace / final["path"]).resolve()
+        if not final_path.is_relative_to(workspace) or not final_path.exists():
+            raise RuntimeError("Final deliverable file is missing")
+        final_content = final_path.read_text(encoding="utf-8", errors="replace")
+        plan = task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else {}
+        artifact_kind = plan.get("artifact_kind")
+        standards = json.loads(main.DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
+        if artifact_kind in standards:
+            standard = standards[artifact_kind]
+        else:
+            artifact_kind, standard = main.deliverable_spec(task["request"])
+        evidence = task["evidence"]
+    client = main.model_client()
+    response = main.cancellable_model_response(
+        client,
+        job["task_id"],
+        job["id"],
+        model=model,
+        instructions=(
+            "Review the actual final file against every required section and rule. "
+            "Pass only when the file is coherent, complete, evidence-grounded, and directly answers the task. "
+            "Return strict JSON only: {\"verdict\":\"pass|changes_requested|blocked\",\"findings\":\"Korean actionable review\"}."
+        ),
+        input=json.dumps({"task": task["request"], "execution_plan": plan, "artifact_kind": artifact_kind, "standard": standard, "final_file": final_content, "evidence": evidence}, ensure_ascii=False),
+    )
     raw = response.output_text.strip()
     if not safe_point(job):
         return
@@ -360,7 +553,24 @@ def process_review(job: dict) -> None:
         review_id = f"REV-{job['task_id'].split('-')[-1]}-{count:02d}"
         db.execute("INSERT INTO reviews VALUES (?, ?, ?, ?, ?, ?)", (review_id, job["task_id"], lead, verdict, findings, main.utc_now()))
         db.execute("INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (f"EVD-{job['task_id'].split('-')[-1]}-LEAD-REVIEW", job["task_id"], None, "lead_review", "pass" if verdict == "pass" else "fail", main.hashlib.sha256(findings.encode()).hexdigest(), 0, main.utc_now()))
-        next_state = "completed" if verdict == "pass" else ("blocked" if verdict == "blocked" else "planning")
+        if verdict == "pass":
+            db.execute("UPDATE deliverables SET status = 'approved', updated_at = ? WHERE id = ?", (main.utc_now(), final["id"]))
+            next_state = "completed"
+        elif verdict == "blocked":
+            next_state = "blocked"
+        else:
+            change_count = db.execute("SELECT COUNT(*) FROM reviews WHERE task_id = ? AND verdict = 'changes_requested'", (job["task_id"],)).fetchone()[0]
+            retry_limit = task["contract"]["retry_limit"]
+            if change_count <= retry_limit:
+                rework_job = main.enqueue_job(db, job["task_id"], "synthesize", {
+                    "lead_id": lead,
+                    "workspace_id": job["payload"]["workspace_id"],
+                    "revision_findings": findings,
+                })
+                next_state = "synthesizing"
+                main.emit_job_event(db, job["task_id"], "synthesis.rework_queued", "리뷰 지적사항으로 최종 산출물을 재통합합니다.", job_id=rework_job["id"], agent_id=lead)
+            else:
+                next_state = "blocked"
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (next_state, main.utc_now(), job["task_id"]))
         main.emit_job_event(db, job["task_id"], "review.completed", findings, job_id=job["id"], agent_id=lead, payload={"verdict": verdict, "zone": "qa", "action": "review"})
 
@@ -376,6 +586,8 @@ def process(job: dict) -> None:
             process_meeting(job)
         elif job["kind"] == "execute":
             process_execute(job)
+        elif job["kind"] == "synthesize":
+            process_synthesize(job)
         elif job["kind"] == "lead_review":
             process_review(job)
         else:
@@ -384,6 +596,8 @@ def process(job: dict) -> None:
             state = db.execute("SELECT state FROM jobs WHERE id = ?", (job["id"],)).fetchone()[0]
         if state == "running":
             set_job(job, "succeeded", "작업 완료")
+    except main.JobControlSignal:
+        safe_point(job)
     except Exception as error:
         set_job(job, "failed", "작업 실패", str(error))
         with main.database() as db:

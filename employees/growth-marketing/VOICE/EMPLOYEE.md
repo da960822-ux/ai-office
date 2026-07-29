@@ -20,7 +20,6 @@ skill_loading: local_files_progressive
 - `@./skills/copywriting/SKILL.md`
 - `@./skills/humanizer/SKILL.md`
 - `@./skills/product-marketing/SKILL.md`
-- `@./skills/design-first-ui-prompting/SKILL.md`
 
 ## 조건부 스킬
 
