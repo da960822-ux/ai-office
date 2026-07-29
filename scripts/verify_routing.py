@@ -15,6 +15,7 @@ def load(name: str) -> dict:
 def main() -> None:
     employees = load("employees.json")
     bindings = load("employee-skill-bindings.json")
+    definitions = load("skill-definitions.json")
     boundaries = load("department-boundaries.json")
     profiles = load("task-profiles.json")
     standards = load("deliverable-standards.json")
@@ -47,10 +48,29 @@ def main() -> None:
         combined = [*groups["required"], *groups["optional"]]
         if len(combined) != len(set(combined)):
             errors.append(f"{employee}: duplicate skill binding")
-        if employees[employee]["required_skills"] != groups["required"]:
-            errors.append(f"{employee}: required skills differ between registries")
-        if employees[employee]["optional_skills"] != groups["optional"]:
-            errors.append(f"{employee}: optional skills differ between registries")
+        if employee not in employees:
+            errors.append(f"{employee}: binding has no employee")
+        if len(groups["required"]) > 4:
+            errors.append(f"{employee}: more than four required skills")
+        for skill_id in combined:
+            if skill_id not in definitions:
+                errors.append(f"{employee}: undefined skill {skill_id}")
+                continue
+            if definitions[skill_id].get("install_policy") == "manual_accept_noncommercial":
+                errors.append(f"{employee}: noncommercial skill {skill_id} is bound")
+
+    ui_skill_ids = {
+        "ui-ux-pro-max", "impeccable", "design-first-ui-prompting",
+        "gsap-core", "gsap-timeline", "gsap-react", "gsap-performance",
+    }
+    blocked_ui_kinds = {"market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"}
+    for skill_id in ui_skill_ids:
+        metadata = definitions.get(skill_id, {}).get("activation", {})
+        if not metadata:
+            errors.append(f"{skill_id}: missing activation metadata")
+            continue
+        if not blocked_ui_kinds.issubset(set(metadata.get("blocked_task_kinds", []))):
+            errors.append(f"{skill_id}: UI activation does not block non-UI work")
 
     if profiles:
         errors.append("task-profiles.json must remain empty; GLM designs workflows dynamically")

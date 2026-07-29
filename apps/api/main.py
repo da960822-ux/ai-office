@@ -30,12 +30,14 @@ from pydantic import BaseModel, Field
 import keyring
 import httpx
 from openai import OpenAI
+from apps.api.agent_tools import AgentToolError, WorkspaceAgentTools, tool_definitions
 from apps.api.policy import validate_path, validate_command
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "ai-office.sqlite3"
 REGISTRY_PATH = ROOT / "registry" / "employees.json"
 SKILL_BINDINGS_PATH = ROOT / "registry" / "employee-skill-bindings.json"
+SKILL_DEFINITIONS_PATH = ROOT / "registry" / "skill-definitions.json"
 DEPARTMENT_BOUNDARIES_PATH = ROOT / "registry" / "department-boundaries.json"
 DELIVERABLE_STANDARDS_PATH = ROOT / "registry" / "deliverable-standards.json"
 SKILLS_LOCK_PATH = ROOT / "registry" / "skills.lock.json"
@@ -172,6 +174,10 @@ class AgentRunInput(BaseModel):
     skill_ids: list[str] = Field(default_factory=list, max_length=3)
     managed_by_job: bool = False
     job_id: str | None = Field(default=None, max_length=80)
+
+
+class SteeringInput(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
 
 
 class RetryInput(BaseModel):
@@ -333,7 +339,13 @@ def skill_ids_for_task(employee_id: str, request: str) -> list[str]:
     return []
 
 
-def validate_selected_skills(employee_id: str, skill_ids: list[str], limit: int = 3) -> list[str]:
+def validate_selected_skills(
+    employee_id: str,
+    skill_ids: list[str],
+    limit: int = 3,
+    *,
+    task_kind: str | None = None,
+) -> list[str]:
     if not isinstance(skill_ids, list):
         raise HTTPException(422, "skill_ids must be a list")
     if len(skill_ids) > limit:
@@ -343,6 +355,16 @@ def validate_selected_skills(employee_id: str, skill_ids: list[str], limit: int 
     unknown = sorted(set(selected) - set(bindings["required"] + bindings["optional"]))
     if unknown:
         raise HTTPException(403, f"Skills are not bound to {employee_id}: {', '.join(unknown)}")
+    definitions = json.loads(SKILL_DEFINITIONS_PATH.read_text(encoding="utf-8"))
+    blocked = []
+    for skill_id in selected:
+        activation = definitions.get(skill_id, {}).get("activation", {})
+        allowed_kinds = set(activation.get("allowed_task_kinds", []))
+        blocked_kinds = set(activation.get("blocked_task_kinds", []))
+        if task_kind and (task_kind in blocked_kinds or (allowed_kinds and task_kind not in allowed_kinds)):
+            blocked.append(skill_id)
+    if blocked:
+        raise HTTPException(403, f"Skills are blocked for {task_kind}: {', '.join(blocked)}")
     security = employee_security(employee_id, selected)
     missing = [check["skill_id"] for check in security["skills"] if not check["valid"]]
     if missing:
@@ -374,8 +396,15 @@ def require_skill_ready(employee_ids: list[str], request: str = "") -> None:
         raise HTTPException(409, f"Required skills are not ready for: {', '.join(unavailable)}")
 
 
-def employee_skill_context(employee_id: str, request: str, per_skill_limit: int = 3000, selected_skill_ids: list[str] | None = None) -> dict:
-    skill_ids = validate_selected_skills(employee_id, selected_skill_ids, 3) if selected_skill_ids is not None else skill_ids_for_task(employee_id, request)
+def employee_skill_context(
+    employee_id: str,
+    request: str,
+    per_skill_limit: int = 3000,
+    selected_skill_ids: list[str] | None = None,
+    *,
+    task_kind: str | None = None,
+) -> dict:
+    skill_ids = validate_selected_skills(employee_id, selected_skill_ids, 3, task_kind=task_kind) if selected_skill_ids is not None else skill_ids_for_task(employee_id, request)
     security = employee_security(employee_id, skill_ids)
     if not security["ready"]:
         raise HTTPException(409, f"Required skills are not ready for {employee_id}")
@@ -395,6 +424,23 @@ def safe_project_root(raw_path: str) -> Path:
 
 
 LEAD_IDS = {"NAVI", "FRAME", "BUILD", "LINK", "SHIP", "GUARD", "GROW", "LENS"}
+TASK_KINDS = {
+    "market_research", "business_strategy", "product_planning", "ui_design",
+    "frontend_implementation", "backend_implementation", "ai_data_implementation",
+    "release_operations", "quality_review", "security_review", "document_authoring", "general",
+}
+
+
+def default_task_kind(department: str) -> str:
+    return {
+        "product-experience": "product_planning",
+        "application": "general",
+        "ai-data": "ai_data_implementation",
+        "platform-reliability": "release_operations",
+        "quality-security": "quality_review",
+        "growth-marketing": "market_research",
+        "service-knowledge": "document_authoring",
+    }.get(department, "general")
 
 
 def agent_role(employee_id: str) -> dict:
@@ -460,7 +506,7 @@ def persist_deliverable(
     path.parent.mkdir(parents=True, exist_ok=True)
     normalized = content.strip() + "\n"
     path.write_text(normalized, encoding="utf-8")
-    artifact_sha256 = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    artifact_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
     relative_path = str(path.relative_to(workspace)).replace("\\", "/")
     deliverable_id = f"DEL-{task_id.split('-')[-1]}-{hashlib.sha256(relative_path.encode()).hexdigest()[:12]}"
     now = utc_now()
@@ -613,6 +659,16 @@ def init_db() -> None:
             dependencies TEXT NOT NULL, sequence INTEGER NOT NULL,
             PRIMARY KEY (task_id, employee_id)
         );
+        CREATE TABLE IF NOT EXISTS task_phases (
+            task_id TEXT NOT NULL, phase_id TEXT NOT NULL, parent_phase_id TEXT,
+            department TEXT NOT NULL, owner_id TEXT NOT NULL, task_kind TEXT NOT NULL,
+            objective TEXT NOT NULL,
+            expected_output TEXT NOT NULL, handoff_to TEXT, dependencies TEXT NOT NULL,
+            skill_ids TEXT NOT NULL, status TEXT NOT NULL, artifact_ids TEXT NOT NULL,
+            source TEXT NOT NULL, sequence INTEGER NOT NULL, created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (task_id, phase_id)
+        );
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, action TEXT NOT NULL,
             from_state TEXT, to_state TEXT NOT NULL, actor TEXT NOT NULL, note TEXT NOT NULL,
@@ -684,6 +740,10 @@ def init_db() -> None:
             task_id TEXT PRIMARY KEY, state_before_pause TEXT, pause_requested INTEGER NOT NULL DEFAULT 0,
             cancel_requested INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS steering_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL,
+            content TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, applied_at TEXT
+        );
         CREATE TABLE IF NOT EXISTS task_checkpoints (
             id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, label TEXT NOT NULL,
             snapshot TEXT NOT NULL, created_at TEXT NOT NULL
@@ -741,6 +801,7 @@ def init_db() -> None:
         ensure_column(db, "tasks", "route", "TEXT NOT NULL DEFAULT 'navi'")
         ensure_column(db, "tasks", "lead_id", "TEXT")
         ensure_column(db, "tasks", "parent_task_id", "TEXT")
+        ensure_column(db, "task_phases", "task_kind", "TEXT NOT NULL DEFAULT 'general'")
         # Old plan rows were placeholders, not real meetings. Preserve audit, hide from runtime.
         db.execute("UPDATE meetings SET status = 'superseded' WHERE status = 'concluded' AND type = 'team_lead' AND id NOT IN (SELECT DISTINCT m.id FROM meetings m JOIN agent_messages a ON a.task_id = m.task_id WHERE a.kind = 'meeting')")
         # Older tool events stored raw file/command output in a UI summary. Keep
@@ -777,6 +838,7 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
     job_events = [dict(row) | {"payload": json.loads(row["payload"])} for row in db.execute("SELECT * FROM job_events WHERE task_id = ? ORDER BY id DESC LIMIT 120", (task_id,))]
     agent_runs = [dict(row) for row in db.execute("SELECT * FROM agent_runs WHERE task_id = ? ORDER BY started_at DESC", (task_id,))]
     tool_calls = [dict(row) for row in db.execute("SELECT * FROM tool_calls WHERE task_id = ? ORDER BY id DESC LIMIT 120", (task_id,))]
+    steering_messages = [dict(row) for row in db.execute("SELECT * FROM steering_messages WHERE task_id = ? ORDER BY id", (task_id,))]
     deliverables = [dict(row) for row in db.execute("SELECT * FROM deliverables WHERE task_id = ? ORDER BY updated_at DESC", (task_id,))]
     plan_row = db.execute("SELECT * FROM task_plans WHERE task_id = ?", (task_id,)).fetchone()
     execution_plan = (dict(plan_row) | {"plan": json.loads(plan_row["plan_json"])}) if plan_row else None
@@ -784,8 +846,32 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
         dict(row) | {"skill_ids": json.loads(row["skill_ids"]), "dependencies": json.loads(row["dependencies"])}
         for row in db.execute("SELECT * FROM task_agent_scopes WHERE task_id = ? ORDER BY sequence", (task_id,))
     ]
+    phases = [
+        dict(row) | {
+            "skill_ids": json.loads(row["skill_ids"]),
+            "dependencies": json.loads(row["dependencies"]),
+            "artifact_ids": json.loads(row["artifact_ids"]),
+        }
+        for row in db.execute("SELECT * FROM task_phases WHERE task_id = ? ORDER BY sequence, phase_id", (task_id,))
+    ]
     budget_spent = sum(item["input_tokens"] + item["output_tokens"] for item in model_usage)
-    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "deliverables": deliverables, "execution_plan": execution_plan, "agent_scopes": agent_scopes, "state_label": STATE_LABELS[task["state"]], "contract": (dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")}) if contract else None, "meetings": meetings, "action_items": items, "reviews": reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "agent_runs": agent_runs, "tool_calls": tool_calls, "budget_spent": budget_spent}
+    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "deliverables": deliverables, "execution_plan": execution_plan, "agent_scopes": agent_scopes, "phases": phases, "steering_messages": steering_messages, "state_label": STATE_LABELS[task["state"]], "contract": (dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")}) if contract else None, "meetings": meetings, "action_items": items, "reviews": reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "agent_runs": agent_runs, "tool_calls": tool_calls, "budget_spent": budget_spent}
+
+
+def consume_steering_messages(db: sqlite3.Connection, task_id: str) -> list[dict]:
+    rows = list(db.execute(
+        "SELECT id, content, created_at FROM steering_messages "
+        "WHERE task_id = ? AND status = 'queued' ORDER BY id",
+        (task_id,),
+    ))
+    if not rows:
+        return []
+    now = utc_now()
+    db.executemany(
+        "UPDATE steering_messages SET status = 'applied', applied_at = ? WHERE id = ?",
+        [(now, row["id"]) for row in rows],
+    )
+    return [dict(row) for row in rows]
 
 
 def emit_job_event(db: sqlite3.Connection, task_id: str, event_type: str, summary: str, *, job_id: str | None = None, agent_id: str | None = None, payload: dict | None = None) -> None:
@@ -839,7 +925,8 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
         "For research, define source quality, recency, triangulation, and decision criteria. For implementation, define verification and independent review proportional to risk. "
         "Choose an artifact kind from the supplied standards. Decide workspace_context as none, read, or write based on whether local project files are relevant. "
         "Return strict JSON only with: summary (<=160 Korean chars), artifact_kind, final_owner, workspace_context, requires_web_research (boolean), evidence_strategy, "
-        "phases:[{id,department,lead_id,objective,output,handoff_to,depends_on,skill_ids}], reason. "
+        "phases:[{id,department,lead_id,task_kind,objective,output,handoff_to,depends_on,skill_ids}], reason. "
+        f"Each phase task_kind must be one of {sorted(TASK_KINDS)} and describe required capability, not a keyword guess. "
         "For each phase select zero to three skill_ids only from that lead's listed skills. Select only skills that materially help its exact objective/output; do not select UI or design skills for market research, planning, document writing, or review. "
         "Select 1-4 leads. Every lead_id must be the listed lead of its department. final_owner must be selected. No worker assignment yet."
     )
@@ -864,11 +951,15 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
         output = str(phase.get("output") or "").strip()
         if not objective or not output:
             continue
-        selected_skills = validate_selected_skills(lead, phase.get("skill_ids", []), 3)
+        task_kind = phase.get("task_kind")
+        if task_kind not in TASK_KINDS:
+            task_kind = default_task_kind(valid_leads[lead])
+        selected_skills = validate_selected_skills(lead, phase.get("skill_ids", []), 3, task_kind=task_kind)
         phases.append({
             "id": str(phase.get("id") or f"phase-{index}")[:80],
             "department": valid_leads[lead],
             "lead_id": lead,
+            "task_kind": task_kind,
             "objective": objective[:800],
             "output": output[:500],
             "handoff_to": str(phase.get("handoff_to") or "")[:40] or None,
@@ -926,21 +1017,85 @@ def store_execution_plan(db: sqlite3.Connection, task_id: str, plan: dict) -> No
         "ON CONFLICT(task_id) DO UPDATE SET plan_json=excluded.plan_json, summary=excluded.summary, updated_at=excluded.updated_at",
         (task_id, json.dumps(plan, ensure_ascii=False), summary, now, now),
     )
+    db.execute("DELETE FROM task_phases WHERE task_id = ?", (task_id,))
     for sequence, phase in enumerate(plan.get("phases", []), 1):
         lead = phase.get("lead_id")
         if lead not in registry():
             continue
+        phase_id = str(phase.get("id") or f"phase-{sequence}")[:80]
+        dependencies = [str(item)[:80] for item in phase.get("depends_on", []) if isinstance(item, str)]
+        skill_ids = validate_selected_skills(lead, phase.get("skill_ids", []), 3)
+        db.execute(
+            "INSERT INTO task_phases "
+            "(task_id, phase_id, parent_phase_id, department, owner_id, task_kind, objective, expected_output, handoff_to, "
+            "dependencies, skill_ids, status, artifact_ids, source, sequence, created_at, updated_at) "
+            "VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', '[]', 'plan', ?, ?, ?)",
+            (
+                task_id, phase_id, registry()[lead]["team"], lead,
+                phase.get("task_kind") or default_task_kind(registry()[lead]["team"]),
+                str(phase.get("objective") or "")[:800], str(phase.get("output") or "")[:500],
+                phase.get("handoff_to"), json.dumps(dependencies, ensure_ascii=False),
+                json.dumps(skill_ids, ensure_ascii=False), sequence * 100, now, now,
+            ),
+        )
         db.execute(
             "INSERT INTO task_agent_scopes (task_id, employee_id, assignment, skill_ids, deliverable, handoff_to, dependencies, sequence) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id, employee_id) DO UPDATE SET "
             "assignment=excluded.assignment, skill_ids=excluded.skill_ids, deliverable=excluded.deliverable, handoff_to=excluded.handoff_to, "
             "dependencies=excluded.dependencies, sequence=excluded.sequence",
             (
-                task_id, lead, str(phase.get("objective") or "")[:800], json.dumps(phase.get("skill_ids", []), ensure_ascii=False),
+                task_id, lead, str(phase.get("objective") or "")[:800], json.dumps(skill_ids, ensure_ascii=False),
                 str(phase.get("output") or "")[:500], phase.get("handoff_to"),
-                json.dumps(phase.get("depends_on", []), ensure_ascii=False), sequence,
+                json.dumps(dependencies, ensure_ascii=False), sequence,
             ),
         )
+
+
+def assert_completion_invariants(
+    db: sqlite3.Connection,
+    task_id: str,
+    workspace: Path,
+    *,
+    current_job_id: str | None = None,
+) -> dict:
+    final = db.execute(
+        "SELECT * FROM deliverables WHERE task_id = ? AND status IN ('final_candidate', 'approved') "
+        "ORDER BY updated_at DESC LIMIT 1",
+        (task_id,),
+    ).fetchone()
+    if not final:
+        raise RuntimeError("Completion requires a final deliverable")
+    path = (workspace / final["path"]).resolve()
+    if not path.is_relative_to(workspace) or not path.is_file() or path.stat().st_size == 0:
+        raise RuntimeError("Completion requires a non-empty final deliverable file")
+    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual_hash != final["artifact_sha256"]:
+        raise RuntimeError("Final deliverable hash does not match the recorded artifact")
+    incomplete = db.execute(
+        "SELECT phase_id, status FROM task_phases WHERE task_id = ? "
+        "AND status NOT IN ('completed', 'skipped') ORDER BY sequence LIMIT 1",
+        (task_id,),
+    ).fetchone()
+    if incomplete:
+        raise RuntimeError(f"Completion blocked by phase {incomplete['phase_id']} ({incomplete['status']})")
+    active = db.execute(
+        "SELECT id FROM jobs WHERE task_id = ? AND id != COALESCE(?, '') "
+        "AND state IN ('queued','running','pause_requested','cancel_requested') LIMIT 1",
+        (task_id, current_job_id),
+    ).fetchone()
+    if active:
+        raise RuntimeError(f"Completion blocked by active job {active['id']}")
+    review = db.execute(
+        "SELECT reviewer_id FROM reviews WHERE task_id = ? AND verdict = 'pass' ORDER BY created_at DESC LIMIT 1",
+        (task_id,),
+    ).fetchone()
+    if not review:
+        raise RuntimeError("Completion requires a passing independent review")
+    plan_row = db.execute("SELECT plan_json FROM task_plans WHERE task_id = ?", (task_id,)).fetchone()
+    final_owner = json.loads(plan_row["plan_json"]).get("final_owner") if plan_row else None
+    if final_owner and review["reviewer_id"] == final_owner:
+        raise RuntimeError("Final owner cannot approve their own deliverable")
+    return dict(final)
 
 
 def fallback_execution_plan(roster: list[str], items: list[tuple[str, str]]) -> dict:
@@ -958,6 +1113,7 @@ def fallback_execution_plan(roster: list[str], items: list[tuple[str, str]]) -> 
                 "id": f"fallback-{index}",
                 "department": registry()[lead]["team"],
                 "lead_id": lead,
+                "task_kind": default_task_kind(registry()[lead]["team"]),
                 "objective": next((description for owner, description in items if owner == lead), "요청을 재검토한다."),
                 "output": "검증 가능한 부서 산출물",
                 "handoff_to": leads[0],
@@ -1289,7 +1445,8 @@ def queue_lead_review(task_id: str) -> dict:
         workspace = db.execute("SELECT id FROM workspaces WHERE task_id = ? ORDER BY created_at DESC LIMIT 1", (task_id,)).fetchone()
         if not workspace:
             raise HTTPException(409, "Lead review requires a workspace")
-        job = enqueue_job(db, task_id, "lead_review", {"lead_id": lead, "workspace_id": workspace["id"]})
+        reviewer = "LENS" if lead == "GUARD" else "GUARD"
+        job = enqueue_job(db, task_id, "lead_review", {"lead_id": lead, "reviewer_id": reviewer, "workspace_id": workspace["id"]})
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("lead_review_running", utc_now(), task_id))
         return job | {"task": task_payload(db, task_id)}
 
@@ -1423,6 +1580,25 @@ def pause_task(task_id: str) -> dict:
         return task_payload(db, task_id)
 
 
+@app.post("/api/tasks/{task_id}/steer", status_code=202)
+def steer_task(task_id: str, payload: SteeringInput) -> dict:
+    with database() as db:
+        task = task_payload(db, task_id)
+        if task["state"] in {"completed", "cancelled"}:
+            raise HTTPException(409, "Completed or cancelled task cannot receive new instructions")
+        now = utc_now()
+        cursor = db.execute(
+            "INSERT INTO steering_messages (task_id, content, status, created_at, applied_at) "
+            "VALUES (?, ?, 'queued', ?, NULL)",
+            (task_id, payload.content.strip(), now),
+        )
+        emit_job_event(
+            db, task_id, "steering.queued", "사용자 추가 지시가 활성 작업에 등록되었습니다.",
+            payload={"steering_id": cursor.lastrowid},
+        )
+        return {"id": cursor.lastrowid, "task_id": task_id, "status": "queued", "created_at": now}
+
+
 @app.post("/api/tasks/{task_id}/resume")
 def resume_task(task_id: str) -> dict:
     with database() as db:
@@ -1525,6 +1701,28 @@ def select_workers(task_id: str, payload: SelectionInput) -> dict:
         now = utc_now(); assignments = list(dict.fromkeys(lead_ids + selected))
         db.execute("DELETE FROM task_assignments WHERE task_id = ?", (task_id,))
         db.executemany("INSERT INTO task_assignments VALUES (?, ?)", [(task_id, employee_id) for employee_id in assignments])
+        placeholders = ",".join("?" for _ in assignments)
+        db.execute(
+            f"UPDATE task_phases SET status = CASE "
+            f"WHEN owner_id IN ({placeholders}) THEN 'assigned' WHEN source = 'meeting' THEN 'skipped' ELSE status END, "
+            "updated_at = ? WHERE task_id = ?",
+            (*assignments, now, task_id),
+        )
+        skipped = {
+            row["phase_id"]
+            for row in db.execute(
+                "SELECT phase_id FROM task_phases WHERE task_id = ? AND status = 'skipped'",
+                (task_id,),
+            )
+        }
+        if skipped:
+            rows = list(db.execute("SELECT phase_id, dependencies FROM task_phases WHERE task_id = ?", (task_id,)))
+            for row in rows:
+                dependencies = [item for item in json.loads(row["dependencies"]) if item not in skipped]
+                db.execute(
+                    "UPDATE task_phases SET dependencies = ?, updated_at = ? WHERE task_id = ? AND phase_id = ?",
+                    (json.dumps(dependencies, ensure_ascii=False), now, task_id, row["phase_id"]),
+                )
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("assigned", now, task_id))
         db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "worker_selection", task["state"], "assigned", "USER", "User selected worker agents", json.dumps(selected), now))
         return task_payload(db, task_id)
@@ -1630,6 +1828,20 @@ def decide_approval(task_id: str, payload: ApprovalInput) -> dict:
             raise HTTPException(409, "Task is not awaiting approval")
         if not any(item["type"] == "lead_review" and item["status"] == "pass" for item in task["evidence"]):
             raise HTTPException(409, "Approval requires a passing lead review Job")
+        if payload.decision == "approve":
+            workspace_row = db.execute(
+                "SELECT * FROM workspaces WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
+                (task_id,),
+            ).fetchone()
+            if not workspace_row:
+                raise HTTPException(409, "Approval requires a workspace containing the final deliverable")
+            workspace, allowed, reason = validate_task_workspace(workspace_row)
+            if not allowed:
+                raise HTTPException(409, reason)
+            try:
+                assert_completion_invariants(db, task_id, workspace)
+            except RuntimeError as error:
+                raise HTTPException(409, str(error)) from error
         count = db.execute("SELECT COUNT(*) FROM approvals WHERE task_id = ?", (task_id,)).fetchone()[0] + 1
         approval_id = f"APR-{task_id.split('-')[-1]}-{count:02d}"
         now = utc_now()
@@ -1725,9 +1937,19 @@ def command(task_id: str, payload: Command) -> dict:
         if payload.action in {"meeting", "assign", "run", "team_review", "cross_review", "verify", "approval"} and not selected:
             raise HTTPException(409, "Select at least one employee before this command")
         if payload.action == "complete":
-            passed = db.execute("SELECT COUNT(*) FROM evidence WHERE task_id = ? AND status = 'pass' AND stale = 0", (task_id,)).fetchone()[0]
-            if passed == 0:
-                raise HTTPException(409, "Completion requires fresh passing Evidence Ledger entries")
+            workspace_row = db.execute(
+                "SELECT * FROM workspaces WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
+                (task_id,),
+            ).fetchone()
+            if not workspace_row:
+                raise HTTPException(409, "Completion requires a workspace containing the final deliverable")
+            workspace, allowed, reason = validate_task_workspace(workspace_row)
+            if not allowed:
+                raise HTTPException(409, reason)
+            try:
+                assert_completion_invariants(db, task_id, workspace)
+            except RuntimeError as error:
+                raise HTTPException(409, str(error)) from error
         if payload.employee_ids:
             db.execute("DELETE FROM task_assignments WHERE task_id = ?", (task_id,))
             db.executemany("INSERT INTO task_assignments VALUES (?, ?)", [(task_id, employee) for employee in selected])
@@ -1804,7 +2026,20 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         else:
             artifact_kind, artifact_standard = deliverable_spec(effective_request)
         boundary = department_policy(payload.employee_id)
-        skill_context = employee_skill_context(payload.employee_id, effective_request, selected_skill_ids=payload.skill_ids or None)
+        active_phase = next(
+            (
+                phase for phase in task.get("phases", [])
+                if phase["owner_id"] == payload.employee_id and phase["status"] not in {"completed", "skipped"}
+            ),
+            None,
+        )
+        task_kind = (active_phase or {}).get("task_kind") or default_task_kind(role["team"])
+        skill_context = employee_skill_context(
+            payload.employee_id,
+            effective_request,
+            selected_skill_ids=payload.skill_ids or None,
+            task_kind=task_kind,
+        )
         settings = model_settings()
         model = settings[role["model_role"]]
         changed_files: list[str] = []
@@ -1814,6 +2049,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         required_skill_ids = {skill["id"] for skill in skill_context["required_skills"]}
         applied_skill_ids: set[str] = set()
         skill_paths = {skill["id"]: ROOT / skill["path"] for skill in skill_context["required_skills"]}
+        bounded_tools = WorkspaceAgentTools(workspace, task["contract"]["allowed_paths"])
         tools = [
             {"type": "function", "name": "read_required_skill", "description": "Read one task-relevant skill immediately before using it. Do not read unrelated skills.", "parameters": {"type": "object", "properties": {"skill_id": {"type": "string", "enum": sorted(required_skill_ids)}}, "required": ["skill_id"], "additionalProperties": False}},
             {"type": "function", "name": "list_files", "description": "List files in the assigned project workspace.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
@@ -1823,8 +2059,27 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             {"type": "function", "name": "web_search", "description": "Discover candidate public sources. Search snippets are not evidence; read selected originals with read_web_source.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "minLength": 2, "maxLength": 300}}, "required": ["query"], "additionalProperties": False}},
             {"type": "function", "name": "read_web_source", "description": "Read and verify the original public page for a selected source URL.", "parameters": {"type": "object", "properties": {"url": {"type": "string", "minLength": 8, "maxLength": 2000}}, "required": ["url"], "additionalProperties": False}},
         ]
+        tools.extend(tool_definitions())
+        allowed_commands = set(task["contract"]["allowed_commands"])
+        enabled_bounded_tools = {
+            "search_files", "replace_exact_text", "git_status", "git_diff", "fetch_public_source",
+        }
+        if "git commit *" in allowed_commands:
+            enabled_bounded_tools.add("git_commit")
+        if "git push *" in allowed_commands:
+            enabled_bounded_tools.add("git_push")
+        tools = [
+            tool for tool in tools
+            if tool["name"] not in {"git_commit", "git_push"} or tool["name"] in enabled_bounded_tools
+        ]
         if not allow_workspace_context:
-            tools = [tool for tool in tools if tool["name"] not in {"list_files", "read_file", "write_file", "run_verification"}]
+            tools = [
+                tool for tool in tools
+                if tool["name"] not in {
+                    "list_files", "read_file", "write_file", "run_verification",
+                    "search_files", "replace_exact_text", "git_status", "git_diff", "git_commit", "git_push",
+                }
+            ]
         mcp_tool_map: dict[str, tuple[sqlite3.Row, str, str | None]] = {}
         for connection in db.execute("SELECT * FROM mcp_connections WHERE status IN ('configured', 'connected')"):
             try:
@@ -1847,7 +2102,8 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             + ("This is a research task: follow the evidence strategy, discover candidates with web_search, read selected original pages with read_web_source, then cite verified URLs. Search snippets alone are not evidence. " if research_task else "")
             + ("Workspace files are intentionally unavailable for this task. Do not infer user needs from unrelated local files. " if not allow_workspace_context else "")
             + "Only task-relevant skills are available. Read a skill only when it directly supports the bounded assignment. "
-            "Use tools before claiming a change. Never access credentials, parent folders, or delete unrelated files. Use web_search for external research; cite returned URLs and never invent sources. Network access beyond web_search is allowed only through configured MCP tools. "
+            "Use search_files before broad file reads, replace_exact_text for surgical edits, git_diff to inspect changes, and verification commands before claiming implementation success. "
+            "Never access credentials, parent folders, or delete unrelated files. Use web_search for discovery and fetch_public_source or read_web_source for original evidence; cite returned URLs and never invent sources. "
             "For leads: inspect work, give precise review or debugging changes. For workers: implement smallest safe change. "
             "Finish with Korean summary: changed files, verification run, remaining risk."
         )
@@ -1855,6 +2111,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             "permissions": skill_context["permissions"],
             "required_skills": [{"id": skill["id"], "path": skill["path"]} for skill in skill_context["required_skills"]],
         }
+        initial_steering = consume_steering_messages(db, task_id)
         context = json.dumps({
             "task": task["title"],
             "request": effective_request,
@@ -1866,6 +2123,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             "evidence_strategy": evidence_strategy,
             "deliverable_standard": artifact_standard,
             "skill_context": skill_manifest,
+            "user_steering": initial_steering,
         }, ensure_ascii=False)
         total_input_tokens = 0
         total_output_tokens = 0
@@ -1891,6 +2149,25 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             for _ in range(12):
                 calls = [item for item in response.output if getattr(item, "type", "") == "function_call"]
                 if not calls:
+                    steering = consume_steering_messages(db, task_id)
+                    if steering:
+                        db.commit()
+                        response = cancellable_model_response(
+                            client,
+                            task_id,
+                            payload.job_id,
+                            model=model,
+                            input=json.dumps({
+                                "original_context": json.loads(context),
+                                "prior_output": response.output_text,
+                                "new_user_steering": steering,
+                                "tool_history": tool_history,
+                            }, ensure_ascii=False),
+                            tools=tools,
+                            instructions=instructions + " Apply the new user steering without discarding valid completed work.",
+                        )
+                        add_usage(response)
+                        continue
                     break
                 outputs = []
                 for call in calls:
@@ -1953,6 +2230,38 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                                 (f"EVD-{task_id.split('-')[-1]}-WEB-{source_hash[:12]}", task_id, None, "verified_web_source", "pass", source_hash, 0, now),
                             )
                             result = source
+                        elif call.name in {
+                            "search_files", "replace_exact_text", "git_status", "git_diff",
+                            "git_commit", "git_push", "fetch_public_source",
+                        }:
+                            if call.name not in enabled_bounded_tools:
+                                raise HTTPException(403, f"{call.name} is not granted by TaskContract")
+                            try:
+                                result = bounded_tools.dispatch(call.name, args)
+                            except AgentToolError as error:
+                                raise HTTPException(error.status_code, str(error)) from error
+                            if call.name == "replace_exact_text":
+                                relative = result["path"]
+                                if relative not in changed_files:
+                                    changed_files.append(relative)
+                            elif call.name == "git_commit":
+                                command_results.append({"command": "git commit", "exit_code": 0, "commit": result["commit"]})
+                            elif call.name == "git_push":
+                                command_results.append({"command": "git push", "exit_code": 0, "branch": result["branch"]})
+                            elif call.name == "fetch_public_source":
+                                verified_web_sources += 1
+                                now = utc_now()
+                                db.execute(
+                                    "INSERT INTO research_sources "
+                                    "(task_id, employee_id, query, title, url, snippet, created_at) "
+                                    "VALUES (?, ?, 'verified-original', ?, ?, ?, ?)",
+                                    (task_id, payload.employee_id, result["title"], result["url"], result["text"][:1000], now),
+                                )
+                                source_hash = hashlib.sha256((result["url"] + result["text"]).encode("utf-8")).hexdigest()
+                                db.execute(
+                                    "INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    (f"EVD-{task_id.split('-')[-1]}-WEB-{source_hash[:12]}", task_id, None, "verified_web_source", "pass", source_hash, 0, now),
+                                )
                         elif call.name in mcp_tool_map:
                             connection, remote_name, session_id = mcp_tool_map[call.name]
                             result, next_session = mcp_http_call(connection, "tools/call", {"name": remote_name, "arguments": args}, session_id)
@@ -1983,6 +2292,18 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                         output_summary = f"{args.get('query', '')} · {len(result.get('sources', []))}개 후보"
                     elif call.name == "read_web_source" and isinstance(result, dict):
                         output_summary = f"원문 확인 · {result.get('title', '')} · {result.get('url', '')}"
+                    elif call.name == "search_files" and isinstance(result, dict):
+                        output_summary = f"{args.get('query', '')} · {len(result.get('results', []))}개 코드 위치"
+                    elif call.name == "replace_exact_text" and isinstance(result, dict):
+                        output_summary = f"{result.get('path', '')} · {result.get('replacements', 0)}개 정밀 수정"
+                    elif call.name in {"git_status", "git_diff"}:
+                        output_summary = f"{call.name} 완료"
+                    elif call.name == "git_commit" and isinstance(result, dict):
+                        output_summary = f"git commit · {result.get('commit', '')[:12]}"
+                    elif call.name == "git_push" and isinstance(result, dict):
+                        output_summary = f"git push · {result.get('remote', '')}/{result.get('branch', '')}"
+                    elif call.name == "fetch_public_source" and isinstance(result, dict):
+                        output_summary = f"원문 확인 · {result.get('title', '')} · {result.get('url', '')}"
                     db.execute(
                         "INSERT INTO tool_calls (task_id, job_id, agent_id, tool_name, input_summary, output_summary, status, duration_ms, created_at) "
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -2006,7 +2327,21 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                 db.commit()
                 # OpenRouter Responses API rejects previous_response_id. Continue statelessly
                 # with the complete explicit tool transcript instead.
-                response = cancellable_model_response(client, task_id, payload.job_id, model=model, input=json.dumps({"original_context": json.loads(context), "tool_history": tool_history}, ensure_ascii=False), tools=tools, instructions=instructions)
+                steering = consume_steering_messages(db, task_id)
+                db.commit()
+                response = cancellable_model_response(
+                    client,
+                    task_id,
+                    payload.job_id,
+                    model=model,
+                    input=json.dumps({
+                        "original_context": json.loads(context),
+                        "tool_history": tool_history,
+                        "new_user_steering": steering,
+                    }, ensure_ascii=False),
+                    tools=tools,
+                    instructions=instructions,
+                )
                 add_usage(response)
             else:
                 # Stop an endless tool-call loop without treating partial work as

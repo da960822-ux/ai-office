@@ -236,7 +236,17 @@ def process_meeting(job: dict) -> None:
         available = worker_candidates_for_lead(employee, task["request"]) if employee != "NAVI" else []
         scope = next((item for item in task.get("agent_scopes", []) if item["employee_id"] == employee), None)
         selected_skill_ids = scope.get("skill_ids", []) if scope else []
-        skill_context = main.employee_skill_context(employee, task["request"], selected_skill_ids=selected_skill_ids) if selected_skill_ids else {"required_skills": []}
+        current_plan = task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else {}
+        lead_phase = next((phase for phase in current_plan.get("phases", []) if phase.get("lead_id") == employee), None)
+        phase_task_kind = (lead_phase or {}).get("task_kind") or (
+            main.default_task_kind(main.registry()[employee]["team"]) if employee != "NAVI" else "general"
+        )
+        skill_context = main.employee_skill_context(
+            employee,
+            task["request"],
+            selected_skill_ids=selected_skill_ids,
+            task_kind=phase_task_kind,
+        ) if selected_skill_ids else {"required_skills": []}
         if available:
             boundary = main.department_policy(employee)
             bindings = json.loads(main.SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))
@@ -278,8 +288,16 @@ def process_meeting(job: dict) -> None:
                     if worker_id in allowed and description:
                         bound = set(bindings[worker_id]["required"] + bindings[worker_id]["optional"])
                         skill_ids = [skill for skill in assignment.get("skill_ids", []) if skill in bound][:3]
+                        try:
+                            skill_ids = main.validate_selected_skills(
+                                worker_id, skill_ids, 3, task_kind=phase_task_kind,
+                            )
+                        except main.HTTPException:
+                            skill_ids = []
                         worker_proposals.append({
                             "worker_id": worker_id,
+                            "proposer_id": employee,
+                            "task_kind": phase_task_kind,
                             "description": description[:500],
                             "skill_ids": skill_ids,
                             "deliverable": str(assignment.get("deliverable") or "부서 초안")[:500],
@@ -291,6 +309,8 @@ def process_meeting(job: dict) -> None:
             if not any(item["worker_id"] in {candidate[0] for candidate in available} for item in worker_proposals):
                 worker_proposals.append({
                     "worker_id": employee,
+                    "proposer_id": employee,
+                    "task_kind": phase_task_kind,
                     "description": f"{employee} 팀장 직접 재검토 범위",
                     "skill_ids": [],
                     "deliverable": "검증 가능한 부서 초안",
@@ -313,35 +333,78 @@ def process_meeting(job: dict) -> None:
     with main.database() as db:
         db.execute("UPDATE meetings SET status = ?, decisions = ? WHERE id = ?", ("concluded", json.dumps(["실제 모델 발언 기록 완료"], ensure_ascii=False), job["payload"]["meeting_id"]))
         leads = [employee for employee in participants if employee != "NAVI"]
-        candidates = list({item["worker_id"]: item for item in worker_proposals}.values())
+        proposed_candidates = list({item["worker_id"]: item for item in worker_proposals}.values())
+        plan = main.task_payload(db, job["task_id"]).get("execution_plan", {}).get("plan") or {}
+        planned_candidates = [
+            {
+                "phase_id": phase["id"],
+                "worker_id": phase["lead_id"], "description": phase["objective"],
+                "task_kind": phase.get("task_kind") or main.default_task_kind(phase["department"]),
+                "skill_ids": phase.get("skill_ids", []), "deliverable": phase["output"],
+                "handoff_to": phase.get("handoff_to") or plan.get("final_owner") or phase["lead_id"],
+                "depends_on": phase.get("depends_on", []),
+                "source": "plan",
+            }
+            for phase in plan.get("phases", []) if phase.get("lead_id") in leads
+        ]
+        delegated_candidates = []
+        for proposal_index, proposal in enumerate(proposed_candidates, 1):
+            proposer_id = proposal.get("proposer_id") or proposal["handoff_to"]
+            parent = next((item for item in planned_candidates if item["worker_id"] == proposer_id), None)
+            phase_id = f"{parent['phase_id'] if parent else 'meeting'}-worker-{proposal_index}"[:80]
+            proposal = proposal | {
+                "phase_id": phase_id,
+                "parent_phase_id": parent["phase_id"] if parent else None,
+                "source": "meeting",
+                "depends_on": list(dict.fromkeys([
+                    *(parent["depends_on"] if parent else []),
+                    *proposal.get("depends_on", []),
+                ])),
+                "task_kind": proposal.get("task_kind") or (parent or {}).get("task_kind") or "general",
+            }
+            delegated_candidates.append(proposal)
+        # A valid lead delegation defines the execution roster. Planned lead
+        # phases remain accountable integration records, not worker placeholders.
+        candidates = delegated_candidates or planned_candidates
         if not candidates:
             candidates = [
                 {
+                    "phase_id": f"meeting-lead-{index}",
                     "worker_id": lead,
+                    "task_kind": main.default_task_kind(main.registry()[lead]["team"]),
                     "description": f"{lead} 팀장 직접 재검토 범위",
                     "skill_ids": [],
                     "deliverable": "검증 가능한 부서 초안",
                     "handoff_to": lead,
                     "depends_on": [],
+                    "source": "meeting",
                 }
-                for lead in leads
+                for index, lead in enumerate(leads, 1)
             ]
-        plan = main.task_payload(db, job["task_id"]).get("execution_plan", {}).get("plan") or {}
-        planned_candidates = [
-            {
-                "worker_id": phase["lead_id"], "description": phase["objective"],
-                "skill_ids": phase.get("skill_ids", []), "deliverable": phase["output"],
-                "handoff_to": phase.get("handoff_to") or plan.get("final_owner") or phase["lead_id"],
-                "depends_on": phase.get("depends_on", []),
-            }
-            for phase in plan.get("phases", []) if phase.get("lead_id") in leads
-        ]
-        if planned_candidates:
-            candidates = planned_candidates
         db.execute("DELETE FROM action_items WHERE task_id = ?", (job["task_id"],))
+        db.execute("DELETE FROM task_agent_scopes WHERE task_id = ?", (job["task_id"],))
         contract = main.task_payload(db, job["task_id"])["contract"]
         for index, scope in enumerate(candidates, 1):
             owner, description = scope["worker_id"], scope["description"]
+            if scope.get("source") == "meeting":
+                parent_row = db.execute(
+                    "SELECT sequence FROM task_phases WHERE task_id = ? AND phase_id = ?",
+                    (job["task_id"], scope.get("parent_phase_id")),
+                ).fetchone()
+                sequence = max(1, (parent_row["sequence"] if parent_row else index * 100) - 10 + index)
+                db.execute(
+                    "INSERT OR REPLACE INTO task_phases "
+                    "(task_id, phase_id, parent_phase_id, department, owner_id, task_kind, objective, expected_output, handoff_to, "
+                    "dependencies, skill_ids, status, artifact_ids, source, sequence, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', '[]', 'meeting', ?, ?, ?)",
+                    (
+                        job["task_id"], scope["phase_id"], scope.get("parent_phase_id"),
+                        main.registry()[owner]["team"], owner, scope.get("task_kind") or "general",
+                        description, scope["deliverable"],
+                        scope["handoff_to"], json.dumps(scope["depends_on"], ensure_ascii=False),
+                        json.dumps(scope["skill_ids"], ensure_ascii=False), sequence, main.utc_now(), main.utc_now(),
+                    ),
+                )
             db.execute("INSERT INTO action_items VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (f"ACT-{job['task_id'].split('-')[-1]}-{index:02d}", job["task_id"], job["payload"]["meeting_id"], owner, description, index, json.dumps(contract["acceptance_criteria"]), "proposed"))
             db.execute(
                 "INSERT INTO task_agent_scopes (task_id, employee_id, assignment, skill_ids, deliverable, handoff_to, dependencies, sequence) "
@@ -359,7 +422,20 @@ def process_meeting(job: dict) -> None:
 
 def process_execute(job: dict) -> None:
     payload = job["payload"]
-    for index, employee in enumerate(payload["employee_ids"], 1):
+    with main.database() as db:
+        phase_order = {
+            row["owner_id"]: row["first_sequence"]
+            for row in db.execute(
+                "SELECT owner_id, MIN(sequence) AS first_sequence FROM task_phases "
+                "WHERE task_id = ? AND status NOT IN ('completed','skipped') GROUP BY owner_id",
+                (job["task_id"],),
+            )
+        }
+    employees = sorted(
+        dict.fromkeys(payload["employee_ids"]),
+        key=lambda employee: (phase_order.get(employee, 1_000_000), payload["employee_ids"].index(employee)),
+    )
+    for index, employee in enumerate(employees, 1):
         if not safe_point(job):
             return
         with main.database() as db:
@@ -369,6 +445,43 @@ def process_execute(job: dict) -> None:
             scope = db.execute("SELECT * FROM task_agent_scopes WHERE task_id = ? AND employee_id = ?", (job["task_id"], employee)).fetchone()
             skill_ids = json.loads(scope["skill_ids"]) if scope else []
             handoff = f"Handoff to {scope['handoff_to']}: {scope['deliverable']}" if scope else "Return a verifiable department contribution."
+            employee_phases = list(db.execute(
+                "SELECT * FROM task_phases WHERE task_id = ? AND owner_id = ? "
+                "AND status NOT IN ('completed','skipped') ORDER BY sequence",
+                (job["task_id"], employee),
+            ))
+            dependencies = list(dict.fromkeys(
+                item
+                for phase in employee_phases
+                for item in json.loads(phase["dependencies"])
+            ))
+            missing_dependencies = []
+            for dependency in dependencies:
+                dependency_row = db.execute(
+                    "SELECT status, artifact_ids FROM task_phases WHERE task_id = ? AND phase_id = ?",
+                    (job["task_id"], dependency),
+                ).fetchone()
+                if (
+                    not dependency_row
+                    or dependency_row["status"] != "completed"
+                    or not json.loads(dependency_row["artifact_ids"])
+                ):
+                    missing_dependencies.append(dependency)
+            if missing_dependencies:
+                detail = f"Missing upstream phase artifacts: {', '.join(missing_dependencies)}"
+                db.execute("UPDATE tasks SET state = 'blocked', updated_at = ? WHERE id = ?", (main.utc_now(), job["task_id"]))
+                db.execute("UPDATE action_items SET status = 'blocked' WHERE task_id = ? AND owner = ?", (job["task_id"], employee))
+                main.emit_job_event(
+                    db, job["task_id"], "phase.blocked", detail,
+                    job_id=job["id"], agent_id=employee,
+                    payload={"missing_dependencies": missing_dependencies},
+                )
+                return
+            db.execute(
+                "UPDATE task_phases SET status = 'running', updated_at = ? "
+                "WHERE task_id = ? AND owner_id = ? AND status NOT IN ('completed','skipped')",
+                (main.utc_now(), job["task_id"], employee),
+            )
             plan = main.task_payload(db, job["task_id"]).get("execution_plan", {}).get("plan") or {}
             phase_by_id = {phase["id"]: phase for phase in plan.get("phases", [])}
             dependency_owners = [phase_by_id[item]["lead_id"] for item in (json.loads(scope["dependencies"]) if scope else []) if item in phase_by_id]
@@ -414,6 +527,23 @@ def process_execute(job: dict) -> None:
         with main.database() as db:
             db.execute("UPDATE agent_runs SET state = 'succeeded', finished_at = ?, summary = ? WHERE id = ?", (main.utc_now(), result["summary"][:2000], run_id))
             db.execute("UPDATE action_items SET status = 'completed' WHERE task_id = ? AND owner = ?", (job["task_id"], employee))
+            artifact_ids = json.dumps([result["deliverable"]["id"]], ensure_ascii=False)
+            completed_phases = list(db.execute(
+                "SELECT phase_id, parent_phase_id FROM task_phases WHERE task_id = ? AND owner_id = ? AND status = 'running'",
+                (job["task_id"], employee),
+            ))
+            db.execute(
+                "UPDATE task_phases SET status = 'completed', artifact_ids = ?, updated_at = ? "
+                "WHERE task_id = ? AND owner_id = ? AND status = 'running'",
+                (artifact_ids, main.utc_now(), job["task_id"], employee),
+            )
+            for phase in completed_phases:
+                if phase["parent_phase_id"]:
+                    db.execute(
+                        "UPDATE task_phases SET status = 'completed', artifact_ids = ?, updated_at = ? "
+                        "WHERE task_id = ? AND phase_id = ?",
+                        (artifact_ids, main.utc_now(), job["task_id"], phase["parent_phase_id"]),
+                    )
             db.execute("INSERT INTO tool_calls (task_id, job_id, agent_id, tool_name, input_summary, output_summary, status, duration_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (job["task_id"], job["id"], employee, "agent_run", "격리 작업공간에서 에이전트 실행", result["summary"][:500], "pass", None, main.utc_now()))
             record_step(db, job, index, "agent_run", "succeeded", result["summary"])
             main.emit_job_event(db, job["task_id"], "agent.completed", result["summary"], job_id=job["id"], agent_id=employee, payload={"zone": "desk", "action": "work"})
@@ -475,7 +605,14 @@ def process_synthesize(job: dict) -> None:
     role = main.agent_role(lead)
     final_scope = next((item for item in task.get("agent_scopes", []) if item["employee_id"] == lead), None)
     final_skill_ids = final_scope.get("skill_ids", []) if final_scope else []
-    final_skill_context = main.employee_skill_context(lead, task["request"], selected_skill_ids=final_skill_ids) if final_skill_ids else {"required_skills": []}
+    final_phase = next((phase for phase in task.get("phases", []) if phase["owner_id"] == lead), None)
+    final_task_kind = (final_phase or {}).get("task_kind") or main.default_task_kind(main.registry()[lead]["team"])
+    final_skill_context = main.employee_skill_context(
+        lead,
+        task["request"],
+        selected_skill_ids=final_skill_ids,
+        task_kind=final_task_kind,
+    ) if final_skill_ids else {"required_skills": []}
     response = main.cancellable_model_response(
         main.model_client(),
         job["task_id"],
@@ -516,17 +653,27 @@ def process_synthesize(job: dict) -> None:
             status="final_candidate",
         )
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (job["task_id"], lead, "synthesis", content, main.utc_now()))
-        review_job = main.enqueue_job(db, job["task_id"], "lead_review", {"lead_id": lead, "workspace_id": workspace_id})
+        reviewer = "LENS" if lead == "GUARD" else "GUARD"
+        review_job = main.enqueue_job(
+            db,
+            job["task_id"],
+            "lead_review",
+            {"lead_id": lead, "reviewer_id": reviewer, "workspace_id": workspace_id},
+        )
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("lead_review_running", main.utc_now(), job["task_id"]))
         main.emit_job_event(db, job["task_id"], "synthesis.completed", f"최종 산출물 생성: {final['path']}", job_id=job["id"], agent_id=lead, payload={"deliverable": final})
-        main.emit_job_event(db, job["task_id"], "review.queued", "최종 파일 기준 팀장 리뷰를 시작합니다.", job_id=review_job["id"], agent_id=lead)
+        main.emit_job_event(db, job["task_id"], "review.queued", "최종 파일 기준 독립 리뷰를 시작합니다.", job_id=review_job["id"], agent_id=reviewer)
 
 
 def process_review(job: dict) -> None:
-    lead = job["payload"]["lead_id"]; role = main.agent_role(lead); model = main.model_settings()[role["model_role"]]
+    lead = job["payload"]["lead_id"]
+    reviewer = job["payload"].get("reviewer_id") or ("LENS" if lead == "GUARD" else "GUARD")
+    if reviewer == lead:
+        raise RuntimeError("Final owner cannot review their own deliverable")
+    role = main.agent_role(reviewer); model = main.model_settings()[role["model_role"]]
     with main.database() as db:
         task = main.task_payload(db, job["task_id"])
-        main.emit_job_event(db, job["task_id"], "review.started", "팀장 실제 리뷰 시작", job_id=job["id"], agent_id=lead, payload={"zone": "qa", "action": "review"})
+        main.emit_job_event(db, job["task_id"], "review.started", "독립 검증팀 실제 리뷰 시작", job_id=job["id"], agent_id=reviewer, payload={"zone": "qa", "action": "review"})
         final = next((item for item in task["deliverables"] if item["status"] == "final_candidate"), None)
         if not final:
             raise RuntimeError("Lead review requires a final_candidate deliverable")
@@ -575,9 +722,15 @@ def process_review(job: dict) -> None:
     with main.database() as db:
         count = db.execute("SELECT COUNT(*) FROM reviews WHERE task_id = ?", (job["task_id"],)).fetchone()[0] + 1
         review_id = f"REV-{job['task_id'].split('-')[-1]}-{count:02d}"
-        db.execute("INSERT INTO reviews VALUES (?, ?, ?, ?, ?, ?)", (review_id, job["task_id"], lead, verdict, findings, main.utc_now()))
+        db.execute("INSERT INTO reviews VALUES (?, ?, ?, ?, ?, ?)", (review_id, job["task_id"], reviewer, verdict, findings, main.utc_now()))
         db.execute("INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (f"EVD-{job['task_id'].split('-')[-1]}-LEAD-REVIEW", job["task_id"], None, "lead_review", "pass" if verdict == "pass" else "fail", main.hashlib.sha256(findings.encode()).hexdigest(), 0, main.utc_now()))
         if verdict == "pass":
+            main.assert_completion_invariants(
+                db,
+                job["task_id"],
+                workspace,
+                current_job_id=job["id"],
+            )
             db.execute("UPDATE deliverables SET status = 'approved', updated_at = ? WHERE id = ?", (main.utc_now(), final["id"]))
             next_state = "completed"
         elif verdict == "blocked":
@@ -596,7 +749,7 @@ def process_review(job: dict) -> None:
             else:
                 next_state = "blocked"
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (next_state, main.utc_now(), job["task_id"]))
-        main.emit_job_event(db, job["task_id"], "review.completed", findings, job_id=job["id"], agent_id=lead, payload={"verdict": verdict, "zone": "qa", "action": "review"})
+        main.emit_job_event(db, job["task_id"], "review.completed", findings, job_id=job["id"], agent_id=reviewer, payload={"verdict": verdict, "zone": "qa", "action": "review"})
 
 
 def process(job: dict) -> None:

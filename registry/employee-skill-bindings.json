@@ -47,11 +47,12 @@
   "MOSS": {
     "required": [
       "ui-ux-pro-max",
-      "impeccable",
-      "design-first-ui-prompting",
-      "humanizer"
+      "design-first-ui-prompting"
     ],
-    "optional": []
+    "optional": [
+      "impeccable",
+      "humanizer"
+    ]
   },
   "BUILD": {
     "required": [
@@ -65,12 +66,13 @@
   "FRONT": {
     "required": [
       "frontend-ui-engineering",
-      "browser-testing-with-devtools",
+      "browser-testing-with-devtools"
+    ],
+    "optional": [
       "ui-ux-pro-max",
       "gsap-react",
       "gsap-performance"
-    ],
-    "optional": []
+    ]
   },
   "BACK": {
     "required": [

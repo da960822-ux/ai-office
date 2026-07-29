@@ -418,7 +418,12 @@
     "source_path": ".claude/skills/ui-ux-pro-max",
     "entry": "SKILL.md",
     "license": "MIT",
-    "install_policy": "auto"
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": ["ui_design", "frontend_implementation"],
+      "blocked_task_kinds": ["market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"],
+      "read_policy": "selected only when assigned phase requires interface design or frontend implementation"
+    }
   },
   "impeccable": {
     "id": "impeccable",
@@ -426,7 +431,12 @@
     "source_path": ".agents/skills/impeccable",
     "entry": "SKILL.md",
     "license": "Apache-2.0",
-    "install_policy": "auto"
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": ["ui_design", "frontend_implementation"],
+      "blocked_task_kinds": ["market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"],
+      "read_policy": "selected only for interface quality and design-system work"
+    }
   },
   "design-first-ui-prompting": {
     "id": "design-first-ui-prompting",
@@ -434,7 +444,12 @@
     "source_path": "agent-skills/ui/design-first-ui-prompting",
     "entry": "SKILL.md",
     "license": "MIT",
-    "install_policy": "auto"
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": ["ui_design", "frontend_implementation"],
+      "blocked_task_kinds": ["market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"],
+      "read_policy": "selected only for interface specification or implementation"
+    }
   },
   "gsap-core": {
     "id": "gsap-core",
@@ -442,7 +457,12 @@
     "source_path": "skills/gsap-core",
     "entry": "SKILL.md",
     "license": "MIT",
-    "install_policy": "auto"
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": ["frontend_implementation"],
+      "blocked_task_kinds": ["market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"],
+      "read_policy": "selected only when motion is an accepted frontend requirement"
+    }
   },
   "gsap-timeline": {
     "id": "gsap-timeline",
@@ -450,7 +470,12 @@
     "source_path": "skills/gsap-timeline",
     "entry": "SKILL.md",
     "license": "MIT",
-    "install_policy": "auto"
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": ["frontend_implementation"],
+      "blocked_task_kinds": ["market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"],
+      "read_policy": "selected only when timeline motion is an accepted frontend requirement"
+    }
   },
   "gsap-react": {
     "id": "gsap-react",
@@ -458,7 +483,12 @@
     "source_path": "skills/gsap-react",
     "entry": "SKILL.md",
     "license": "MIT",
-    "install_policy": "auto"
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": ["frontend_implementation"],
+      "blocked_task_kinds": ["market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"],
+      "read_policy": "selected only when React motion is an accepted frontend requirement"
+    }
   },
   "gsap-performance": {
     "id": "gsap-performance",
@@ -466,7 +496,12 @@
     "source_path": "skills/gsap-performance",
     "entry": "SKILL.md",
     "license": "MIT",
-    "install_policy": "auto"
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": ["frontend_implementation"],
+      "blocked_task_kinds": ["market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"],
+      "read_policy": "selected only when motion performance is an accepted frontend requirement"
+    }
   },
   "humanizer": {
     "id": "humanizer",
