@@ -71,7 +71,7 @@
       "source_path": "skills/using-git-worktrees",
       "install_path": "employees\\operations-planning\\ROUTE\\skills\\using-git-worktrees",
       "tree_sha256": "40af03bf20f17f0a2544cb2d24091e3577abe393f4b4359a5fcaac6257085861",
-      "optional": false
+      "optional": true
     },
     "ROUTE:git-workflow-and-versioning": {
       "employee": "ROUTE",
@@ -109,18 +109,6 @@
       "tree_sha256": "c4463aa12d98765223ae5d50bdb1c47a754e90901fae8a1aa0d45dbccb8e0c9f",
       "optional": false
     },
-    "CLOCK:code-simplification": {
-      "employee": "CLOCK",
-      "skill_id": "code-simplification",
-      "source_id": "addy",
-      "repo": "addyosmani/agent-skills",
-      "commit_sha": "7829ffd90d973b6325f5f12f1b1226dcace74443",
-      "license": "MIT",
-      "source_path": "skills/code-simplification",
-      "install_path": "employees\\operations-planning\\CLOCK\\skills\\code-simplification",
-      "tree_sha256": "e971d58f3320c26c29f1b0b6254c5ccd89fe79f74775dace9a506818553c4a0c",
-      "optional": false
-    },
     "FRAME:planning-and-task-breakdown": {
       "employee": "FRAME",
       "skill_id": "planning-and-task-breakdown",
@@ -133,18 +121,6 @@
       "tree_sha256": "35b0e06fa11a71236609b1eb0a78355e713781c69230b5ca64e621933607f188",
       "optional": false
     },
-    "FRAME:source-driven-development": {
-      "employee": "FRAME",
-      "skill_id": "source-driven-development",
-      "source_id": "addy",
-      "repo": "addyosmani/agent-skills",
-      "commit_sha": "7829ffd90d973b6325f5f12f1b1226dcace74443",
-      "license": "MIT",
-      "source_path": "skills/source-driven-development",
-      "install_path": "employees\\product-experience\\FRAME\\skills\\source-driven-development",
-      "tree_sha256": "8484d1f9ca96e7e8b09207a6c077681f6fb8f86203a9d4a494360b9576f00710",
-      "optional": false
-    },
     "FRAME:writing-plans": {
       "employee": "FRAME",
       "skill_id": "writing-plans",
@@ -155,18 +131,6 @@
       "source_path": "skills/writing-plans",
       "install_path": "employees\\product-experience\\FRAME\\skills\\writing-plans",
       "tree_sha256": "f4ccbb77124c701ad4fa2bada4130a953ac2dc309709345cc2d9bebf406ecbcc",
-      "optional": false
-    },
-    "FLOW:ui-ux-pro-max": {
-      "employee": "FLOW",
-      "skill_id": "ui-ux-pro-max",
-      "source_id": "uiux",
-      "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
-      "commit_sha": "4857a2c5ef989794751a0f66b8545a4a49566286",
-      "license": "MIT",
-      "source_path": ".claude/skills/ui-ux-pro-max",
-      "install_path": "employees\\product-experience\\FLOW\\skills\\ui-ux-pro-max",
-      "tree_sha256": "a839b59bc9f9b3766f60edfb0d7f6d0278cb4eb1ca00a36ba36d1e847bb79625",
       "optional": false
     },
     "FLOW:source-driven-development": {
@@ -599,7 +563,7 @@
       "source_path": "skills/debugging-and-error-recovery",
       "install_path": "employees\\platform-reliability\\SRE\\skills\\debugging-and-error-recovery",
       "tree_sha256": "c4463aa12d98765223ae5d50bdb1c47a754e90901fae8a1aa0d45dbccb8e0c9f",
-      "optional": false
+      "optional": true
     },
     "SRE:systematic-debugging": {
       "employee": "SRE",
@@ -637,18 +601,6 @@
       "tree_sha256": "1b3e79de59ef529eb771d79f46d2d4ae4a76b9bed81f38dcce21434aacd6cf27",
       "optional": false
     },
-    "COST:code-simplification": {
-      "employee": "COST",
-      "skill_id": "code-simplification",
-      "source_id": "addy",
-      "repo": "addyosmani/agent-skills",
-      "commit_sha": "7829ffd90d973b6325f5f12f1b1226dcace74443",
-      "license": "MIT",
-      "source_path": "skills/code-simplification",
-      "install_path": "employees\\platform-reliability\\COST\\skills\\code-simplification",
-      "tree_sha256": "e971d58f3320c26c29f1b0b6254c5ccd89fe79f74775dace9a506818553c4a0c",
-      "optional": false
-    },
     "COST:source-driven-development": {
       "employee": "COST",
       "skill_id": "source-driven-development",
@@ -659,7 +611,7 @@
       "source_path": "skills/source-driven-development",
       "install_path": "employees\\platform-reliability\\COST\\skills\\source-driven-development",
       "tree_sha256": "8484d1f9ca96e7e8b09207a6c077681f6fb8f86203a9d4a494360b9576f00710",
-      "optional": false
+      "optional": true
     },
     "GUARD:code-review-and-quality": {
       "employee": "GUARD",
@@ -707,7 +659,7 @@
       "source_path": "plugins/developer-essentials/skills/code-review-excellence",
       "install_path": "employees\\quality-security\\GUARD\\skills\\code-review-excellence",
       "tree_sha256": "f09be97feacc2d8e48abc95e02764b2eac4bd985bc1ac6d85d4bb02dc3d7fa02",
-      "optional": false
+      "optional": true
     },
     "TRACE:test-driven-development": {
       "employee": "TRACE",
@@ -779,18 +731,6 @@
       "source_path": "plugins/developer-essentials/skills/auth-implementation-patterns",
       "install_path": "employees\\quality-security\\SHIELD\\skills\\auth-implementation-patterns",
       "tree_sha256": "aa2a3a55531a7fdc839aa3de618a81bcc62c961de150f080c6e8a1c7d2ea2d98",
-      "optional": false
-    },
-    "SHIELD:source-driven-development": {
-      "employee": "SHIELD",
-      "skill_id": "source-driven-development",
-      "source_id": "addy",
-      "repo": "addyosmani/agent-skills",
-      "commit_sha": "7829ffd90d973b6325f5f12f1b1226dcace74443",
-      "license": "MIT",
-      "source_path": "skills/source-driven-development",
-      "install_path": "employees\\quality-security\\SHIELD\\skills\\source-driven-development",
-      "tree_sha256": "8484d1f9ca96e7e8b09207a6c077681f6fb8f86203a9d4a494360b9576f00710",
       "optional": false
     },
     "SHIELD:doubt-driven-development": {
@@ -995,43 +935,7 @@
       "source_path": "skills/documentation-and-adrs",
       "install_path": "employees\\service-knowledge\\DOCS\\skills\\documentation-and-adrs",
       "tree_sha256": "6a01d3f43c8900c8fe82dd6b24676945f887b4eae9377d48532669802ac56425",
-      "optional": false
-    },
-    "DOCS:writing-skills": {
-      "employee": "DOCS",
-      "skill_id": "writing-skills",
-      "source_id": "superpowers",
-      "repo": "obra/superpowers",
-      "commit_sha": "3dcbd5c4b48e02263fbf4a3c01e3fe4f81d584d9",
-      "license": "MIT",
-      "source_path": "skills/writing-skills",
-      "install_path": "employees\\service-knowledge\\DOCS\\skills\\writing-skills",
-      "tree_sha256": "5fcd438f1c8c1413b910d1bd631851e7527fe90e92bd321a80a64b67667508c2",
-      "optional": false
-    },
-    "DOCS:source-driven-development": {
-      "employee": "DOCS",
-      "skill_id": "source-driven-development",
-      "source_id": "addy",
-      "repo": "addyosmani/agent-skills",
-      "commit_sha": "7829ffd90d973b6325f5f12f1b1226dcace74443",
-      "license": "MIT",
-      "source_path": "skills/source-driven-development",
-      "install_path": "employees\\service-knowledge\\DOCS\\skills\\source-driven-development",
-      "tree_sha256": "8484d1f9ca96e7e8b09207a6c077681f6fb8f86203a9d4a494360b9576f00710",
-      "optional": false
-    },
-    "DOCS:humanizer": {
-      "employee": "DOCS",
-      "skill_id": "humanizer",
-      "source_id": "humanizer",
-      "repo": "blader/humanizer",
-      "commit_sha": "523374dee72d67c7b2b5f858ea0094ffda49c3ac",
-      "license": "MIT",
-      "source_path": "SKILL.md",
-      "install_path": "employees\\service-knowledge\\DOCS\\skills\\humanizer",
-      "tree_sha256": "51efcd0c4bee071f1c109563ba619c89ca9303f9775b7a6d01c1fa425c31e22e",
-      "optional": false
+      "optional": true
     },
     "DOCS:document-artifact-production": {
       "employee": "DOCS",
@@ -1174,7 +1078,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/foundation-meeting-synthesize",
       "install_path": "employees\\product-experience\\FRAME\\skills\\pm-foundation-meeting-synthesize",
-      "tree_sha256": "bee3643eee76741312274f0503edf9e1a2b6f04a064de917adde83a73eae83f4",
+      "tree_sha256": "7e46ecb37a6d2e6e2321cd5c12cf04c42ab681d17f8963343b4b438bf7fc94cf",
       "optional": true
     },
     "FRAME:pm-deliver-user-stories": {

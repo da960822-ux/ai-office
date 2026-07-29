@@ -42,23 +42,28 @@ def main() -> None:
         for optional, skill_ids in ((False, groups["required"]), (True, groups["optional"])):
             for skill_id in skill_ids:
                 definition = definitions[skill_id]
-                if definition["source"] != "local":
-                    continue
                 path = base / skill_id
                 if not (path / definition.get("entry", "SKILL.md")).exists():
-                    raise SystemExit(f"Missing local skill: {employee}:{skill_id}")
-                lock["installed"][f"{employee}:{skill_id}"] = {
-                    "employee": employee,
-                    "skill_id": skill_id,
-                    "source_id": "local",
-                    "repo": "workspace",
-                    "commit_sha": "local",
-                    "license": definition["license"],
-                    "source_path": definition["source_path"],
-                    "install_path": str(path.relative_to(ROOT)),
-                    "tree_sha256": tree_hash(path),
-                    "optional": optional,
-                }
+                    raise SystemExit(f"Missing bound skill: {employee}:{skill_id}")
+                key = f"{employee}:{skill_id}"
+                if definition["source"] == "local":
+                    lock["installed"][key] = {
+                        "employee": employee,
+                        "skill_id": skill_id,
+                        "source_id": "local",
+                        "repo": "workspace",
+                        "commit_sha": "local",
+                        "license": definition["license"],
+                        "source_path": definition["source_path"],
+                        "install_path": str(path.relative_to(ROOT)),
+                        "tree_sha256": tree_hash(path),
+                        "optional": optional,
+                    }
+                else:
+                    if key not in lock["installed"]:
+                        raise SystemExit(f"Missing external skill lock: {key}")
+                    lock["installed"][key]["tree_sha256"] = tree_hash(path)
+                    lock["installed"][key]["optional"] = optional
     (REGISTRY / "skills.lock.json").write_text(
         json.dumps(lock, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
