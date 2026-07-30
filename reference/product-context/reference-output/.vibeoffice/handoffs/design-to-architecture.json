@@ -1,0 +1,33 @@
+{
+  "handoffId": "HO-DES-ARC-001",
+  "projectId": "vibeoffice-reference",
+  "fromDepartment": "design",
+  "toDepartment": "architecture",
+  "status": "ready_for_review",
+  "inputVersions": {
+    "userFlows": 1,
+    "screenSpec": 1
+  },
+  "requiredOutputs": [
+    "ARCHITECTURE.md",
+    "API_CONTRACT.yaml",
+    "DATA_MODEL.md",
+    "TECHNICAL_TASKS.md"
+  ],
+  "constraints": [
+    "현재 저장소 스택 우선",
+    "P0는 mock provider 허용",
+    "인증은 Later"
+  ],
+  "acceptanceCriteria": [
+    "모든 데이터 화면에 source",
+    "API와 Data Model 일치",
+    "공식 build/test 명령"
+  ],
+  "openDecisions": [
+    "현재 저장소의 실제 기술 스택"
+  ],
+  "approvedBy": null,
+  "createdAt": "2026-07-30T09:31:00+09:00",
+  "supersedes": null
+}

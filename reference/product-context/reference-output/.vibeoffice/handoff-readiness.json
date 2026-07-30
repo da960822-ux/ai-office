@@ -1,0 +1,17 @@
+{
+  "grade": "H3",
+  "target": "H4",
+  "ready": {
+    "goal": true,
+    "scope": true,
+    "design": true,
+    "technical": false,
+    "task": true,
+    "verification": false,
+    "context": true
+  },
+  "blockers": [
+    "현재 저장소의 실제 기술 스택과 명령 검증 필요",
+    "실행 가능한 prototype과 test evidence 필요"
+  ]
+}

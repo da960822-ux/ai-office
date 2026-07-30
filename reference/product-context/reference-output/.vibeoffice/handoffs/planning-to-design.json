@@ -1,0 +1,34 @@
+{
+  "handoffId": "HO-PLN-DES-001",
+  "projectId": "vibeoffice-reference",
+  "fromDepartment": "planning",
+  "toDepartment": "design",
+  "status": "approved",
+  "inputVersions": {
+    "projectBlueprint": 1,
+    "productBrief": 1,
+    "mvpScope": 1,
+    "requirements": 1
+  },
+  "requiredOutputs": [
+    "USER_FLOWS.md",
+    "SCREEN_SPEC.md",
+    "DESIGN_SYSTEM.md",
+    "prototype"
+  ],
+  "constraints": [
+    "핵심 화면 최대 7개",
+    "결제 제외",
+    "초보자 언어",
+    "loading/empty/error"
+  ],
+  "acceptanceCriteria": [
+    "모든 Must 기능이 화면에 연결",
+    "dead-end 없음",
+    "주요 CTA 동작 정의"
+  ],
+  "openDecisions": [],
+  "approvedBy": "user",
+  "createdAt": "2026-07-30T09:31:00+09:00",
+  "supersedes": null
+}

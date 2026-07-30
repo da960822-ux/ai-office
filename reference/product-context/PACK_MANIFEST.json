@@ -1,0 +1,294 @@
+{
+  "name": "vibe_coding_office_context_pack",
+  "version": "3.0.0",
+  "generatedAt": "2026-07-30T09:31:00+09:00",
+  "focus": "department handoff to buildable MVP to Codex/Claude refinement",
+  "fileCount": 57,
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 4558,
+      "sha256": "1455b67b74fe50c04e22b37e732e83d1a9c2ae4372dd12a99f6fee21c661106a"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 552,
+      "sha256": "1461d04fd1880c5175a40a48c83111486c6144c8e480fac7d5c4707d8a68f063"
+    },
+    {
+      "path": "CODEX_CONTEXT_PACK.md",
+      "bytes": 80270,
+      "sha256": "ad4a072e6f5a20e10a90ec34212fb510ec5c0a5b3700541e2b69a08cd24cfe92"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2951,
+      "sha256": "63dadfd5abddc3d5708ebf42539ce57aa8520a83f9f296202cc86dda46f3f5f8"
+    },
+    {
+      "path": "START_WITH_CODEX.md",
+      "bytes": 1066,
+      "sha256": "09c9af44ff525ab1bb5ed42a024a5a2cd2c28459b782dd8c5122d77d5b649ed6"
+    },
+    {
+      "path": "product-context/01_PRODUCT_VISION.md",
+      "bytes": 2928,
+      "sha256": "42946a4268df2acf5951704407c3a85e016007ca1379bb287a25ea570ef33d10"
+    },
+    {
+      "path": "product-context/02_USERS_AND_JTBD.md",
+      "bytes": 2862,
+      "sha256": "2b0c4386001fbd6816d03cb3cc5ffe171071acb17e98cc6fa4550225a86a6916"
+    },
+    {
+      "path": "product-context/03A_MANIFEST_DEEP_ANALYSIS.md",
+      "bytes": 6788,
+      "sha256": "81070bdb58782adc691657322d80b5488cce049f106ef35b2e7d9d338ba1abfa"
+    },
+    {
+      "path": "product-context/03_BENCHMARK.md",
+      "bytes": 3719,
+      "sha256": "d5dc86a37ec283f09c0c7271762fab4728e0761881ac84b57ab96b4f4032680f"
+    },
+    {
+      "path": "product-context/04A_DEPARTMENT_WORKFLOW.md",
+      "bytes": 7516,
+      "sha256": "9c65699648f7598c889a239487a57d797b4b2b3fa0b1ac5cfe9f726930ab7bd2"
+    },
+    {
+      "path": "product-context/04_CORE_FLOW_AND_FEATURES.md",
+      "bytes": 3477,
+      "sha256": "b3de65b6f5c71c50efe94b9e7fb3a3b68b752d375ef8f82a41ab637b94eb22d7"
+    },
+    {
+      "path": "product-context/05A_DEPARTMENT_HANDOFF_CONTRACTS.md",
+      "bytes": 4344,
+      "sha256": "80683fc2d955c5d1c632d16220de2b8698fe80da5879756a0f7920a6ac75f915"
+    },
+    {
+      "path": "product-context/05B_REVIEW_AND_REWORK_LOOP.md",
+      "bytes": 2796,
+      "sha256": "06e87ed0ecd395b898a7cf93b5fa6cae2290966ffa25bcddd7a814f632f8918a"
+    },
+    {
+      "path": "product-context/05_AGENT_ORCHESTRATION.md",
+      "bytes": 3564,
+      "sha256": "2335400faa87aff053c490cf0d39d3cb70028412dd08042cf8c30d84485a5188"
+    },
+    {
+      "path": "product-context/06A_HANDOFF_READINESS_STANDARD.md",
+      "bytes": 3826,
+      "sha256": "ae592d2e0a43fee58781e89a603b750c656bf2e1b8b885654697b288dfa23684"
+    },
+    {
+      "path": "product-context/06B_INTERNAL_MVP_BUILD_STANDARD.md",
+      "bytes": 2807,
+      "sha256": "8ea8e2235234c0d986f656acb0354ebddbb11d7cc8339733bb6e991639a3b84a"
+    },
+    {
+      "path": "product-context/06C_CODEX_CLAUDE_REFINEMENT_WORKFLOW.md",
+      "bytes": 1996,
+      "sha256": "1de98d7e9781554b396f21599b32fb55c819ec1c1722e365463cca4e7163384a"
+    },
+    {
+      "path": "product-context/06_OUTPUT_STANDARD.md",
+      "bytes": 5699,
+      "sha256": "32a8db8c7767a71804219dd549f07367450bec1ab76c129f3b8598067a6a3b79"
+    },
+    {
+      "path": "product-context/07_UX_RULES.md",
+      "bytes": 3360,
+      "sha256": "5fd0bee106a14dbfefdd878e6103b2d82b30cfbd1e64a24182f2c9424bd38982"
+    },
+    {
+      "path": "product-context/08_MVP_ROADMAP.md",
+      "bytes": 2704,
+      "sha256": "1651647df5fb91a838abfd18f87cab29331404363f904c7984d7c484897edac1"
+    },
+    {
+      "path": "product-context/09A_ARTIFACT_QUALITY_GATES.md",
+      "bytes": 2897,
+      "sha256": "bd1fe9e1e302ea4a6cb231bdad07624f16b37786aec453e1934ec22a04b601fe"
+    },
+    {
+      "path": "product-context/09_ACCEPTANCE_CRITERIA.md",
+      "bytes": 2771,
+      "sha256": "c580d69a7e79a6752661e6b44c06ad13d531233f6fcb490664ff8bedcc807811"
+    },
+    {
+      "path": "product-context/10_DATA_MODEL_API.md",
+      "bytes": 5329,
+      "sha256": "fa82ea27ade073125f5ed3b0cb644012bd1d16977064466c9f149038749877fd"
+    },
+    {
+      "path": "product-context/11_CODEX_IMPLEMENTATION_BRIEF.md",
+      "bytes": 2796,
+      "sha256": "9dab91de3f8b5e760335c472ec10ee500afd7272c126cd3700adf7cc0206041e"
+    },
+    {
+      "path": "product-context/README_FOR_CODEX.md",
+      "bytes": 2672,
+      "sha256": "66a0f40dea7facce670c1e3a8e0b638479bf57505fbaa46d5f2a098fbcb60363"
+    },
+    {
+      "path": "product-context/SOURCES.md",
+      "bytes": 1476,
+      "sha256": "5f015eecc62bf2ff74e2f2c3041bce5675fd074fccb478079f432a61178711a3"
+    },
+    {
+      "path": "product-context/schemas/department-handoff.schema.json",
+      "bytes": 1901,
+      "sha256": "7e59ac3b8d2a1a29ebf81de91711bf1615894e0c4379cf224db134830c63d05e"
+    },
+    {
+      "path": "product-context/schemas/project-blueprint.schema.json",
+      "bytes": 5855,
+      "sha256": "e5cbe94cf0dda8f5dcd67d7f6c96b664363e4311b6bdf648f8c47b8068893d1c"
+    },
+    {
+      "path": "product-context/schemas/review-finding.schema.json",
+      "bytes": 1443,
+      "sha256": "aaa13011ff7c4e741d3085fa9805d659658bca7c48b09889a6615505a6142424"
+    },
+    {
+      "path": "product-context/templates/ACCEPTANCE_REPORT_TEMPLATE.md",
+      "bytes": 367,
+      "sha256": "67a3019ae47c99cd9b9769a55ca126a1eeeebae70775958464d507aa344aa74b"
+    },
+    {
+      "path": "product-context/templates/BUILD_REPORT_TEMPLATE.md",
+      "bytes": 430,
+      "sha256": "02715d7147a4a0823e90add837924a14cbc624192673754ff41e2b740239912c"
+    },
+    {
+      "path": "product-context/templates/DECISION_LOG_TEMPLATE.md",
+      "bytes": 320,
+      "sha256": "c3bcb456377c3a8af0f8c6c62986cfc5f1c6cf91161dc531d5a4e937e59d0da6"
+    },
+    {
+      "path": "product-context/templates/DEPARTMENT_HANDOFF_TEMPLATE.md",
+      "bytes": 433,
+      "sha256": "d7e9796f99bdef1497e049ac99f9da6ce13aac35806cbd4234440dcd9fb8a15c"
+    },
+    {
+      "path": "product-context/templates/EXPORT_PACKAGE_TEMPLATE.md",
+      "bytes": 862,
+      "sha256": "ab0129014c2c5fec8bfa0dfec1d801f6aa37c57c3bdd0a6fdfa3c2491de74cea"
+    },
+    {
+      "path": "product-context/templates/INTAKE_TEMPLATE.md",
+      "bytes": 636,
+      "sha256": "89add11f98d717d729b5804f9b98a253d195d3e755dae38d272a8a6a7b82f406"
+    },
+    {
+      "path": "reference-output/.vibeoffice/handoff-readiness.json",
+      "bytes": 351,
+      "sha256": "e45b95a7ebeee941c7c600df6c30e88cbad79e49b629a02535acd4efea4c5386"
+    },
+    {
+      "path": "reference-output/.vibeoffice/handoffs/design-to-architecture.json",
+      "bytes": 772,
+      "sha256": "70594da8c876d20b42e57ae5467045233c44d275d41b5a7979fc2a04cfd524f0"
+    },
+    {
+      "path": "reference-output/.vibeoffice/handoffs/planning-to-design.json",
+      "bytes": 758,
+      "sha256": "c91dda72f3e7fc68fc28dcf84e8e438f27f869b135e07c1dc03044b3ecff273c"
+    },
+    {
+      "path": "reference-output/.vibeoffice/project-blueprint.json",
+      "bytes": 883,
+      "sha256": "c791bec90c6c57b5f36e1b980ac4931a5852825cc8458c77b94a6c06137f0864"
+    },
+    {
+      "path": "reference-output/.vibeoffice/review-findings.json",
+      "bytes": 676,
+      "sha256": "b7aff0f741ed442fd25d0e40b97ae286080604736310274221da5f35f761046d"
+    },
+    {
+      "path": "reference-output/AGENTS.md",
+      "bytes": 1391,
+      "sha256": "1de406fd9dc3101ca1abd5133b475e6303a28223752de2ff4d241809d11cc50c"
+    },
+    {
+      "path": "reference-output/CLAUDE.md",
+      "bytes": 342,
+      "sha256": "974de4c297b0354f5720a710edbfc743b18da60fa9293d16e49d966036a19d07"
+    },
+    {
+      "path": "reference-output/NEXT_ACTION.md",
+      "bytes": 822,
+      "sha256": "f6f8c15a8d8a8e1fcb033818de14f76145caa927666deba9078bf71f67a74956"
+    },
+    {
+      "path": "reference-output/PROJECT_STATUS.md",
+      "bytes": 303,
+      "sha256": "7cb81d251ad23a54e1106535c6758a51d49e94f5f1d0d02ce88b750cd5693091"
+    },
+    {
+      "path": "reference-output/README.md",
+      "bytes": 416,
+      "sha256": "64e41142a57a12276f602cf20ccb7f2db3d0c8965339199b70b488d777b9d46d"
+    },
+    {
+      "path": "reference-output/docs/ACCEPTANCE_REPORT.md",
+      "bytes": 306,
+      "sha256": "04637645b45b630388705611790d422a7041ba30544a57900b4c8f7029e1dde4"
+    },
+    {
+      "path": "reference-output/docs/BUILD_REPORT.md",
+      "bytes": 220,
+      "sha256": "1e006673b8774431f0b120024d48e751d7cc3cbef17dff445658a50c372546db"
+    },
+    {
+      "path": "reference-output/docs/DECISIONS.md",
+      "bytes": 277,
+      "sha256": "d19a840a15f62d302d2b907cba5cc45bd0b78f0af1b14da38779274adb8bcd21"
+    },
+    {
+      "path": "reference-output/docs/DEPARTMENT_WORKFLOW.md",
+      "bytes": 216,
+      "sha256": "702c49f629baf1048847027ade97a55334e3eb22d9f531c4c4a8ed998ef9f879"
+    },
+    {
+      "path": "reference-output/docs/MVP_SCOPE.md",
+      "bytes": 307,
+      "sha256": "862fdb5054df01c809b9c1a54d7207164798a2e4fdcc67635dc1163b0b85a7dc"
+    },
+    {
+      "path": "reference-output/docs/PRODUCT_BRIEF.md",
+      "bytes": 592,
+      "sha256": "5a61db0c314170100a5d6e33dd8a09e425b8deef8da31400300c8898aafbd6ae"
+    },
+    {
+      "path": "reference-output/docs/REQUIREMENTS.md",
+      "bytes": 576,
+      "sha256": "69d2b38ce777bb329d08aee72c4d694b0882a15eaccec07ea203c463c28796aa"
+    },
+    {
+      "path": "reference-output/docs/SCREEN_SPEC.md",
+      "bytes": 319,
+      "sha256": "e3eac0db0be64b3e4d36b9ef320e9cab9cf9aabfb2a29c8b375d80dc594068ff"
+    },
+    {
+      "path": "reference-output/docs/TASKS.md",
+      "bytes": 286,
+      "sha256": "883fbd5c66d8b46b653bad712162a84124a637d10105c275287e3b055144616a"
+    },
+    {
+      "path": "reference-output/docs/TEST_PLAN.md",
+      "bytes": 439,
+      "sha256": "a80071ff6b7a6a620d566678e80b4d3bd1e5c20a4aaa2bbc5e2e4279ff265dfe"
+    },
+    {
+      "path": "reference-output/docs/TRACEABILITY.md",
+      "bytes": 304,
+      "sha256": "2031763c5afc89dc19765418e8db52f38a70b9cdf72c843b8cb00d3561bd0f15"
+    },
+    {
+      "path": "reference-output/docs/USER_FLOWS.md",
+      "bytes": 337,
+      "sha256": "323e354e1352e90fff067c2164e14fda7219abd226aa5c8bf467aa5e3dc57766"
+    }
+  ]
+}

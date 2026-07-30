@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Department Handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "handoffId",
+    "projectId",
+    "fromDepartment",
+    "toDepartment",
+    "status",
+    "inputVersions",
+    "requiredOutputs",
+    "constraints",
+    "acceptanceCriteria",
+    "createdAt"
+  ],
+  "properties": {
+    "handoffId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "fromDepartment": {
+      "enum": [
+        "planning",
+        "design",
+        "architecture",
+        "build",
+        "qa",
+        "shipping"
+      ]
+    },
+    "toDepartment": {
+      "enum": [
+        "design",
+        "architecture",
+        "build",
+        "qa",
+        "shipping",
+        "codex",
+        "claude_code"
+      ]
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready_for_review",
+        "changes_requested",
+        "approved",
+        "in_progress",
+        "completed",
+        "rejected",
+        "superseded"
+      ]
+    },
+    "inputVersions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "integer",
+          "string"
+        ]
+      }
+    },
+    "requiredOutputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "openDecisions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approvedBy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "supersedes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

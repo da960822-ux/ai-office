@@ -4,8 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "AI_Office_실행.cmd",
-    "test": "node --test office-state.test.js"
+    "start": "AI_Office_실행.cmd"
   },
   "dependencies": {
     "kordoc": "2.5.2",

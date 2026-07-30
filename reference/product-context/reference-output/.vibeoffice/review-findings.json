@@ -1,0 +1,25 @@
+{
+  "findings": [
+    {
+      "findingId": "RF-001",
+      "severity": "blocker",
+      "category": "build",
+      "ownerDepartment": "build",
+      "title": "실행 가능한 prototype과 build evidence 없음",
+      "evidence": [
+        "PROJECT_STATUS.md",
+        "ACCEPTANCE_REPORT.md"
+      ],
+      "impact": "H4 Agent-ready 출고 불가",
+      "requestedChange": "NEXT_ACTION의 첫 수직 슬라이스 구현 후 build와 Golden Path 증거 생성",
+      "affectedArtifacts": [
+        "PROJECT_STATUS.md",
+        "BUILD_REPORT.md",
+        "handoff-readiness.json"
+      ],
+      "autoFixable": false,
+      "status": "open",
+      "repeatCount": 0
+    }
+  ]
+}

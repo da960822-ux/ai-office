@@ -1,0 +1,32 @@
+{
+  "projectName": "VibeOffice",
+  "oneLineDefinition": "비전공 사용자의 짧은 아이디어를 현실적인 MVP와 코딩 에이전트용 프로젝트 폴더로 바꾸는 Guided Product-to-Code Workspace",
+  "targetUsers": [
+    "비전공 부트캠프 팀장",
+    "AI 코딩 도구 초급 사용자"
+  ],
+  "coreProblem": "무엇을 설명하고 어느 범위까지 만들지 몰라 결과와 산출물이 흔들린다.",
+  "successMoment": "전문 프롬프트 없이 승인된 MVP와 개발 시작 폴더를 얻는다.",
+  "mustFeatures": [
+    "F-001",
+    "F-002",
+    "F-003",
+    "F-004",
+    "F-005"
+  ],
+  "laterFeatures": [
+    "GitHub Sync",
+    "Skill Pack",
+    "Multi-agent"
+  ],
+  "outFeatures": [
+    "Payment",
+    "3D Office",
+    "Autonomous Company"
+  ],
+  "constraints": {
+    "teamSize": 4,
+    "deadline": "3 weeks",
+    "skillLevel": "beginner"
+  }
+}

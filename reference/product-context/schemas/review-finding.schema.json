@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Review Finding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "findingId",
+    "severity",
+    "category",
+    "ownerDepartment",
+    "title",
+    "impact",
+    "requestedChange",
+    "affectedArtifacts",
+    "status"
+  ],
+  "properties": {
+    "findingId": {
+      "type": "string"
+    },
+    "severity": {
+      "enum": [
+        "blocker",
+        "high",
+        "medium",
+        "note"
+      ]
+    },
+    "category": {
+      "enum": [
+        "planning",
+        "ux",
+        "technical",
+        "build",
+        "security",
+        "handoff"
+      ]
+    },
+    "ownerDepartment": {
+      "enum": [
+        "planning",
+        "design",
+        "architecture",
+        "build",
+        "shipping"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "impact": {
+      "type": "string"
+    },
+    "requestedChange": {
+      "type": "string"
+    },
+    "affectedArtifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "autoFixable": {
+      "type": "boolean"
+    },
+    "status": {
+      "enum": [
+        "open",
+        "accepted",
+        "in_progress",
+        "fixed",
+        "ignored"
+      ]
+    },
+    "repeatCount": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

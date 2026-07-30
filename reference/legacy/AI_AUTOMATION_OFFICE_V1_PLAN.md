@@ -1,4 +1,6 @@
-# AI 자동화 오피스 V1 구현 계획
+# AI 자동화 오피스 V1 구현 계획 (폐기 · 2026-07-30 보관)
+
+> **폐기 사유**: 이 문서가 제시한 `packages/contracts`, `policy-engine`, `orchestrator`, `harness`, `evidence`, `office-projection` 패키지 구조는 구현되지 않았다. 실제 구현은 `apps/api/main.py` + `apps/api/worker.py` 단일 모듈이다. 현재 런타임 사실은 `docs/RUNTIME_HARDENING.md`, 로드맵은 `docs/RUNTIME_ROADMAP.md`, 제품 방향은 `docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md`를 본다. 이 문서는 V1 설계 의도와 미구현 범위(BYO 스킬 inbox, 예산 상한 등) 참조용으로만 남긴다.
 
 ## 1. 제품 목표
 
