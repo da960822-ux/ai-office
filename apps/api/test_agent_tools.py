@@ -14,6 +14,7 @@ class WorkspaceAgentToolsTest(unittest.TestCase):
         (self.root / "private").mkdir()
         (self.root / "private" / "secret.txt").write_text("customer secret\n", encoding="utf-8")
         (self.root / "src" / "app.py").write_text("value = 'old'\nvalue = 'old'\n", encoding="utf-8")
+        (self.root / "src" / "syntax.js").write_text("const value = 1;\n", encoding="utf-8")
         (self.root / "notes.txt").write_text("customer research evidence\n", encoding="utf-8")
         self.tools = WorkspaceAgentTools(self.root, ["src", "notes.txt"])
 
@@ -90,6 +91,17 @@ class WorkspaceAgentToolsTest(unittest.TestCase):
         with self.assertRaises(AgentToolError):
             self.tools.create_file("src/new.py", "VALUE = 2\n")
 
+    def test_reference_diagnostics_and_test_discovery_are_bounded(self) -> None:
+        (self.root / "src" / "uses.py").write_text("def hello():\n    return hello\n", encoding="utf-8")
+        (self.root / "src" / "test_uses.py").write_text("import unittest\n", encoding="utf-8")
+        references = self.tools.find_references("hello", path="src")
+        self.assertEqual(references["results"][0]["path"], "src/uses.py")
+        diagnostics = self.tools.language_diagnostics("src/app.py")
+        self.assertTrue(diagnostics["ok"])
+        tests = self.tools.discover_tests("src")
+        self.assertIn("src/test_uses.py", tests["files"])
+        self.assertIn("python -m unittest discover", {item["command"] for item in tests["commands"]})
+
     def test_public_source_rejects_local_network_and_tool_schema_is_present(self) -> None:
         with self.assertRaises(AgentToolError) as error:
             _require_public_url("http://127.0.0.1:80/private")
@@ -97,9 +109,10 @@ class WorkspaceAgentToolsTest(unittest.TestCase):
         self.assertEqual(
             {item["name"] for item in tool_definitions()},
             {
-                "list_files", "read_file", "search_files", "find_symbols",
+                "list_files", "read_file", "search_files", "find_symbols", "find_references",
+                "language_diagnostics", "discover_tests",
                 "replace_exact_text", "apply_unified_patch", "create_file",
-                "git_status", "git_diff", "git_commit", "git_push", "fetch_public_source",
+                "git_status", "git_diff", "git_commit", "git_push", "fetch_public_source", "fetch_public_pdf", "render_public_page",
             },
         )
 

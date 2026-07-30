@@ -6,3 +6,6 @@ keyring==25.7.0
 python-docx==1.2.0
 openpyxl==3.1.5
 reportlab==4.4.3
+pypdf==5.9.0
+python-pptx==1.0.2
+jedi==0.19.2

@@ -6,9 +6,10 @@ import unittest
 from pathlib import Path
 
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from apps.api import agent_worktree, main
-from apps.api.artifact_renderer import render_bundle
+from apps.api.artifact_renderer import formats_for_request, render_bundle
 from apps.api.runtime_context import load_session_context, record_session_turn
 
 
@@ -93,15 +94,42 @@ class RuntimeHardeningTests(unittest.TestCase):
             finally:
                 main.DB_PATH = previous
 
+    def test_retry_uses_unused_failure_playbook_before_escalating(self):
+        with tempfile.TemporaryDirectory() as temp:
+            previous = main.DB_PATH
+            main.DB_PATH = Path(temp) / "retry.sqlite3"
+            try:
+                main.init_db()
+                client = TestClient(main.app)
+                task = client.post("/api/tasks", json={"title": "retry", "request": "fix failing test"}).json()
+                client.post(
+                    f"/api/tasks/{task['id']}/contract",
+                    json={"allowed_paths": ["."], "allowed_commands": [], "acceptance_criteria": ["test passes"], "retry_limit": 2},
+                )
+                first = client.post(f"/api/tasks/{task['id']}/retry", json={"failure_class": "test"})
+                second = client.post(f"/api/tasks/{task['id']}/retry", json={"failure_class": "test"})
+                self.assertEqual(first.status_code, 200)
+                self.assertEqual(second.status_code, 200)
+                attempts = second.json()["retry_attempts"]
+                self.assertEqual(len({item["strategy"] for item in attempts}), 2)
+                third = client.post(f"/api/tasks/{task['id']}/retry", json={"failure_class": "test"})
+                self.assertEqual(third.json()["state"], "escalated")
+            finally:
+                main.DB_PATH = previous
+
     def test_markdown_renders_to_office_formats_and_manifest(self):
         with tempfile.TemporaryDirectory() as temp:
             final = Path(temp) / "FINAL.md"
             final.write_text("# 최종 결정\n\n근거가 연결된 결과입니다.\n", encoding="utf-8")
-            rendered = render_bundle(final, ["html", "docx", "pdf", "xlsx"])
-            self.assertEqual({path.suffix for path in rendered}, {".html", ".docx", ".pdf", ".xlsx", ".json"})
+            rendered = render_bundle(final, ["html", "docx", "pdf", "xlsx", "pptx", "hwpx"])
+            self.assertEqual({path.suffix for path in rendered}, {".html", ".docx", ".pdf", ".xlsx", ".pptx", ".hwpx", ".json"})
             self.assertTrue(all(path.stat().st_size > 0 for path in rendered))
+        self.assertEqual(
+            formats_for_request("발표 슬라이드와 HWPX 한글 문서로 만들어줘", "financial_model_report"),
+            ["html", "docx", "pdf", "xlsx", "pptx", "hwpx"],
+        )
 
-    def test_agent_worktree_commits_and_integrates_into_base(self):
+    def test_agent_worktree_requires_review_gate_before_base_integration(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             base = root / "project"
@@ -134,7 +162,10 @@ class RuntimeHardeningTests(unittest.TestCase):
                 now="now",
             )
             (Path(isolated["path"]) / "app.txt").write_text("agent\n", encoding="utf-8")
-            result = agent_worktree.commit_and_integrate(isolated, task_id="TASK-W", employee_id="BUILD")
+            pending = agent_worktree.commit_for_review(isolated, task_id="TASK-W", employee_id="BUILD")
+            self.assertTrue(pending["changed"])
+            self.assertEqual((base / "app.txt").read_text(encoding="utf-8"), "base\n")
+            result = agent_worktree.integrate_reviewed(isolated, pending["commit"])
             self.assertTrue(result["integrated"])
             self.assertEqual((base / "app.txt").read_text(encoding="utf-8"), "agent\n")
             agent_worktree.cleanup(base, isolated)

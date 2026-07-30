@@ -25,15 +25,17 @@ Move AI Office from role-labelled prompt orchestration to evidence-backed execut
 - Give research agents bounded original-source fetching; search snippets remain non-evidence.
 - Limit skills to three selected skills and enforce task-kind activation rules. UI/design skills are blocked for market research, business strategy, document authoring, backend implementation, and quality review.
 
-## P1: next implementation
+## P1: implemented
 
-- Run independent ready phases in parallel worker processes instead of one sequential worker loop.
-- Create one Git branch/worktree per implementation phase, then merge only after review.
-- Add LSP symbol/reference/diagnostic tools and test discovery.
-- Add browser/PDF extraction for JavaScript sites, reports, and tables.
-- Store claim-to-source evidence: claim, source URL, publisher, publication date, retrieved text span, confidence, and contradictions.
-- Render and validate DOCX/PDF/HWP/PPTX outputs instead of labelling Markdown as those formats.
-- Add retry strategies that change model, context, tool, or owner instead of replaying the same request.
+- Independent ready phases run in separate worker processes by default.
+- Each implementation phase uses Git branch/worktree; independent review passes before serialized merge.
+- Symbol/reference search, Pyright diagnostics, syntax fallback, and test discovery are bounded tools.
+- HTML, public-PDF extraction, and approval-gated headless browser rendering cover static, report, and JavaScript sources.
+- Claim-to-source evidence stores claim, source URL, publisher, publication date, text span, confidence, and contradictions.
+- DOCX/PDF/XLSX/PPTX/HWPX outputs are generated then reopened/parsed; no Markdown relabelling.
+- Failure-class retry playbooks choose unused strategy; repeated/exhausted strategy escalates.
+
+Binary `.hwp` authoring remains external-engine-only. Runtime generates standards-based `.hwpx` and blocks false `.hwp` claims.
 
 ## P2: product acceptance program
 

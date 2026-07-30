@@ -13,6 +13,7 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import tempfile
 import urllib.error
 import urllib.parse
@@ -27,6 +28,7 @@ MAX_TOOL_OUTPUT = 12_000
 MAX_FILE_BYTES = 1_000_000
 MAX_REPLACEMENT_BYTES = 100_000
 IGNORED_PARTS = {".git", "node_modules", ".venv", "dist", "build", "__pycache__"}
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class _ReadableHTML(HTMLParser):
@@ -162,6 +164,77 @@ def fetch_public_source(raw_url: str, *, text_limit: int = 16_000) -> dict[str, 
     return {"title": title[:300], "url": final_url[:2000], "content_type": content_type, "text": text[:max(1, min(text_limit, 32_000))]}
 
 
+def fetch_public_pdf(raw_url: str, *, text_limit: int = 24_000) -> dict[str, Any]:
+    """Extract text from one public PDF after the same SSRF checks as HTML research."""
+    _require_public_url(raw_url)
+    request = urllib.request.Request(raw_url, headers={"User-Agent": "Mozilla/5.0 AI-Automation-Office/1.0", "Accept": "application/pdf"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            if response.headers.get_content_type() != "application/pdf":
+                raise AgentToolError(422, "Source is not a PDF")
+            raw = response.read(10_000_000)
+            final_url = response.geturl()
+    except AgentToolError:
+        raise
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError) as error:
+        raise AgentToolError(502, f"PDF read failed: {error}") from error
+    if urllib.parse.urlparse(final_url).hostname != urllib.parse.urlparse(raw_url).hostname:
+        raise AgentToolError(502, "PDF changed host during fetch")
+    try:
+        from pypdf import PdfReader
+        from io import BytesIO
+        reader = PdfReader(BytesIO(raw))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    except Exception as error:
+        raise AgentToolError(422, f"PDF text extraction failed: {error}") from error
+    if len(text) < 80:
+        raise AgentToolError(422, "PDF contains too little extractable text; OCR is required")
+    return {"title": Path(urllib.parse.urlparse(final_url).path).name or "PDF source", "url": final_url[:2000], "content_type": "application/pdf", "pages": len(reader.pages), "text": text[:max(1, min(text_limit, 32_000))]}
+
+
+def render_public_page(raw_url: str, *, text_limit: int = 24_000) -> dict[str, Any]:
+    """Render JavaScript page with local Chrome; caller must receive explicit approval."""
+    parsed = _require_public_url(raw_url)
+    browser = next(
+        (
+            Path(candidate) for candidate in (
+                os.getenv("AI_OFFICE_BROWSER_PATH", ""),
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            ) if candidate and Path(candidate).is_file()
+        ),
+        None,
+    )
+    if browser is None:
+        raise AgentToolError(503, "No supported local Chrome/Edge executable is available")
+    with tempfile.TemporaryDirectory(prefix="ai-office-browser-") as profile:
+        try:
+            run = subprocess.run(
+                [
+                    str(browser), "--headless=new", "--disable-gpu", "--no-first-run",
+                    "--disable-extensions", "--disable-background-networking",
+                    "--virtual-time-budget=10000", f"--user-data-dir={profile}", "--dump-dom", raw_url,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=35,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise AgentToolError(504, "Browser render timed out") from error
+        except OSError as error:
+            raise AgentToolError(503, f"Browser render failed to start: {error}") from error
+    if run.returncode:
+        raise AgentToolError(502, f"Browser render failed: {(run.stderr or run.stdout)[:800]}")
+    parser = _ReadableHTML()
+    parser.feed(run.stdout)
+    text = " ".join(parser.text).strip()
+    if len(text) < 80:
+        raise AgentToolError(502, "Rendered page contains too little readable text")
+    return {"title": " ".join(parser.title).strip()[:300] or parsed.hostname, "url": raw_url, "rendered": True, "text": text[:max(1, min(text_limit, 32_000))]}
+
+
 def tool_definitions() -> list[dict[str, Any]]:
     """OpenAI Responses function definitions. Mutation tools remain explicit."""
     return [
@@ -169,6 +242,9 @@ def tool_definitions() -> list[dict[str, Any]]:
         {"type": "function", "name": "read_file", "description": "Read one bounded UTF-8 workspace file with line numbers and optional line range.", "parameters": {"type": "object", "properties": {"path": {"type": "string", "minLength": 1}, "start_line": {"type": "integer", "minimum": 1, "default": 1}, "end_line": {"type": "integer", "minimum": 1}}, "required": ["path"], "additionalProperties": False}},
         {"type": "function", "name": "search_files", "description": "Search UTF-8 workspace files with ripgrep. Results are path, line, and matching text; ignored build/dependency folders are excluded.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "minLength": 1, "maxLength": 300}, "path": {"type": "string", "default": "."}, "glob": {"type": "string", "maxLength": 200}, "max_results": {"type": "integer", "minimum": 1, "maximum": 100, "default": 40}}, "required": ["query"], "additionalProperties": False}},
         {"type": "function", "name": "find_symbols", "description": "Find class, function, type, interface, and variable definitions with ripgrep before reading files.", "parameters": {"type": "object", "properties": {"symbol": {"type": "string", "minLength": 1, "maxLength": 200}, "path": {"type": "string", "default": "."}, "max_results": {"type": "integer", "minimum": 1, "maximum": 100, "default": 40}}, "required": ["symbol"], "additionalProperties": False}},
+        {"type": "function", "name": "find_references", "description": "Find bounded whole-word references to a symbol before editing or refactoring.", "parameters": {"type": "object", "properties": {"symbol": {"type": "string", "minLength": 1, "maxLength": 200}, "path": {"type": "string", "default": "."}, "max_results": {"type": "integer", "minimum": 1, "maximum": 100, "default": 60}}, "required": ["symbol"], "additionalProperties": False}},
+        {"type": "function", "name": "language_diagnostics", "description": "Run bounded syntax diagnostics for one allowed Python or JavaScript file. Full project test commands remain TaskContract-gated.", "parameters": {"type": "object", "properties": {"path": {"type": "string", "minLength": 1}}, "required": ["path"], "additionalProperties": False}},
+        {"type": "function", "name": "discover_tests", "description": "Discover local test files and declared test commands without running them.", "parameters": {"type": "object", "properties": {"path": {"type": "string", "default": "."}, "max_results": {"type": "integer", "minimum": 1, "maximum": 200, "default": 80}}, "additionalProperties": False}},
         {"type": "function", "name": "replace_exact_text", "description": "Safely replace an exact text fragment in one allowed UTF-8 workspace file. Default requires exactly one match; use expected_count only when every replacement is intended.", "parameters": {"type": "object", "properties": {"path": {"type": "string", "minLength": 1}, "old_text": {"type": "string", "minLength": 1, "maxLength": 50000}, "new_text": {"type": "string", "maxLength": 100000}, "expected_count": {"type": "integer", "minimum": 1, "maximum": 20, "default": 1}}, "required": ["path", "old_text", "new_text"], "additionalProperties": False}},
         {"type": "function", "name": "apply_unified_patch", "description": "Apply a bounded unified diff atomically after `git apply --check`. Every changed path must be TaskContract-allowed.", "parameters": {"type": "object", "properties": {"patch": {"type": "string", "minLength": 1, "maxLength": 200000}}, "required": ["patch"], "additionalProperties": False}},
         {"type": "function", "name": "create_file", "description": "Create a new UTF-8 file. Refuses to overwrite an existing file.", "parameters": {"type": "object", "properties": {"path": {"type": "string", "minLength": 1}, "content": {"type": "string", "maxLength": 100000}}, "required": ["path", "content"], "additionalProperties": False}},
@@ -177,6 +253,8 @@ def tool_definitions() -> list[dict[str, Any]]:
         {"type": "function", "name": "git_commit", "description": "Commit only explicitly listed TaskContract-allowed paths. Available only when the contract grants `git commit *`.", "parameters": {"type": "object", "properties": {"message": {"type": "string", "minLength": 1, "maxLength": 200}, "paths": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 500}, "minItems": 1, "maxItems": 50}}, "required": ["message", "paths"], "additionalProperties": False}},
         {"type": "function", "name": "git_push", "description": "Push HEAD to an explicit remote branch. Available only when the contract grants `git push *`.", "parameters": {"type": "object", "properties": {"remote": {"type": "string", "minLength": 1, "maxLength": 80, "default": "origin"}, "branch": {"type": "string", "minLength": 1, "maxLength": 200}}, "required": ["branch"], "additionalProperties": False}},
         {"type": "function", "name": "fetch_public_source", "description": "Read one original public HTTP(S) source. Private/local addresses, redirects, non-text content, and oversized responses are rejected.", "parameters": {"type": "object", "properties": {"url": {"type": "string", "minLength": 8, "maxLength": 2000}}, "required": ["url"], "additionalProperties": False}},
+        {"type": "function", "name": "fetch_public_pdf", "description": "Extract bounded readable text from one public PDF. Rejects private hosts, redirects, non-PDF files, oversized files, and scans needing OCR.", "parameters": {"type": "object", "properties": {"url": {"type": "string", "minLength": 8, "maxLength": 2000}}, "required": ["url"], "additionalProperties": False}},
+        {"type": "function", "name": "render_public_page", "description": "Render one JavaScript public page with local headless browser. This tool always requires explicit permission approval.", "parameters": {"type": "object", "properties": {"url": {"type": "string", "minLength": 8, "maxLength": 2000}}, "required": ["url"], "additionalProperties": False}},
     ]
 
 
@@ -336,6 +414,71 @@ class WorkspaceAgentTools:
         pattern = rf"^\s*(?:async\s+def|def|class|interface|type|enum|function|const|let|var|export\s+(?:default\s+)?(?:class|function|const|interface|type))\s+{escaped}\b"
         return self.search_files(pattern, path=path, max_results=max_results)
 
+    def find_references(self, symbol: str, path: str = ".", max_results: int = 60) -> dict[str, Any]:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", symbol):
+            raise AgentToolError(422, "Symbol must be an identifier")
+        return self.search_files(rf"\b{re.escape(symbol)}\b", path=path, max_results=max_results)
+
+    def language_diagnostics(self, path: str) -> dict[str, Any]:
+        target = self.path(path, must_exist=True)
+        suffix = target.suffix.lower()
+        if suffix == ".py":
+            pyright = ROOT / "node_modules" / ".bin" / "pyright.cmd"
+            if pyright.is_file():
+                command = [str(pyright), "--outputjson", str(target)]
+                provider = "pyright"
+            else:
+                command = [sys.executable, "-m", "py_compile", str(target)]
+                provider = "python.py_compile"
+        elif suffix in {".js", ".mjs", ".cjs"}:
+            command = ["node", "--check", str(target)]
+            provider = "node.syntax_check"
+        else:
+            raise AgentToolError(422, "Diagnostics support .py, .js, .mjs, and .cjs; use TaskContract verification for project-specific checks")
+        try:
+            run = subprocess.run(command, cwd=self.workspace, capture_output=True, text=True, timeout=30, shell=False)
+        except FileNotFoundError as error:
+            raise AgentToolError(503, f"Diagnostics provider unavailable: {provider}") from error
+        except subprocess.TimeoutExpired as error:
+            raise AgentToolError(504, "language_diagnostics timed out") from error
+        diagnostics = (run.stderr or run.stdout).strip()
+        if provider == "pyright" and run.stdout.strip():
+            try:
+                report = json.loads(run.stdout)
+                diagnostics = json.dumps(report.get("generalDiagnostics", []), ensure_ascii=False)
+            except json.JSONDecodeError:
+                pass
+        return {"path": target.relative_to(self.workspace).as_posix(), "provider": provider, "ok": run.returncode == 0, "diagnostics": _short(diagnostics, self.output_limit)["content"]}
+
+    def discover_tests(self, path: str = ".", max_results: int = 80) -> dict[str, Any]:
+        if not 1 <= max_results <= 200:
+            raise AgentToolError(422, "max_results must be between 1 and 200")
+        target = self.path(path)
+        if not target.is_dir():
+            raise AgentToolError(422, "Test discovery path must be a directory")
+        patterns = ("test_*.py", "*_test.py", "*.test.js", "*.spec.js", "*.test.ts", "*.spec.ts", "*.test.tsx", "*.spec.tsx")
+        files: list[str] = []
+        for item in sorted(target.rglob("*")):
+            if not item.is_file() or any(part in IGNORED_PARTS for part in item.relative_to(self.workspace).parts):
+                continue
+            relative = item.relative_to(self.workspace).as_posix()
+            if _is_permitted(relative, self.allowed_paths) and any(item.match(pattern) for pattern in patterns):
+                files.append(relative)
+            if len(files) >= max_results:
+                break
+        commands = []
+        package = self.workspace / "package.json"
+        if package.is_file() and _is_permitted("package.json", self.allowed_paths):
+            try:
+                scripts = json.loads(package.read_text(encoding="utf-8")).get("scripts", {})
+                if "test" in scripts:
+                    commands.append({"command": "npm.cmd test", "declared": str(scripts["test"])[:500]})
+            except (OSError, json.JSONDecodeError):
+                pass
+        if any(item.endswith((".py",)) for item in files):
+            commands.append({"command": "python -m unittest discover", "declared": "Python unittest discovery"})
+        return {"files": files, "commands": commands, "truncated": len(files) >= max_results}
+
     def apply_unified_patch(self, patch: str) -> dict[str, Any]:
         if len(patch.encode("utf-8")) > 200_000:
             raise AgentToolError(422, "Patch exceeds 200 KB limit")
@@ -435,6 +578,9 @@ class WorkspaceAgentTools:
             "read_file": self.read_file,
             "search_files": self.search_files,
             "find_symbols": self.find_symbols,
+            "find_references": self.find_references,
+            "language_diagnostics": self.language_diagnostics,
+            "discover_tests": self.discover_tests,
             "replace_exact_text": self.replace_exact_text,
             "apply_unified_patch": self.apply_unified_patch,
             "create_file": self.create_file,
@@ -443,6 +589,8 @@ class WorkspaceAgentTools:
             "git_commit": self.git_commit,
             "git_push": self.git_push,
             "fetch_public_source": fetch_public_source,
+            "fetch_public_pdf": fetch_public_pdf,
+            "render_public_page": render_public_page,
         }
         if name not in handlers:
             raise AgentToolError(404, "Unknown bounded agent tool")

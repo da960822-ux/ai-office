@@ -56,9 +56,22 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODELS_URL = f"{OPENROUTER_BASE_URL}/models"
 NAVI_MODEL = "z-ai/glm-5.2"
 MODELS_CACHE_PATH = ROOT / "data" / "openrouter-models.json"
-BUILD_ID = "ai-office-jobs-v9-durable-agent-runtime"
-SCHEMA_VERSION = 4
+BUILD_ID = "ai-office-jobs-v10-p1-harness"
+SCHEMA_VERSION = 5
 MODEL_CALL_TIMEOUT_SECONDS = max(30, int(os.getenv("AI_OFFICE_MODEL_TIMEOUT_SECONDS", "900")))
+RETRY_PLAYBOOK = {
+    "contract_interpretation": ["re-read-contract-and-acceptance", "independent-scope-review"],
+    "permission": ["request-required-permission", "narrow-to-approved-action"],
+    "skill": ["refresh-task-kind-skill-selection", "handoff-to-owning-department"],
+    "file_conflict": ["isolate-worktree-and-rebase", "handoff-conflict-to-owner"],
+    "build": ["trace-build-log-with-advanced-model", "minimal-repro-and-owner-handoff"],
+    "test": ["discover-tests-and-diagnose", "independent-qa-reproduction"],
+    "runtime": ["collect-runtime-evidence-and-retry", "escalate-to-reliability-owner"],
+    "external_dependency": ["retry-with-fallback-provider", "pause-for-external-dependency"],
+    "quality": ["independent-review-rework", "change-final-owner"],
+    "budget": ["compress-context-and-reduce-scope", "human-budget-decision"],
+    "model_response": ["switch-model-tier-and-preserve-evidence", "narrow-prompt-and-retry"],
+}
 JOB_STATES = {"queued", "running", "pause_requested", "paused", "cancel_requested", "cancelled", "succeeded", "failed", "interrupted"}
 TASK_STATES = {
     "draft", "contracting", "planning", "meeting", "assigned", "running",
@@ -204,7 +217,7 @@ class SteeringInput(BaseModel):
 
 class RetryInput(BaseModel):
     failure_class: Literal["contract_interpretation", "permission", "skill", "file_conflict", "build", "test", "runtime", "external_dependency", "quality", "budget", "model_response"]
-    strategy: str = Field(min_length=1, max_length=500)
+    strategy: str | None = Field(default=None, min_length=1, max_length=500)
 
 
 class ModelSettingsInput(BaseModel):
@@ -276,7 +289,7 @@ def permission_effect(db: sqlite3.Connection, task_id: str, action: str, target:
             specificity = (row["action"] != "*", len(row["pattern"]))
             matches.append((specificity, {"allow": 0, "ask": 1, "deny": 2}[row["effect"]], row["effect"]))
     if not matches:
-        return "allow"
+        return "ask" if action == "render_public_page" else "allow"
     return max(matches)[2]
 
 
@@ -862,6 +875,12 @@ def init_db() -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, employee_id TEXT NOT NULL,
             query TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL, snippet TEXT NOT NULL, created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS research_claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, employee_id TEXT NOT NULL,
+            claim TEXT NOT NULL, source_url TEXT NOT NULL, publisher TEXT NOT NULL,
+            published_at TEXT, retrieved_span TEXT NOT NULL, confidence REAL NOT NULL,
+            contradictions TEXT NOT NULL, created_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS task_controls (
             task_id TEXT PRIMARY KEY, state_before_pause TEXT, pause_requested INTEGER NOT NULL DEFAULT 0,
             cancel_requested INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
@@ -876,6 +895,11 @@ def init_db() -> None:
         );
         CREATE TABLE IF NOT EXISTS reviews (
             id TEXT PRIMARY KEY, task_id TEXT NOT NULL, reviewer_id TEXT NOT NULL, verdict TEXT NOT NULL,
+            findings TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS integration_reviews (
+            id TEXT PRIMARY KEY, task_id TEXT NOT NULL, employee_id TEXT NOT NULL,
+            reviewer_id TEXT NOT NULL, commit_sha TEXT NOT NULL, verdict TEXT NOT NULL,
             findings TEXT NOT NULL, created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS approvals (
@@ -929,6 +953,7 @@ def init_db() -> None:
         ensure_column(db, "tasks", "lead_id", "TEXT")
         ensure_column(db, "tasks", "parent_task_id", "TEXT")
         ensure_column(db, "task_phases", "task_kind", "TEXT NOT NULL DEFAULT 'general'")
+        ensure_column(db, "retry_attempts", "strategy", "TEXT")
         # Old plan rows were placeholders, not real meetings. Preserve audit, hide from runtime.
         db.execute("UPDATE meetings SET status = 'superseded' WHERE status = 'concluded' AND type = 'team_lead' AND id NOT IN (SELECT DISTINCT m.id FROM meetings m JOIN agent_messages a ON a.task_id = m.task_id WHERE a.kind = 'meeting')")
         # Older tool events stored raw file/command output in a UI summary. Keep
@@ -956,12 +981,15 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
     meetings = [dict(row) | {key: json.loads(row[key]) for key in ("participants", "agenda", "decisions")} for row in db.execute("SELECT * FROM meetings WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     items = [dict(row) | {"acceptance_criteria": json.loads(row["acceptance_criteria"])} for row in db.execute("SELECT * FROM action_items WHERE task_id = ? ORDER BY sequence", (task_id,))]
     reviews = [dict(row) for row in db.execute("SELECT * FROM reviews WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
+    integration_reviews = [dict(row) for row in db.execute("SELECT * FROM integration_reviews WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     approvals = [dict(row) for row in db.execute("SELECT * FROM approvals WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     reflections = [dict(row) | {key: json.loads(row[key]) for key in ("root_causes", "improvements")} for row in db.execute("SELECT * FROM reflections WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     lessons = [dict(row) for row in db.execute("SELECT * FROM lessons WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     agent_messages = [dict(row) for row in db.execute("SELECT * FROM agent_messages WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     model_usage = [dict(row) for row in db.execute("SELECT * FROM model_usage WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     research_sources = [dict(row) for row in db.execute("SELECT * FROM research_sources WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
+    research_claims = [dict(row) | {"contradictions": json.loads(row["contradictions"])} for row in db.execute("SELECT * FROM research_claims WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
+    retry_attempts = [dict(row) for row in db.execute("SELECT * FROM retry_attempts WHERE task_id = ? ORDER BY id DESC", (task_id,))]
     checkpoints = [dict(row) | {"snapshot": json.loads(row["snapshot"])} for row in db.execute("SELECT * FROM task_checkpoints WHERE task_id = ? ORDER BY id DESC", (task_id,))]
     jobs = [dict(row) | {"payload": json.loads(row["payload"])} for row in db.execute("SELECT * FROM jobs WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     job_events = [dict(row) | {"payload": json.loads(row["payload"])} for row in db.execute("SELECT * FROM job_events WHERE task_id = ? ORDER BY id DESC LIMIT 120", (task_id,))]
@@ -985,7 +1013,7 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
         for row in db.execute("SELECT * FROM task_phases WHERE task_id = ? ORDER BY sequence, phase_id", (task_id,))
     ]
     budget_spent = sum(item["input_tokens"] + item["output_tokens"] for item in model_usage)
-    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "deliverables": deliverables, "execution_plan": execution_plan, "agent_scopes": agent_scopes, "phases": phases, "steering_messages": steering_messages, "state_label": STATE_LABELS[task["state"]], "contract": ((dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")} | {"permission_rules": permission_rules}) if contract else None), "permission_requests": permission_requests, "meetings": meetings, "action_items": items, "reviews": reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "agent_runs": agent_runs, "agent_sessions": agent_sessions, "tool_calls": tool_calls, "budget_spent": budget_spent}
+    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "deliverables": deliverables, "execution_plan": execution_plan, "agent_scopes": agent_scopes, "phases": phases, "steering_messages": steering_messages, "state_label": STATE_LABELS[task["state"]], "contract": ((dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")} | {"permission_rules": permission_rules}) if contract else None), "permission_requests": permission_requests, "meetings": meetings, "action_items": items, "reviews": reviews, "integration_reviews": integration_reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "research_claims": research_claims, "retry_attempts": retry_attempts, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "agent_runs": agent_runs, "agent_sessions": agent_sessions, "tool_calls": tool_calls, "budget_spent": budget_spent}
 
 
 def consume_steering_messages(db: sqlite3.Connection, task_id: str) -> list[dict]:
@@ -2335,12 +2363,14 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             {"type": "function", "name": "run_verification", "description": "Run a TaskContract-approved verification command in the assigned project workspace.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"], "additionalProperties": False}},
             {"type": "function", "name": "web_search", "description": "Discover candidate public sources. Search snippets are not evidence; read selected originals with read_web_source.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "minLength": 2, "maxLength": 300}}, "required": ["query"], "additionalProperties": False}},
             {"type": "function", "name": "read_web_source", "description": "Read and verify the original public page for a selected source URL.", "parameters": {"type": "object", "properties": {"url": {"type": "string", "minLength": 8, "maxLength": 2000}}, "required": ["url"], "additionalProperties": False}},
+            {"type": "function", "name": "record_research_claim", "description": "Record one material research claim tied to a previously verified original source. Include source text span, confidence 0-1, and contradictions or an empty list.", "parameters": {"type": "object", "properties": {"claim": {"type": "string", "minLength": 10, "maxLength": 1600}, "source_url": {"type": "string", "minLength": 8, "maxLength": 2000}, "publisher": {"type": "string", "minLength": 2, "maxLength": 300}, "published_at": {"type": "string", "maxLength": 40}, "retrieved_span": {"type": "string", "minLength": 20, "maxLength": 4000}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "contradictions": {"type": "array", "items": {"type": "string", "maxLength": 500}, "maxItems": 10}}, "required": ["claim", "source_url", "publisher", "retrieved_span", "confidence", "contradictions"], "additionalProperties": False}},
         ]
         tools.extend(tool_definitions())
         allowed_commands = set(task["contract"]["allowed_commands"])
         enabled_bounded_tools = {
-            "list_files", "read_file", "search_files", "find_symbols", "replace_exact_text",
-            "apply_unified_patch", "create_file", "git_status", "git_diff", "fetch_public_source",
+            "list_files", "read_file", "search_files", "find_symbols", "find_references",
+            "language_diagnostics", "discover_tests", "replace_exact_text", "apply_unified_patch",
+            "create_file", "git_status", "git_diff", "fetch_public_source", "fetch_public_pdf", "render_public_page",
         }
         if "git commit *" in allowed_commands:
             enabled_bounded_tools.add("git_commit")
@@ -2354,7 +2384,8 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             tools = [
                 tool for tool in tools
                 if tool["name"] not in {
-                    "list_files", "read_file", "run_verification", "search_files", "find_symbols",
+                    "list_files", "read_file", "run_verification", "search_files", "find_symbols", "find_references",
+                    "language_diagnostics", "discover_tests",
                     "replace_exact_text", "apply_unified_patch", "create_file",
                     "git_status", "git_diff", "git_commit", "git_push",
                 }
@@ -2378,10 +2409,10 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             f"Your role: {role['responsibility']}. Work only on task request. "
             f"Department owns: {boundary['owns']}. Must hand off: {boundary['must_handoff']}. "
             "Do not redefine the task, perform another department's work, or make the final cross-department decision. Produce one bounded department contribution. "
-            + ("This is a research task: follow the evidence strategy, discover candidates with web_search, read selected original pages with read_web_source, then cite verified URLs. Search snippets alone are not evidence. " if research_task else "")
+            + ("This is a research task: follow the evidence strategy, discover candidates with web_search, read selected original pages with read_web_source or fetch_public_pdf, then record each material conclusion with record_research_claim. Search snippets alone are not evidence. " if research_task else "")
             + ("Workspace files are intentionally unavailable for this task. Do not infer user needs from unrelated local files. " if not allow_workspace_context else "")
             + "Only task-relevant skills are available. Read a skill only when it directly supports the bounded assignment. "
-            "Use find_symbols and search_files before file reads. Use replace_exact_text or apply_unified_patch for existing files; create_file only for new files. Inspect git_diff and run verification before claiming implementation success. "
+            "Use find_symbols/find_references and search_files before file reads. Use language_diagnostics and discover_tests to choose a TaskContract-approved verification command. Use replace_exact_text or apply_unified_patch for existing files; create_file only for new files. Inspect git_diff and run verification before claiming implementation success. "
             "Never access credentials, parent folders, or delete unrelated files. Use web_search for discovery and fetch_public_source or read_web_source for original evidence; cite returned URLs and never invent sources. "
             "For leads: inspect work, give precise review or debugging changes. For workers: implement smallest safe change. "
             "Finish with Korean summary: changed files, verification run, remaining risk."
@@ -2401,6 +2432,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             "department_boundary": boundary,
             "execution_plan_summary": dynamic_plan.get("summary"),
             "evidence_strategy": evidence_strategy,
+            "active_retry_strategy": task.get("retry_attempts", [{}])[0] if task.get("retry_attempts") else None,
             "deliverable_standard": artifact_standard,
             "skill_context": skill_manifest,
             "user_steering": initial_steering,
@@ -2534,10 +2566,41 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                                 (f"EVD-{task_id.split('-')[-1]}-WEB-{source_hash[:12]}", task_id, None, "verified_web_source", "pass", source_hash, 0, now),
                             )
                             result = source
+                        elif call.name == "record_research_claim":
+                            source_url = str(args["source_url"])
+                            verified = db.execute(
+                                "SELECT 1 FROM research_sources WHERE task_id = ? AND url = ? "
+                                "AND query = 'verified-original' LIMIT 1",
+                                (task_id, source_url),
+                            ).fetchone()
+                            if not verified:
+                                raise HTTPException(409, "Research claim requires a previously verified original source URL")
+                            contradictions = args.get("contradictions", [])
+                            now = utc_now()
+                            db.execute(
+                                "INSERT INTO research_claims "
+                                "(task_id, employee_id, claim, source_url, publisher, published_at, retrieved_span, confidence, contradictions, created_at) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                (
+                                    task_id, payload.employee_id, args["claim"], source_url,
+                                    args["publisher"], args.get("published_at") or None,
+                                    args["retrieved_span"], float(args["confidence"]),
+                                    json.dumps(contradictions, ensure_ascii=False), now,
+                                ),
+                            )
+                            claim_hash = hashlib.sha256(
+                                (args["claim"] + source_url + args["retrieved_span"]).encode("utf-8")
+                            ).hexdigest()
+                            db.execute(
+                                "INSERT OR REPLACE INTO evidence VALUES (?, ?, NULL, 'research_claim', 'pass', ?, 0, ?)",
+                                (f"EVD-{task_id.split('-')[-1]}-CLAIM-{claim_hash[:12]}", task_id, claim_hash, now),
+                            )
+                            result = {"recorded": True, "claim_sha256": claim_hash, "source_url": source_url}
                         elif call.name in {
-                            "list_files", "read_file", "search_files", "find_symbols",
+                            "list_files", "read_file", "search_files", "find_symbols", "find_references",
+                            "language_diagnostics", "discover_tests",
                             "replace_exact_text", "apply_unified_patch", "create_file",
-                            "git_status", "git_diff", "git_commit", "git_push", "fetch_public_source",
+                            "git_status", "git_diff", "git_commit", "git_push", "fetch_public_source", "fetch_public_pdf", "render_public_page",
                         }:
                             if call.name not in enabled_bounded_tools:
                                 raise HTTPException(403, f"{call.name} is not granted by TaskContract")
@@ -2557,7 +2620,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                                 command_results.append({"command": "git commit", "exit_code": 0, "commit": result["commit"]})
                             elif call.name == "git_push":
                                 command_results.append({"command": "git push", "exit_code": 0, "branch": result["branch"]})
-                            elif call.name == "fetch_public_source":
+                            elif call.name in {"fetch_public_source", "fetch_public_pdf", "render_public_page"}:
                                 verified_web_sources += 1
                                 verified_web_domains.add(urllib.parse.urlparse(result["url"]).hostname or "")
                                 now = utc_now()
@@ -2616,7 +2679,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                         output_summary = f"git commit · {result.get('commit', '')[:12]}"
                     elif call.name == "git_push" and isinstance(result, dict):
                         output_summary = f"git push · {result.get('remote', '')}/{result.get('branch', '')}"
-                    elif call.name == "fetch_public_source" and isinstance(result, dict):
+                    elif call.name in {"fetch_public_source", "fetch_public_pdf", "render_public_page"} and isinstance(result, dict):
                         output_summary = f"원문 확인 · {result.get('title', '')} · {result.get('url', '')}"
                     db.execute(
                         "INSERT INTO tool_calls (task_id, job_id, agent_id, tool_name, input_summary, output_summary, status, duration_ms, created_at) "
@@ -2673,8 +2736,9 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                 not web_search_used
                 or verified_web_sources < 2
                 or len({domain for domain in verified_web_domains if domain}) < 2
+                or not db.execute("SELECT 1 FROM research_claims WHERE task_id = ? LIMIT 1", (task_id,)).fetchone()
             ):
-                raise HTTPException(422, "Research completion requires search plus two verified original sources from independent domains")
+                raise HTTPException(422, "Research completion requires search, two verified originals from independent domains, and claim-to-source evidence")
             summary = response.output_text
         except HTTPException:
             raise
@@ -2729,18 +2793,38 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
 
 @app.post("/api/tasks/{task_id}/retry")
 def retry(task_id: str, payload: RetryInput) -> dict:
-    strategy_hash = hashlib.sha256(payload.strategy.encode()).hexdigest()
     with database() as db:
         task = task_payload(db, task_id)
         if not task["contract"]:
             raise HTTPException(409, "TaskContract required before retry")
         attempts = db.execute("SELECT COUNT(*) FROM retry_attempts WHERE task_id = ?", (task_id,)).fetchone()[0]
+        prior_hashes = {
+            row[0] for row in db.execute(
+                "SELECT strategy_sha256 FROM retry_attempts WHERE task_id = ? AND failure_class = ?",
+                (task_id, payload.failure_class),
+            )
+        }
+        strategy = payload.strategy
+        if strategy is None:
+            strategy = next(
+                (
+                    candidate for candidate in RETRY_PLAYBOOK[payload.failure_class]
+                    if hashlib.sha256(candidate.encode()).hexdigest() not in prior_hashes
+                ),
+                None,
+            )
+            if strategy is None:
+                strategy = "retry-playbook-exhausted"
+        strategy_hash = hashlib.sha256(strategy.encode()).hexdigest()
         repeated = db.execute("SELECT COUNT(*) FROM retry_attempts WHERE task_id = ? AND failure_class = ? AND strategy_sha256 = ?", (task_id, payload.failure_class, strategy_hash)).fetchone()[0]
-        state = "escalated" if attempts >= task["contract"]["retry_limit"] or repeated else "planning"
+        state = "escalated" if attempts >= task["contract"]["retry_limit"] or repeated or strategy == "retry-playbook-exhausted" else "planning"
         now = utc_now(); status = "escalated" if state == "escalated" else "retrying"
-        db.execute("INSERT INTO retry_attempts (task_id, failure_class, strategy_sha256, status, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, payload.failure_class, strategy_hash, status, now))
+        db.execute(
+            "INSERT INTO retry_attempts (task_id, failure_class, strategy_sha256, status, created_at, strategy) VALUES (?, ?, ?, ?, ?, ?)",
+            (task_id, payload.failure_class, strategy_hash, status, now, strategy),
+        )
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (state, now, task_id))
-        db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "escalate" if state == "escalated" else "retry", task["state"], state, "NAVI", payload.failure_class, json.dumps(task["assigned_employees"]), now))
+        db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "escalate" if state == "escalated" else "retry", task["state"], state, "NAVI", f"{payload.failure_class}:{strategy}", json.dumps(task["assigned_employees"]), now))
         return task_payload(db, task_id)
 
 

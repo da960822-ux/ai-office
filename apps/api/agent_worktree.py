@@ -71,13 +71,13 @@ def prepare(
     }
 
 
-def commit_and_integrate(agent_workspace: dict, *, task_id: str, employee_id: str) -> dict:
+def commit_for_review(agent_workspace: dict, *, task_id: str, employee_id: str) -> dict:
     if not agent_workspace.get("isolated"):
-        return {"isolated": False, "integrated": False, "reason": agent_workspace.get("reason", "not_git")}
+        return {"isolated": False, "commit": None, "changed": False, "reason": agent_workspace.get("reason", "not_git")}
     path = Path(agent_workspace["path"])
     _git(path, "add", "-A")
     if _git(path, "diff", "--cached", "--quiet", check=False).returncode == 0:
-        return {"isolated": True, "integrated": True, "commit": None, "changed": False}
+        return {"isolated": True, "commit": None, "changed": False}
     _git(
         path,
         "-c",
@@ -89,6 +89,16 @@ def commit_and_integrate(agent_workspace: dict, *, task_id: str, employee_id: st
         f"agent({employee_id}): {task_id} contribution",
     )
     commit = _git(path, "rev-parse", "HEAD").stdout.strip()
+    diff = _git(path, "show", "--format=", "--stat", "--patch", commit).stdout
+    return {"isolated": True, "commit": commit, "changed": True, "diff": diff[:24_000]}
+
+
+def integrate_reviewed(agent_workspace: dict, commit: str | None) -> dict:
+    """Merge only a commit already passed by an independent reviewer."""
+    if not agent_workspace.get("isolated"):
+        return {"isolated": False, "integrated": False, "reason": agent_workspace.get("reason", "not_git")}
+    if not commit:
+        return {"isolated": True, "integrated": True, "commit": None, "changed": False}
     base_path = Path(agent_workspace["base_path"])
     with INTEGRATION_LOCK:
         cherry_pick = _git(base_path, "cherry-pick", commit, check=False)
@@ -96,8 +106,6 @@ def commit_and_integrate(agent_workspace: dict, *, task_id: str, employee_id: st
             _git(base_path, "cherry-pick", "--abort", check=False)
             raise RuntimeError(f"Agent worktree integration conflict: {(cherry_pick.stderr or cherry_pick.stdout)[:1000]}")
     return {"isolated": True, "integrated": True, "commit": commit, "changed": True}
-
-
 def cleanup(base_path: Path, agent_workspace: dict) -> None:
     if not agent_workspace.get("isolated"):
         return

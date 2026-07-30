@@ -11,13 +11,16 @@ import sqlite3
 import subprocess
 import time
 from datetime import timedelta
+from multiprocessing import Process
 from threading import Event, Thread
 
 from apps.api import main
 from apps.api import agent_worktree
+from apps.api.artifact_renderer import formats_for_request
 
 WORKER_ID = f"local-worker-{os.getpid()}"
 WORKER_CONCURRENCY = max(1, min(int(os.getenv("AI_OFFICE_WORKER_CONCURRENCY", "4")), 8))
+WORKER_MODE = os.getenv("AI_OFFICE_WORKER_MODE", "process").strip().lower()
 
 
 def workspace_supports_parallel_worktrees(path: str) -> bool:
@@ -43,6 +46,57 @@ def workspace_supports_parallel_worktrees(path: str) -> bool:
         return dirty.returncode == 0 and not dirty.stdout.strip()
     except (OSError, subprocess.SubprocessError):
         return False
+
+
+def review_and_integrate_worktree(job: dict, employee_id: str, agent_workspace: dict, pending: dict) -> dict:
+    """Independent reviewer must pass agent commit before base branch changes."""
+    if not pending.get("isolated"):
+        return {"isolated": False, "integrated": False, "reason": pending.get("reason", "not_git")}
+    if not pending.get("changed"):
+        return agent_worktree.integrate_reviewed(agent_workspace, pending.get("commit"))
+    reviewer = "LENS" if employee_id == "GUARD" else "GUARD"
+    role = main.agent_role(reviewer)
+    response = main.cancellable_model_response(
+        main.model_client(),
+        job["task_id"],
+        job["id"],
+        model=main.model_settings()[role["model_role"]],
+        instructions=(
+            "Review this isolated agent Git diff. You are independent reviewer, not author. "
+            "Pass only if change is scoped, safe, and has no obvious correctness/security regression. "
+            "Return strict JSON only: {\"verdict\":\"pass|changes_requested|blocked\",\"findings\":\"Korean actionable review\"}."
+        ),
+        input=json.dumps({"employee_id": employee_id, "commit": pending["commit"], "diff": pending.get("diff", "")}, ensure_ascii=False),
+    )
+    raw = response.output_text.strip()
+    try:
+        decision = json.loads(raw[raw.find("{"):raw.rfind("}") + 1])
+        verdict = decision.get("verdict", "changes_requested")
+        findings = str(decision.get("findings", raw))
+    except Exception:
+        verdict, findings = "changes_requested", raw
+    if verdict not in {"pass", "changes_requested", "blocked"}:
+        verdict = "changes_requested"
+    with main.database() as db:
+        number = db.execute("SELECT COUNT(*) FROM integration_reviews WHERE task_id = ?", (job["task_id"],)).fetchone()[0] + 1
+        review_id = f"IREV-{job['task_id'].split('-')[-1]}-{number:03d}"
+        db.execute(
+            "INSERT INTO integration_reviews VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (review_id, job["task_id"], employee_id, reviewer, pending["commit"], verdict, findings[:4000], main.utc_now()),
+        )
+        review_hash = main.hashlib.sha256((pending["commit"] + findings).encode()).hexdigest()
+        db.execute(
+            "INSERT OR REPLACE INTO evidence VALUES (?, ?, NULL, 'integration_review', ?, ?, 0, ?)",
+            (f"EVD-{job['task_id'].split('-')[-1]}-IREV-{review_hash[:12]}", job["task_id"], "pass" if verdict == "pass" else "fail", review_hash, main.utc_now()),
+        )
+        main.emit_job_event(
+            db, job["task_id"], "integration.review_completed", findings[:800],
+            job_id=job["id"], agent_id=reviewer,
+            payload={"employee_id": employee_id, "commit": pending["commit"], "verdict": verdict},
+        )
+    if verdict != "pass":
+        raise RuntimeError(f"Independent worktree review {verdict}: {findings[:1000]}")
+    return agent_worktree.integrate_reviewed(agent_workspace, pending["commit"])
 
 
 def queue_ready_agent_jobs(db: sqlite3.Connection, task: dict) -> list[dict]:
@@ -658,10 +712,16 @@ def process_execute(job: dict) -> None:
                     job_id=job["id"],
                 ),
             )
-            integration = agent_worktree.commit_and_integrate(
+            pending_integration = agent_worktree.commit_for_review(
                 isolated_workspace,
                 task_id=job["task_id"],
                 employee_id=employee,
+            )
+            integration = review_and_integrate_worktree(
+                job,
+                employee,
+                isolated_workspace,
+                pending_integration,
             )
             if integration.get("isolated"):
                 with main.database() as db:
@@ -835,9 +895,7 @@ def process_synthesize(job: dict) -> None:
             filename=standard["filename"],
             status="final_candidate",
         )
-        formats = ["html", "docx", "pdf"]
-        if artifact_kind == "financial_model_report":
-            formats.append("xlsx")
+        formats = formats_for_request(task["request"], artifact_kind)
         rendered = [
             main.register_existing_deliverable(
                 db,
@@ -1042,8 +1100,9 @@ def worker_loop() -> None:
 def main_loop() -> None:
     main.init_db()
     recover_orphaned_jobs()
+    worker_factory = Process if WORKER_MODE == "process" else Thread
     workers = [
-        Thread(target=worker_loop, daemon=True, name=f"ai-office-worker-{index}")
+        worker_factory(target=worker_loop, daemon=True, name=f"ai-office-worker-{index}")
         for index in range(1, WORKER_CONCURRENCY + 1)
     ]
     for thread in workers:
