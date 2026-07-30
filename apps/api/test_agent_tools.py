@@ -70,13 +70,37 @@ class WorkspaceAgentToolsTest(unittest.TestCase):
         with self.assertRaises(AgentToolError):
             self.tools.git_push("../unsafe")
 
+    def test_symbol_search_patch_and_create_are_surgical(self) -> None:
+        (self.root / "src" / "symbol.py").write_text("def hello():\n    return 'world'\n", encoding="utf-8")
+        subprocess.run(["git", "init"], cwd=self.root, check=True, capture_output=True, text=True)
+        symbols = self.tools.find_symbols("hello", path="src")
+        self.assertEqual(symbols["results"][0]["path"], "src/symbol.py")
+        patch = (
+            "--- a/src/symbol.py\n"
+            "+++ b/src/symbol.py\n"
+            "@@ -1,2 +1,2 @@\n"
+            " def hello():\n"
+            "-    return 'world'\n"
+            "+    return 'patched'\n"
+        )
+        result = self.tools.apply_unified_patch(patch)
+        self.assertEqual(result["paths"], ["src/symbol.py"])
+        self.assertIn("patched", (self.root / "src/symbol.py").read_text(encoding="utf-8"))
+        self.assertEqual(self.tools.create_file("src/new.py", "VALUE = 1\n")["path"], "src/new.py")
+        with self.assertRaises(AgentToolError):
+            self.tools.create_file("src/new.py", "VALUE = 2\n")
+
     def test_public_source_rejects_local_network_and_tool_schema_is_present(self) -> None:
         with self.assertRaises(AgentToolError) as error:
             _require_public_url("http://127.0.0.1:80/private")
         self.assertEqual(error.exception.status_code, 403)
         self.assertEqual(
             {item["name"] for item in tool_definitions()},
-            {"search_files", "replace_exact_text", "git_status", "git_diff", "git_commit", "git_push", "fetch_public_source"},
+            {
+                "list_files", "read_file", "search_files", "find_symbols",
+                "replace_exact_text", "apply_unified_patch", "create_file",
+                "git_status", "git_diff", "git_commit", "git_push", "fetch_public_source",
+            },
         )
 
 

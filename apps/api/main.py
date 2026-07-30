@@ -14,6 +14,7 @@ import re
 import time
 import ipaddress
 import socket
+import fnmatch
 from queue import Queue
 from threading import Thread
 from html import unescape
@@ -30,8 +31,16 @@ from pydantic import BaseModel, Field
 import keyring
 import httpx
 from openai import OpenAI
-from apps.api.agent_tools import AgentToolError, WorkspaceAgentTools, tool_definitions
+from apps.api.agent_tools import AgentToolError, WorkspaceAgentTools, fetch_public_source, tool_definitions
 from apps.api.policy import validate_path, validate_command
+from apps.api.runtime_context import (
+    ensure_schema as ensure_session_schema,
+    load_session_context,
+    record_session_turn,
+    set_session_state,
+)
+from apps.api.artifact_renderer import render_bundle
+from apps.api.research import SearchError, search_public_web
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "ai-office.sqlite3"
@@ -47,8 +56,9 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODELS_URL = f"{OPENROUTER_BASE_URL}/models"
 NAVI_MODEL = "z-ai/glm-5.2"
 MODELS_CACHE_PATH = ROOT / "data" / "openrouter-models.json"
-BUILD_ID = "ai-office-jobs-v8-dynamic-orchestration"
-SCHEMA_VERSION = 3
+BUILD_ID = "ai-office-jobs-v9-durable-agent-runtime"
+SCHEMA_VERSION = 4
+MODEL_CALL_TIMEOUT_SECONDS = max(30, int(os.getenv("AI_OFFICE_MODEL_TIMEOUT_SECONDS", "900")))
 JOB_STATES = {"queued", "running", "pause_requested", "paused", "cancel_requested", "cancelled", "succeeded", "failed", "interrupted"}
 TASK_STATES = {
     "draft", "contracting", "planning", "meeting", "assigned", "running",
@@ -101,10 +111,17 @@ class Command(BaseModel):
     note: str = Field(default="", max_length=800)
 
 
+class PermissionRuleInput(BaseModel):
+    action: str = Field(min_length=1, max_length=80)
+    effect: Literal["allow", "ask", "deny"]
+    pattern: str = Field(default="*", min_length=1, max_length=400)
+
+
 class ContractInput(BaseModel):
     allowed_paths: list[str] = ["."]
     allowed_commands: list[str] = []
     acceptance_criteria: list[str] = []
+    permission_rules: list[PermissionRuleInput] = []
     retry_limit: int = Field(default=2, ge=0, le=5)
     token_limit: int = Field(default=16000, ge=1000, le=100000)
 
@@ -132,6 +149,11 @@ class JobInput(BaseModel):
 
 class JobControlInput(BaseModel):
     action: Literal["pause", "resume", "cancel"]
+
+
+class PermissionDecisionInput(BaseModel):
+    decision: Literal["approve", "deny"]
+    reason: str = Field(default="", max_length=1000)
 
 
 class ReviewInput(BaseModel):
@@ -205,9 +227,19 @@ def utc_now() -> str:
 
 
 def checkpoint(db: sqlite3.Connection, task_id: str, label: str) -> None:
-    task = db.execute("SELECT id, state, updated_at FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    task = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
     if task:
-        db.execute("INSERT INTO task_checkpoints (task_id, label, snapshot, created_at) VALUES (?, ?, ?, ?)", (task_id, label, json.dumps(dict(task)), utc_now()))
+        snapshot = {
+            "task": dict(task),
+            "phases": [dict(row) for row in db.execute("SELECT * FROM task_phases WHERE task_id = ? ORDER BY sequence", (task_id,))],
+            "deliverables": [dict(row) for row in db.execute("SELECT * FROM deliverables WHERE task_id = ? ORDER BY updated_at", (task_id,))],
+            "evidence": [dict(row) for row in db.execute("SELECT * FROM evidence WHERE task_id = ? AND stale = 0 ORDER BY created_at", (task_id,))],
+            "agent_sessions": [dict(row) for row in db.execute("SELECT * FROM agent_sessions WHERE task_id = ? ORDER BY employee_id", (task_id,))],
+        }
+        db.execute(
+            "INSERT INTO task_checkpoints (task_id, label, snapshot, created_at) VALUES (?, ?, ?, ?)",
+            (task_id, label, json.dumps(snapshot, ensure_ascii=False), utc_now()),
+        )
 
 
 def require_runnable(db: sqlite3.Connection, task_id: str) -> None:
@@ -231,6 +263,57 @@ def require_runnable(db: sqlite3.Connection, task_id: str) -> None:
                     f"초기 토큰 경고 기준 {contract['token_limit']:,}개를 넘었습니다. 고정 중단 대신 Job heartbeat와 단계·도구 호출 한도로 계속 실행합니다.",
                     payload={"token_limit": contract["token_limit"], "spent": spent, "mode": "soft_limit"},
                 )
+
+
+def permission_effect(db: sqlite3.Connection, task_id: str, action: str, target: str) -> str:
+    """Resolve most-specific allow/ask/deny rule. Deny wins equal specificity."""
+    matches = []
+    for row in db.execute(
+        "SELECT action, effect, pattern FROM task_permission_rules WHERE task_id = ?",
+        (task_id,),
+    ):
+        if row["action"] in {action, "*"} and fnmatch.fnmatchcase(target, row["pattern"]):
+            specificity = (row["action"] != "*", len(row["pattern"]))
+            matches.append((specificity, {"allow": 0, "ask": 1, "deny": 2}[row["effect"]], row["effect"]))
+    if not matches:
+        return "allow"
+    return max(matches)[2]
+
+
+def require_tool_permission(
+    db: sqlite3.Connection,
+    task_id: str,
+    employee_id: str,
+    action: str,
+    target: str,
+) -> None:
+    effect = permission_effect(db, task_id, action, target)
+    if effect == "allow":
+        return
+    now = utc_now()
+    if effect == "deny":
+        db.execute(
+            "INSERT INTO permission_checks (task_id, employee_id, action, allowed, reason, created_at) VALUES (?, ?, ?, 0, ?, ?)",
+            (task_id, employee_id, f"{action}:{target}", "denied_by_permission_rule", now),
+        )
+        raise HTTPException(403, f"Permission denied for {action}: {target}")
+    approved = db.execute(
+        "SELECT 1 FROM permission_requests WHERE task_id = ? AND employee_id = ? "
+        "AND action = ? AND target = ? AND state = 'approved' LIMIT 1",
+        (task_id, employee_id, action, target),
+    ).fetchone()
+    if approved:
+        return
+    request_id = "PERM-" + hashlib.sha256(f"{task_id}:{employee_id}:{action}:{target}".encode()).hexdigest()[:16]
+    db.execute(
+        "INSERT INTO permission_requests "
+        "(id, task_id, employee_id, action, target, state, reason, created_at, decided_at) "
+        "VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, NULL) "
+        "ON CONFLICT(id) DO UPDATE SET state='pending', reason=excluded.reason, decided_at=NULL",
+        (request_id, task_id, employee_id, action, target, "TaskContract requires user approval", now),
+    )
+    db.commit()
+    raise HTTPException(428, f"Permission approval required: {request_id}")
 
 
 @contextmanager
@@ -270,9 +353,13 @@ def model_key() -> str | None:
 
 
 def model_client() -> OpenAI:
-    # Model generation can legitimately take several minutes. Limit only the
-    # connection phase; the worker lease heartbeat proves the Job is still alive.
-    return OpenAI(api_key=model_key(), base_url=OPENROUTER_BASE_URL, timeout=httpx.Timeout(None, connect=15.0), max_retries=0, default_headers={"HTTP-Referer": "http://localhost:5175", "X-Title": "AI Automation Office"})
+    return OpenAI(
+        api_key=model_key(),
+        base_url=OPENROUTER_BASE_URL,
+        timeout=httpx.Timeout(float(MODEL_CALL_TIMEOUT_SECONDS), connect=15.0),
+        max_retries=0,
+        default_headers={"HTTP-Referer": "http://localhost:5175", "X-Title": "AI Automation Office"},
+    )
 
 
 class JobControlSignal(RuntimeError):
@@ -293,8 +380,11 @@ def cancellable_model_response(client: OpenAI, task_id: str, job_id: str | None,
 
     call_thread = Thread(target=invoke, daemon=True, name=f"model-{job_id}")
     call_thread.start()
+    deadline = time.monotonic() + MODEL_CALL_TIMEOUT_SECONDS
     while call_thread.is_alive():
         call_thread.join(timeout=0.5)
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f"Model call exceeded {MODEL_CALL_TIMEOUT_SECONDS} seconds")
         with database() as db:
             row = db.execute("SELECT state FROM jobs WHERE id = ?", (job_id,)).fetchone()
         if row and row["state"] in {"pause_requested", "cancel_requested", "paused", "cancelled"}:
@@ -574,6 +664,36 @@ def persist_deliverable(
     return {"id": deliverable_id, "path": relative_path, "sha256": artifact_sha256, "status": status}
 
 
+def register_existing_deliverable(
+    db: sqlite3.Connection,
+    workspace: Path,
+    task_id: str,
+    owner: str,
+    kind: str,
+    path: Path,
+    status: str,
+) -> dict:
+    resolved = path.resolve()
+    if not resolved.is_relative_to(workspace.resolve()) or not resolved.is_file():
+        raise HTTPException(403, "Rendered deliverable must exist inside workspace")
+    artifact_sha256 = hashlib.sha256(resolved.read_bytes()).hexdigest()
+    relative_path = resolved.relative_to(workspace.resolve()).as_posix()
+    deliverable_id = f"DEL-{task_id.split('-')[-1]}-{hashlib.sha256(relative_path.encode()).hexdigest()[:12]}"
+    now = utc_now()
+    db.execute(
+        "INSERT INTO deliverables (id, task_id, owner, kind, path, status, artifact_sha256, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id, path) DO UPDATE SET "
+        "owner=excluded.owner, kind=excluded.kind, status=excluded.status, "
+        "artifact_sha256=excluded.artifact_sha256, updated_at=excluded.updated_at",
+        (deliverable_id, task_id, owner, kind, relative_path, status, artifact_sha256, now, now),
+    )
+    db.execute(
+        "INSERT OR REPLACE INTO evidence VALUES (?, ?, NULL, 'rendered_deliverable', 'pass', ?, 0, ?)",
+        (f"EVD-{task_id.split('-')[-1]}-RENDER-{artifact_sha256[:12]}", task_id, artifact_sha256, now),
+    )
+    return {"id": deliverable_id, "path": relative_path, "sha256": artifact_sha256, "status": status}
+
+
 def workspace_copy_ignore(source: str, names: list[str]) -> set[str]:
     ignored = {".git", "node_modules", ".venv", "dist", "build", "__pycache__"}
     try:
@@ -619,73 +739,19 @@ def mcp_initialize(connection: sqlite3.Row | dict) -> tuple[list[dict], str | No
     return tools_result.get("tools", []), session_id
 
 
-def web_search(query: str, limit: int = 5) -> list[dict]:
-    """Public web search fallback. Results are evidence, never ground truth."""
-    normalized = " ".join(query.split())[:300]
-    if not normalized:
-        raise HTTPException(422, "Web search query is required")
-    url = "https://www.bing.com/search?format=rss&q=" + urllib.parse.quote_plus(normalized)
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 AI-Automation-Office/1.0", "Accept": "text/html"})
+def web_search(query: str, limit: int = 10) -> list[dict]:
+    """Use configured Brave/SearXNG providers, then bounded Bing RSS fallback."""
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:
-            raw = response.read().decode("utf-8", errors="replace")
-    except (urllib.error.URLError, TimeoutError) as error:
+        return search_public_web(query, limit)
+    except SearchError as error:
         raise HTTPException(502, f"Web search failed: {error}") from error
-    try:
-        root = ElementTree.fromstring(raw)
-    except ElementTree.ParseError as error:
-        raise HTTPException(502, f"Web search returned invalid RSS: {error}") from error
-    results = []
-    for item in root.findall("./channel/item")[:limit]:
-        title = (item.findtext("title") or "").strip()
-        source_url = (item.findtext("link") or "").strip()
-        snippet = (item.findtext("description") or "").strip()
-        if source_url.startswith(("http://", "https://")) and title:
-            results.append({"title": title[:300], "url": source_url[:2000], "snippet": snippet[:1000]})
-    if not results:
-        raise HTTPException(502, "Web search returned no usable sources")
-    return results
 
 
 def read_public_web_source(raw_url: str, limit: int = 12000) -> dict:
-    parsed = urllib.parse.urlparse(raw_url)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise HTTPException(422, "Only public HTTP(S) source URLs are allowed")
     try:
-        addresses = {item[4][0] for item in socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))}
-    except socket.gaierror as error:
-        raise HTTPException(502, f"Source hostname resolution failed: {error}") from error
-    for address in addresses:
-        ip = ipaddress.ip_address(address)
-        if not ip.is_global:
-            raise HTTPException(403, "Private or local source addresses are not allowed")
-    request = urllib.request.Request(
-        raw_url,
-        headers={"User-Agent": "Mozilla/5.0 AI-Automation-Office/1.0", "Accept": "text/html,text/plain,application/json"},
-    )
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
-            raise urllib.error.HTTPError(req.full_url, code, "Source redirects are not followed", headers, fp)
-    try:
-        with urllib.request.build_opener(NoRedirect).open(request, timeout=25) as response:
-            final_url = response.geturl()
-            content_type = response.headers.get_content_type()
-            raw = response.read(2_000_000).decode(response.headers.get_content_charset() or "utf-8", errors="replace")
-    except (urllib.error.URLError, TimeoutError, ValueError) as error:
-        raise HTTPException(502, f"Source read failed: {error}") from error
-    final_host = urllib.parse.urlparse(final_url).hostname
-    if not final_host:
-        raise HTTPException(502, "Source redirected to an invalid URL")
-    if content_type == "text/html":
-        title_match = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
-        title = unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", title_match.group(1)))).strip() if title_match else final_host
-        cleaned = re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", " ", raw, flags=re.I | re.S)
-        text = unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", cleaned))).strip()
-    else:
-        title, text = final_host, re.sub(r"\s+", " ", raw).strip()
-    if len(text) < 200:
-        raise HTTPException(502, "Source contains too little readable text")
-    return {"title": title[:300], "url": final_url[:2000], "content_type": content_type, "text": text[:limit]}
+        return fetch_public_source(raw_url, text_limit=limit)
+    except AgentToolError as error:
+        raise HTTPException(error.status_code, str(error)) from error
 
 
 def init_db() -> None:
@@ -750,6 +816,16 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS permission_checks (
             id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT, employee_id TEXT NOT NULL,
             action TEXT NOT NULL, allowed INTEGER NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS task_permission_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL,
+            action TEXT NOT NULL, effect TEXT NOT NULL, pattern TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS permission_requests (
+            id TEXT PRIMARY KEY, task_id TEXT NOT NULL, employee_id TEXT NOT NULL,
+            action TEXT NOT NULL, target TEXT NOT NULL, state TEXT NOT NULL,
+            reason TEXT NOT NULL, created_at TEXT NOT NULL, decided_at TEXT
         );
         CREATE TABLE IF NOT EXISTS workspaces (
             id TEXT PRIMARY KEY, task_id TEXT NOT NULL, source_root TEXT NOT NULL, path TEXT NOT NULL,
@@ -848,6 +924,7 @@ def init_db() -> None:
             worker_id TEXT PRIMARY KEY, build_id TEXT NOT NULL, heartbeat_at TEXT NOT NULL
         );
         """)
+        ensure_session_schema(db)
         ensure_column(db, "tasks", "route", "TEXT NOT NULL DEFAULT 'navi'")
         ensure_column(db, "tasks", "lead_id", "TEXT")
         ensure_column(db, "tasks", "parent_task_id", "TEXT")
@@ -874,6 +951,8 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
     )]
     evidence = [dict(row) for row in db.execute("SELECT * FROM evidence WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     contract = db.execute("SELECT * FROM task_contracts WHERE task_id = ?", (task_id,)).fetchone()
+    permission_rules = [dict(row) for row in db.execute("SELECT action, effect, pattern FROM task_permission_rules WHERE task_id = ? ORDER BY id", (task_id,))]
+    permission_requests = [dict(row) for row in db.execute("SELECT * FROM permission_requests WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     meetings = [dict(row) | {key: json.loads(row[key]) for key in ("participants", "agenda", "decisions")} for row in db.execute("SELECT * FROM meetings WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     items = [dict(row) | {"acceptance_criteria": json.loads(row["acceptance_criteria"])} for row in db.execute("SELECT * FROM action_items WHERE task_id = ? ORDER BY sequence", (task_id,))]
     reviews = [dict(row) for row in db.execute("SELECT * FROM reviews WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
@@ -887,6 +966,7 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
     jobs = [dict(row) | {"payload": json.loads(row["payload"])} for row in db.execute("SELECT * FROM jobs WHERE task_id = ? ORDER BY created_at DESC", (task_id,))]
     job_events = [dict(row) | {"payload": json.loads(row["payload"])} for row in db.execute("SELECT * FROM job_events WHERE task_id = ? ORDER BY id DESC LIMIT 120", (task_id,))]
     agent_runs = [dict(row) for row in db.execute("SELECT * FROM agent_runs WHERE task_id = ? ORDER BY started_at DESC", (task_id,))]
+    agent_sessions = [dict(row) for row in db.execute("SELECT * FROM agent_sessions WHERE task_id = ? ORDER BY employee_id", (task_id,))]
     tool_calls = [dict(row) for row in db.execute("SELECT * FROM tool_calls WHERE task_id = ? ORDER BY id DESC LIMIT 120", (task_id,))]
     steering_messages = [dict(row) for row in db.execute("SELECT * FROM steering_messages WHERE task_id = ? ORDER BY id", (task_id,))]
     deliverables = [dict(row) for row in db.execute("SELECT * FROM deliverables WHERE task_id = ? ORDER BY updated_at DESC", (task_id,))]
@@ -905,7 +985,7 @@ def task_payload(db: sqlite3.Connection, task_id: str) -> dict:
         for row in db.execute("SELECT * FROM task_phases WHERE task_id = ? ORDER BY sequence, phase_id", (task_id,))
     ]
     budget_spent = sum(item["input_tokens"] + item["output_tokens"] for item in model_usage)
-    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "deliverables": deliverables, "execution_plan": execution_plan, "agent_scopes": agent_scopes, "phases": phases, "steering_messages": steering_messages, "state_label": STATE_LABELS[task["state"]], "contract": (dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")}) if contract else None, "meetings": meetings, "action_items": items, "reviews": reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "agent_runs": agent_runs, "tool_calls": tool_calls, "budget_spent": budget_spent}
+    return dict(task) | {"assigned_employees": assigned, "events": events, "evidence": evidence, "deliverables": deliverables, "execution_plan": execution_plan, "agent_scopes": agent_scopes, "phases": phases, "steering_messages": steering_messages, "state_label": STATE_LABELS[task["state"]], "contract": ((dict(contract) | {key: json.loads(contract[key]) for key in ("allowed_paths", "allowed_commands", "acceptance_criteria")} | {"permission_rules": permission_rules}) if contract else None), "permission_requests": permission_requests, "meetings": meetings, "action_items": items, "reviews": reviews, "approvals": approvals, "reflections": reflections, "lessons": lessons, "agent_messages": agent_messages, "model_usage": model_usage, "research_sources": research_sources, "checkpoints": checkpoints, "jobs": jobs, "job_events": job_events, "agent_runs": agent_runs, "agent_sessions": agent_sessions, "tool_calls": tool_calls, "budget_spent": budget_spent}
 
 
 def consume_steering_messages(db: sqlite3.Connection, task_id: str) -> list[dict]:
@@ -1145,6 +1225,29 @@ def assert_completion_invariants(
     final_owner = json.loads(plan_row["plan_json"]).get("final_owner") if plan_row else None
     if final_owner and review["reviewer_id"] == final_owner:
         raise RuntimeError("Final owner cannot approve their own deliverable")
+    execution_kinds = {
+        "frontend_implementation", "backend_implementation", "ai_data_implementation",
+        "test_engineering", "release_operations", "ci_cd_design", "cloud_operations",
+        "observability_operations",
+    }
+    task_kinds = {
+        row["task_kind"]
+        for row in db.execute("SELECT DISTINCT task_kind FROM task_phases WHERE task_id = ?", (task_id,))
+    }
+    if task_kinds.intersection(execution_kinds):
+        passed_run = db.execute(
+            "SELECT 1 FROM runs WHERE task_id = ? AND status = 'pass' LIMIT 1",
+            (task_id,),
+        ).fetchone()
+        if not passed_run:
+            raise RuntimeError("Implementation and release completion require a passing executed verification command")
+    failed_evidence = db.execute(
+        "SELECT 1 FROM evidence WHERE task_id = ? AND stale = 0 AND status = 'fail' "
+        "AND type IN ('command','verification') LIMIT 1",
+        (task_id,),
+    ).fetchone()
+    if failed_evidence:
+        raise RuntimeError("Completion blocked by current failing verification evidence")
     if task_requires_user_approval(db, task_id):
         approval = db.execute(
             "SELECT 1 FROM approvals WHERE task_id = ? AND decision = 'approve' AND decided_by = 'USER' LIMIT 1",
@@ -1460,6 +1563,73 @@ def get_task(task_id: str) -> dict:
         return task_payload(db, task_id)
 
 
+@app.post("/api/tasks/{task_id}/checkpoints/{checkpoint_id}/restore")
+def restore_checkpoint(task_id: str, checkpoint_id: int) -> dict:
+    with database() as db:
+        active = db.execute(
+            "SELECT id FROM jobs WHERE task_id = ? AND state IN "
+            "('queued','running','pause_requested','cancel_requested') LIMIT 1",
+            (task_id,),
+        ).fetchone()
+        if active:
+            raise HTTPException(409, f"Stop active Job {active['id']} before checkpoint restore")
+        row = db.execute(
+            "SELECT * FROM task_checkpoints WHERE id = ? AND task_id = ?",
+            (checkpoint_id, task_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "Checkpoint not found")
+        snapshot = json.loads(row["snapshot"])
+        task_snapshot = snapshot["task"]
+        db.execute(
+            "UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?",
+            (task_snapshot["state"], utc_now(), task_id),
+        )
+        for phase in snapshot.get("phases", []):
+            db.execute(
+                "UPDATE task_phases SET status = ?, artifact_ids = ?, updated_at = ? "
+                "WHERE task_id = ? AND phase_id = ?",
+                (phase["status"], phase["artifact_ids"], utc_now(), task_id, phase["phase_id"]),
+            )
+        for deliverable in snapshot.get("deliverables", []):
+            db.execute(
+                "UPDATE deliverables SET status = ?, artifact_sha256 = ?, updated_at = ? "
+                "WHERE task_id = ? AND id = ?",
+                (
+                    deliverable["status"],
+                    deliverable["artifact_sha256"],
+                    utc_now(),
+                    task_id,
+                    deliverable["id"],
+                ),
+            )
+        evidence_ids = [item["id"] for item in snapshot.get("evidence", [])]
+        db.execute("UPDATE evidence SET stale = 1 WHERE task_id = ?", (task_id,))
+        if evidence_ids:
+            placeholders = ",".join("?" for _ in evidence_ids)
+            db.execute(
+                f"UPDATE evidence SET stale = 0 WHERE task_id = ? AND id IN ({placeholders})",
+                (task_id, *evidence_ids),
+            )
+        for session in snapshot.get("agent_sessions", []):
+            db.execute(
+                "UPDATE agent_sessions SET state = ?, summary = ?, turn_count = ?, "
+                "last_response_id = ?, context_sha256 = ?, updated_at = ? WHERE id = ?",
+                (
+                    session["state"], session["summary"], session["turn_count"],
+                    session["last_response_id"], session["context_sha256"], utc_now(), session["id"],
+                ),
+            )
+        emit_job_event(
+            db,
+            task_id,
+            "checkpoint.restored",
+            f"Checkpoint {checkpoint_id} restored; later evidence marked stale",
+            payload={"checkpoint_id": checkpoint_id},
+        )
+        return task_payload(db, task_id)
+
+
 @app.post("/api/tasks/{task_id}/jobs/plan", status_code=202)
 def queue_plan(task_id: str) -> dict:
     with database() as db:
@@ -1603,9 +1773,35 @@ def create_contract(task_id: str, payload: ContractInput) -> dict:
         ]
         acceptance_criteria = list(dict.fromkeys([*payload.acceptance_criteria, *mandatory]))
         db.execute("INSERT INTO task_contracts VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(task_id) DO UPDATE SET allowed_paths=excluded.allowed_paths, allowed_commands=excluded.allowed_commands, acceptance_criteria=excluded.acceptance_criteria, retry_limit=excluded.retry_limit, token_limit=excluded.token_limit, updated_at=excluded.updated_at", (task_id, json.dumps(payload.allowed_paths), json.dumps(payload.allowed_commands), json.dumps(acceptance_criteria, ensure_ascii=False), payload.retry_limit, payload.token_limit, now, now))
+        db.execute("DELETE FROM task_permission_rules WHERE task_id = ?", (task_id,))
+        db.executemany(
+            "INSERT INTO task_permission_rules (task_id, action, effect, pattern, created_at) VALUES (?, ?, ?, ?, ?)",
+            [(task_id, rule.action, rule.effect, rule.pattern, now) for rule in payload.permission_rules],
+        )
         db.execute("UPDATE tasks SET state = 'contracting', updated_at = ? WHERE id = ?", (now, task_id))
         db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "contract", None, "contracting", "NAVI", "TaskContract 생성", json.dumps(["NAVI"]), now))
         return task_payload(db, task_id)
+
+
+@app.post("/api/tasks/{task_id}/permissions/{request_id}")
+def decide_permission(task_id: str, request_id: str, payload: PermissionDecisionInput) -> dict:
+    with database() as db:
+        request = db.execute(
+            "SELECT * FROM permission_requests WHERE id = ? AND task_id = ?",
+            (request_id, task_id),
+        ).fetchone()
+        if not request:
+            raise HTTPException(404, "Permission request not found")
+        state = "approved" if payload.decision == "approve" else "denied"
+        db.execute(
+            "UPDATE permission_requests SET state = ?, reason = ?, decided_at = ? WHERE id = ?",
+            (state, payload.reason or payload.decision, utc_now(), request_id),
+        )
+        db.execute(
+            "INSERT INTO permission_checks (task_id, employee_id, action, allowed, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (task_id, request["employee_id"], f"{request['action']}:{request['target']}", int(state == "approved"), payload.reason or state, utc_now()),
+        )
+        return dict(db.execute("SELECT * FROM permission_requests WHERE id = ?", (request_id,)).fetchone())
 
 
 @app.post("/api/tasks/{task_id}/plan")
@@ -1925,8 +2121,9 @@ def decide_approval(task_id: str, payload: ApprovalInput) -> dict:
             except RuntimeError as error:
                 raise HTTPException(409, str(error)) from error
             db.execute(
-                "UPDATE deliverables SET status = 'approved', updated_at = ? "
-                "WHERE task_id = ? AND status = 'final_candidate'",
+                "UPDATE deliverables SET status = CASE "
+                "WHEN status = 'final_candidate' THEN 'approved' ELSE 'rendered_approved' END, updated_at = ? "
+                "WHERE task_id = ? AND status IN ('final_candidate', 'rendered_candidate')",
                 (now, task_id),
             )
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (next_state, now, task_id))
@@ -2128,15 +2325,13 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         command_results: list[dict] = []
         web_search_used = False
         verified_web_sources = 0
+        verified_web_domains: set[str] = set()
         required_skill_ids = {skill["id"] for skill in skill_context["required_skills"]}
         applied_skill_ids: set[str] = set()
         skill_paths = {skill["id"]: ROOT / skill["path"] for skill in skill_context["required_skills"]}
         bounded_tools = WorkspaceAgentTools(workspace, task["contract"]["allowed_paths"])
         tools = [
             {"type": "function", "name": "read_required_skill", "description": "Read one task-relevant skill immediately before using it. Do not read unrelated skills.", "parameters": {"type": "object", "properties": {"skill_id": {"type": "string", "enum": sorted(required_skill_ids)}}, "required": ["skill_id"], "additionalProperties": False}},
-            {"type": "function", "name": "list_files", "description": "List files in the assigned project workspace.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
-            {"type": "function", "name": "read_file", "description": "Read a UTF-8 text file from the assigned project workspace.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"], "additionalProperties": False}},
-            {"type": "function", "name": "write_file", "description": "Create or replace a UTF-8 text file in the assigned project workspace. Use only for requested work.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"], "additionalProperties": False}},
             {"type": "function", "name": "run_verification", "description": "Run a TaskContract-approved verification command in the assigned project workspace.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"], "additionalProperties": False}},
             {"type": "function", "name": "web_search", "description": "Discover candidate public sources. Search snippets are not evidence; read selected originals with read_web_source.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "minLength": 2, "maxLength": 300}}, "required": ["query"], "additionalProperties": False}},
             {"type": "function", "name": "read_web_source", "description": "Read and verify the original public page for a selected source URL.", "parameters": {"type": "object", "properties": {"url": {"type": "string", "minLength": 8, "maxLength": 2000}}, "required": ["url"], "additionalProperties": False}},
@@ -2144,7 +2339,8 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         tools.extend(tool_definitions())
         allowed_commands = set(task["contract"]["allowed_commands"])
         enabled_bounded_tools = {
-            "search_files", "replace_exact_text", "git_status", "git_diff", "fetch_public_source",
+            "list_files", "read_file", "search_files", "find_symbols", "replace_exact_text",
+            "apply_unified_patch", "create_file", "git_status", "git_diff", "fetch_public_source",
         }
         if "git commit *" in allowed_commands:
             enabled_bounded_tools.add("git_commit")
@@ -2158,8 +2354,9 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             tools = [
                 tool for tool in tools
                 if tool["name"] not in {
-                    "list_files", "read_file", "write_file", "run_verification",
-                    "search_files", "replace_exact_text", "git_status", "git_diff", "git_commit", "git_push",
+                    "list_files", "read_file", "run_verification", "search_files", "find_symbols",
+                    "replace_exact_text", "apply_unified_patch", "create_file",
+                    "git_status", "git_diff", "git_commit", "git_push",
                 }
             ]
         mcp_tool_map: dict[str, tuple[sqlite3.Row, str, str | None]] = {}
@@ -2184,7 +2381,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             + ("This is a research task: follow the evidence strategy, discover candidates with web_search, read selected original pages with read_web_source, then cite verified URLs. Search snippets alone are not evidence. " if research_task else "")
             + ("Workspace files are intentionally unavailable for this task. Do not infer user needs from unrelated local files. " if not allow_workspace_context else "")
             + "Only task-relevant skills are available. Read a skill only when it directly supports the bounded assignment. "
-            "Use search_files before broad file reads, replace_exact_text for surgical edits, git_diff to inspect changes, and verification commands before claiming implementation success. "
+            "Use find_symbols and search_files before file reads. Use replace_exact_text or apply_unified_patch for existing files; create_file only for new files. Inspect git_diff and run verification before claiming implementation success. "
             "Never access credentials, parent folders, or delete unrelated files. Use web_search for discovery and fetch_public_source or read_web_source for original evidence; cite returned URLs and never invent sources. "
             "For leads: inspect work, give precise review or debugging changes. For workers: implement smallest safe change. "
             "Finish with Korean summary: changed files, verification run, remaining risk."
@@ -2194,6 +2391,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             "required_skills": [{"id": skill["id"], "path": skill["path"]} for skill in skill_context["required_skills"]],
         }
         initial_steering = consume_steering_messages(db, task_id)
+        session_context = load_session_context(db, task_id, payload.employee_id)
         context = json.dumps({
             "task": task["title"],
             "request": effective_request,
@@ -2206,6 +2404,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             "deliverable_standard": artifact_standard,
             "skill_context": skill_manifest,
             "user_steering": initial_steering,
+            "persistent_session": session_context,
         }, ensure_ascii=False)
         total_input_tokens = 0
         total_output_tokens = 0
@@ -2255,6 +2454,20 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                 for call in calls:
                     require_runnable(db, task_id)
                     args = json.loads(call.arguments)
+                    permission_target = str(
+                        args.get("path")
+                        or args.get("command")
+                        or args.get("url")
+                        or args.get("branch")
+                        or call.name
+                    )[:1000]
+                    require_tool_permission(
+                        db,
+                        task_id,
+                        payload.employee_id,
+                        call.name,
+                        permission_target,
+                    )
                     tool_started = time.monotonic()
                     input_summary = str(args.get("path") or args.get("command") or args.get("query") or args.get("skill_id") or call.name)[:500]
                     emit_job_event(db, task_id, "tool.started", f"{call.name}: {input_summary}", job_id=payload.job_id, agent_id=payload.employee_id, payload={"tool": call.name})
@@ -2267,22 +2480,6 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                                 raise HTTPException(403, "Skill is not assigned to this employee")
                             applied_skill_ids.add(skill_id)
                             result = {"skill_id": skill_id, "instructions": skill_paths[skill_id].read_text(encoding="utf-8", errors="replace")[:12000]}
-                        elif call.name == "list_files":
-                            result: object = workspace_files(workspace)
-                        elif call.name == "read_file":
-                            path = safe_workspace_file(workspace, args["path"], task["contract"]["allowed_paths"])
-                            result = path.read_text(encoding="utf-8", errors="replace")[:50000] if path.exists() else {"missing": True}
-                        elif call.name == "write_file":
-                            path = safe_workspace_file(workspace, args["path"], task["contract"]["allowed_paths"])
-                            content = args["content"]
-                            if len(content.encode("utf-8")) > 100000:
-                                raise HTTPException(422, "Agent write exceeds 100 KB limit")
-                            path.parent.mkdir(parents=True, exist_ok=True)
-                            path.write_text(content, encoding="utf-8")
-                            relative = str(path.relative_to(workspace)).replace("\\", "/")
-                            if relative not in changed_files:
-                                changed_files.append(relative)
-                            result = {"written": relative, "bytes": len(content.encode("utf-8"))}
                         elif call.name == "run_verification":
                             command = args["command"]
                             allowed, command_reason = validate_command(command, task["contract"]["allowed_commands"])
@@ -2291,6 +2488,30 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                             run = subprocess.run(shlex.split(command, posix=False), cwd=workspace, capture_output=True, text=True, timeout=300, shell=False)
                             result = {"exit_code": run.returncode, "stdout": run.stdout[-4000:], "stderr": run.stderr[-4000:]}
                             command_results.append({"command": command, "exit_code": run.returncode})
+                            run_count = db.execute("SELECT COUNT(*) FROM runs WHERE task_id = ?", (task_id,)).fetchone()[0] + 1
+                            run_id = f"RUN-{task_id.split('-')[-1]}-AGENT-{run_count:03d}"
+                            run_status = "pass" if run.returncode == 0 else "fail"
+                            stdout_bytes = run.stdout.encode("utf-8", errors="replace")
+                            stderr_bytes = run.stderr.encode("utf-8", errors="replace")
+                            db.execute(
+                                "INSERT INTO runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                (
+                                    run_id, task_id, payload.workspace_id, command, run.returncode,
+                                    hashlib.sha256(stdout_bytes).hexdigest(),
+                                    hashlib.sha256(stderr_bytes).hexdigest(),
+                                    run_status, utc_now(),
+                                ),
+                            )
+                            evidence_hash = hashlib.sha256(stdout_bytes + stderr_bytes).hexdigest()
+                            if run_status == "pass":
+                                db.execute(
+                                    "UPDATE evidence SET stale = 1 WHERE task_id = ? AND type = 'command' AND status = 'fail'",
+                                    (task_id,),
+                                )
+                            db.execute(
+                                "INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, 'command', ?, ?, 0, ?)",
+                                (f"EVD-{task_id.split('-')[-1]}-RUN-{run_count:03d}", task_id, run_id, run_status, evidence_hash, utc_now()),
+                            )
                         elif call.name == "web_search":
                             results = web_search(args["query"])
                             web_search_used = True
@@ -2301,6 +2522,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                         elif call.name == "read_web_source":
                             source = read_public_web_source(args["url"])
                             verified_web_sources += 1
+                            verified_web_domains.add(urllib.parse.urlparse(source["url"]).hostname or "")
                             now = utc_now()
                             db.execute(
                                 "INSERT INTO research_sources (task_id, employee_id, query, title, url, snippet, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -2313,8 +2535,9 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                             )
                             result = source
                         elif call.name in {
-                            "search_files", "replace_exact_text", "git_status", "git_diff",
-                            "git_commit", "git_push", "fetch_public_source",
+                            "list_files", "read_file", "search_files", "find_symbols",
+                            "replace_exact_text", "apply_unified_patch", "create_file",
+                            "git_status", "git_diff", "git_commit", "git_push", "fetch_public_source",
                         }:
                             if call.name not in enabled_bounded_tools:
                                 raise HTTPException(403, f"{call.name} is not granted by TaskContract")
@@ -2322,16 +2545,21 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                                 result = bounded_tools.dispatch(call.name, args)
                             except AgentToolError as error:
                                 raise HTTPException(error.status_code, str(error)) from error
-                            if call.name == "replace_exact_text":
+                            if call.name in {"replace_exact_text", "create_file"}:
                                 relative = result["path"]
                                 if relative not in changed_files:
                                     changed_files.append(relative)
+                            elif call.name == "apply_unified_patch":
+                                for relative in result["paths"]:
+                                    if relative not in changed_files:
+                                        changed_files.append(relative)
                             elif call.name == "git_commit":
                                 command_results.append({"command": "git commit", "exit_code": 0, "commit": result["commit"]})
                             elif call.name == "git_push":
                                 command_results.append({"command": "git push", "exit_code": 0, "branch": result["branch"]})
                             elif call.name == "fetch_public_source":
                                 verified_web_sources += 1
+                                verified_web_domains.add(urllib.parse.urlparse(result["url"]).hostname or "")
                                 now = utc_now()
                                 db.execute(
                                     "INSERT INTO research_sources "
@@ -2351,7 +2579,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                         else:
                             result = {"error": "Unknown tool"}
                     except HTTPException as error:
-                        if error.status_code in {409, 410}:
+                        if error.status_code in {409, 410, 428}:
                             raise
                         result = {"error": str(error)}
                         tool_status = "fail"
@@ -2363,11 +2591,9 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                     if call.name == "read_required_skill":
                         output_summary = f"{args.get('skill_id', '')} 스킬 지침 읽음"
                     elif call.name == "list_files":
-                        output_summary = f"{len(result) if isinstance(result, list) else 0}개 파일 확인"
+                        output_summary = f"{len(result.get('files', [])) if isinstance(result, dict) else 0}개 파일 확인"
                     elif call.name == "read_file":
-                        output_summary = f"{args.get('path', '')} · {len(result) if isinstance(result, str) else 0:,}자 읽음"
-                    elif call.name == "write_file" and isinstance(result, dict) and result.get("written"):
-                        output_summary = f"{result['written']} · {result.get('bytes', 0)} bytes"
+                        output_summary = f"{args.get('path', '')} · {len(result.get('lines', [])) if isinstance(result, dict) else 0}줄 읽음"
                     elif call.name == "run_verification" and isinstance(result, dict):
                         output_summary = f"{args.get('command', '')} · exit {result.get('exit_code', 'unknown')}"
                     elif call.name == "web_search" and isinstance(result, dict):
@@ -2378,6 +2604,12 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                         output_summary = f"{args.get('query', '')} · {len(result.get('results', []))}개 코드 위치"
                     elif call.name == "replace_exact_text" and isinstance(result, dict):
                         output_summary = f"{result.get('path', '')} · {result.get('replacements', 0)}개 정밀 수정"
+                    elif call.name == "apply_unified_patch" and isinstance(result, dict):
+                        output_summary = f"patch applied · {', '.join(result.get('paths', []))}"
+                    elif call.name == "create_file" and isinstance(result, dict):
+                        output_summary = f"created {result.get('path', '')} · {result.get('bytes', 0)} bytes"
+                    elif call.name == "find_symbols" and isinstance(result, dict):
+                        output_summary = f"{args.get('symbol', '')} · {len(result.get('results', []))}개 정의"
                     elif call.name in {"git_status", "git_diff"}:
                         output_summary = f"{call.name} 완료"
                     elif call.name == "git_commit" and isinstance(result, dict):
@@ -2437,8 +2669,12 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                     instructions=instructions + " Tool phase is closed. Return the final Korean result using only recorded tool results.",
                 )
                 add_usage(response)
-            if research_task and (not web_search_used or verified_web_sources < 1):
-                raise HTTPException(422, "Research completion requires search plus at least one verified original source")
+            if research_task and (
+                not web_search_used
+                or verified_web_sources < 2
+                or len({domain for domain in verified_web_domains if domain}) < 2
+            ):
+                raise HTTPException(422, "Research completion requires search plus two verified original sources from independent domains")
             summary = response.output_text
         except HTTPException:
             raise
@@ -2472,13 +2708,23 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         db.execute("INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (evidence_id, task_id, None, "agent_run", "pass" if changed_files or command_results else "info", artifact, 0, now))
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, payload.employee_id, "run", summary, now))
         db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, model, input_tokens, output_tokens, 0, None, now))
+        session = record_session_turn(
+            db,
+            task_id,
+            payload.employee_id,
+            input_summary=effective_request,
+            output_summary=summary,
+            tool_history=tool_history,
+            response_id=str(getattr(response, "id", "") or "") or None,
+            state="active",
+        )
         # Job worker owns task state. A worker result must not turn an active
         # multi-worker execution into "verifying" before all workers/review finish.
         if not payload.managed_by_job:
             db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (state, now, task_id))
             db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "agent_run", task["state"], state, payload.employee_id, summary[:800], json.dumps([payload.employee_id]), now))
         checkpoint(db, task_id, f"agent:{payload.employee_id}")
-        return {"employee_id": payload.employee_id, "tier": role["tier"], "model": model, "summary": summary, "changed_files": changed_files, "commands": command_results, "evidence_id": evidence_id, "deliverable": department_deliverable, "state": task["state"] if payload.managed_by_job else state}
+        return {"employee_id": payload.employee_id, "tier": role["tier"], "model": model, "summary": summary, "changed_files": changed_files, "commands": command_results, "evidence_id": evidence_id, "deliverable": department_deliverable, "session": session, "state": task["state"] if payload.managed_by_job else state}
 
 
 @app.post("/api/tasks/{task_id}/retry")

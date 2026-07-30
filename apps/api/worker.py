@@ -8,13 +8,107 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import subprocess
 import time
 from datetime import timedelta
 from threading import Event, Thread
 
 from apps.api import main
+from apps.api import agent_worktree
 
 WORKER_ID = f"local-worker-{os.getpid()}"
+WORKER_CONCURRENCY = max(1, min(int(os.getenv("AI_OFFICE_WORKER_CONCURRENCY", "4")), 8))
+
+
+def workspace_supports_parallel_worktrees(path: str) -> bool:
+    """Only parallelize when every agent can receive an isolated clean worktree."""
+    try:
+        root = main.Path(path).resolve()
+        inside = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if inside.returncode != 0 or inside.stdout.strip() != "true":
+            return False
+        dirty = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        return dirty.returncode == 0 and not dirty.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def queue_ready_agent_jobs(db: sqlite3.Connection, task: dict) -> list[dict]:
+    """Queue one independent Job per ready owner; dependencies form waves."""
+    active_owners: set[str] = set()
+    for row in db.execute(
+        "SELECT payload FROM jobs WHERE task_id = ? AND kind = 'execute' "
+        "AND state IN ('queued','running','pause_requested','cancel_requested')",
+        (task["id"],),
+    ):
+        active_owners.update(json.loads(row["payload"]).get("employee_ids", []))
+    completed = {
+        phase["phase_id"]
+        for phase in task["phases"]
+        if phase["status"] in {"completed", "skipped"}
+        and (phase["artifact_ids"] or phase["status"] == "skipped")
+    }
+    pending = [
+        phase for phase in task["phases"]
+        if phase["status"] in {"planned", "proposed"}
+    ]
+    delegated_parents = {phase["parent_phase_id"] for phase in pending if phase["parent_phase_id"]}
+    pending_by_owner: dict[str, list[dict]] = {}
+    for phase in pending:
+        if phase["phase_id"] not in delegated_parents:
+            pending_by_owner.setdefault(phase["owner_id"], []).append(phase)
+    workspace = db.execute(
+        "SELECT id, path FROM workspaces WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
+        (task["id"],),
+    ).fetchone()
+    if not workspace:
+        return []
+    parallel_safe = workspace_supports_parallel_worktrees(workspace["path"])
+    if not parallel_safe and active_owners:
+        return []
+    job_limit = len(pending_by_owner) if parallel_safe else 1
+    jobs = []
+    for owner, phases in pending_by_owner.items():
+        dependencies = {item for phase in phases for item in phase["dependencies"]}
+        if owner in active_owners or not dependencies.issubset(completed):
+            continue
+        jobs.append(
+            main.enqueue_job(
+                db,
+                task["id"],
+                "execute",
+                {
+                    "workspace_id": workspace["id"],
+                    "employee_ids": [owner],
+                    "instruction": task["request"],
+                    "parallel_wave": True,
+                },
+            )
+        )
+        if len(jobs) >= job_limit:
+            break
+    if jobs:
+        db.execute("UPDATE tasks SET state = 'executing', updated_at = ? WHERE id = ?", (main.utc_now(), task["id"]))
+        main.emit_job_event(
+            db,
+            task["id"],
+            "delegation.parallel_wave",
+            f"{len(jobs)} independent agent Jobs queued",
+            payload={"job_ids": [job["id"] for job in jobs]},
+        )
+    return jobs
 
 def team_worker_candidates(lead_ids: list[str], include_lead: bool = False) -> list[tuple[str, str]]:
     people = main.registry()
@@ -73,6 +167,17 @@ def recover_orphaned_jobs() -> None:
             db.execute("UPDATE jobs SET state = 'interrupted', error = ?, updated_at = ? WHERE id = ?", ("Worker restarted during model call; retry required", main.utc_now(), row["id"]))
             db.execute("DELETE FROM job_leases WHERE job_id = ?", (row["id"],))
             db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ? AND state NOT IN ('cancelled', 'completed')", ("blocked", main.utc_now(), row["task_id"]))
+            db.execute(
+                "UPDATE agent_runs SET state = 'interrupted', finished_at = ? "
+                "WHERE job_id = ? AND state = 'running'",
+                (main.utc_now(), row["id"]),
+            )
+            db.execute(
+                "UPDATE agent_sessions SET state = 'interrupted', updated_at = ? "
+                "WHERE task_id = ? AND employee_id IN "
+                "(SELECT employee_id FROM agent_runs WHERE job_id = ?)",
+                (main.utc_now(), row["task_id"], row["id"]),
+            )
             main.emit_job_event(db, row["task_id"], "job.interrupted", "worker 재시작으로 현재 모델 호출을 중단했습니다. 재시도해야 합니다.", job_id=row["id"])
 
 def schedule_autonomous_tasks() -> None:
@@ -96,9 +201,29 @@ def schedule_autonomous_tasks() -> None:
             assignments = list(dict.fromkeys(leads + execution_ids))
             db.execute("DELETE FROM task_assignments WHERE task_id = ?", (task["id"],))
             db.executemany("INSERT INTO task_assignments VALUES (?, ?)", [(task["id"], employee) for employee in assignments])
-            job = main.enqueue_job(db, task["id"], "execute", {"workspace_id": workspace["id"], "employee_ids": execution_ids, "instruction": task["request"]})
-            db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("executing", main.utc_now(), task["id"]))
-            main.emit_job_event(db, task["id"], "delegation.auto_assigned", "팀장 분배안을 승인해 실행 Job을 자동 시작합니다.", job_id=job["id"], payload={"workers": execution_ids})
+            jobs = queue_ready_agent_jobs(db, main.task_payload(db, task["id"]))
+            if not jobs and not task["phases"]:
+                jobs = [
+                    main.enqueue_job(
+                        db,
+                        task["id"],
+                        "execute",
+                        {
+                            "workspace_id": workspace["id"],
+                            "employee_ids": execution_ids,
+                            "instruction": task["request"],
+                        },
+                    )
+                ]
+                db.execute("UPDATE tasks SET state = 'executing', updated_at = ? WHERE id = ?", (main.utc_now(), task["id"]))
+            main.emit_job_event(db, task["id"], "delegation.auto_assigned", "팀장 분배안을 승인해 실행 Job을 자동 시작합니다.", job_id=jobs[0]["id"] if jobs else None, payload={"workers": execution_ids, "jobs": [item["id"] for item in jobs]})
+
+def schedule_ready_phase_jobs() -> None:
+    with main.database() as db:
+        rows = db.execute("SELECT id FROM tasks WHERE state = 'executing'").fetchall()
+        for row in rows:
+            queue_ready_agent_jobs(db, main.task_payload(db, row["id"]))
+
 
 def reconcile_failed_jobs() -> None:
     with main.database() as db:
@@ -502,24 +627,63 @@ def process_execute(job: dict) -> None:
             main.emit_job_event(db, job["task_id"], "agent.move", "작업 위치로 이동", job_id=job["id"], agent_id=employee, payload={"zone": "desk", "action": "walk"})
             main.emit_job_event(db, job["task_id"], "agent.at_location", "작업 좌석 도착", job_id=job["id"], agent_id=employee, payload={"zone": "desk", "action": "work"})
             main.emit_job_event(db, job["task_id"], "model.started", work_summary, job_id=job["id"], agent_id=employee, payload={"zone": "desk", "action": "work"})
-        result = main.run_agent(
-            job["task_id"],
-            main.AgentRunInput(
-                workspace_id=payload["workspace_id"],
+            isolated_workspace = agent_worktree.prepare(
+                db,
+                root=main.ROOT,
+                task_id=job["task_id"],
+                base_workspace_id=payload["workspace_id"],
                 employee_id=employee,
-                instruction=(
-                    f"Original task:\n{payload.get('instruction', '')}\n\n"
-                    f"Your bounded assignment:\n{work_summary}\n\n"
-                    f"{handoff}\n\n"
-                    f"Required upstream handoff inputs:\n{json.dumps(upstream_context, ensure_ascii=False)}\n\n"
-                    "Use upstream inputs as constraints. Cite unresolved gaps; do not restart prior research or redefine approved upstream decisions.\n\n"
-                    "Deliver only this bounded contribution. Do not choose or rewrite the final cross-department recommendation."
+                now=main.utc_now(),
+            ) if payload.get("parallel_wave") else {
+                "workspace_id": payload["workspace_id"],
+                "path": main.Path(workspace_row["path"]),
+                "isolated": False,
+            }
+        try:
+            result = main.run_agent(
+                job["task_id"],
+                main.AgentRunInput(
+                    workspace_id=isolated_workspace["workspace_id"],
+                    employee_id=employee,
+                    instruction=(
+                        f"Original task:\n{payload.get('instruction', '')}\n\n"
+                        f"Your bounded assignment:\n{work_summary}\n\n"
+                        f"{handoff}\n\n"
+                        f"Required upstream handoff inputs:\n{json.dumps(upstream_context, ensure_ascii=False)}\n\n"
+                        "Use upstream inputs as constraints. Cite unresolved gaps; do not restart prior research or redefine approved upstream decisions.\n\n"
+                        "Deliver only this bounded contribution. Do not choose or rewrite the final cross-department recommendation."
+                    ),
+                    skill_ids=skill_ids,
+                    managed_by_job=True,
+                    job_id=job["id"],
                 ),
-                skill_ids=skill_ids,
-                managed_by_job=True,
-                job_id=job["id"],
-            ),
-        )
+            )
+            integration = agent_worktree.commit_and_integrate(
+                isolated_workspace,
+                task_id=job["task_id"],
+                employee_id=employee,
+            )
+            if integration.get("isolated"):
+                with main.database() as db:
+                    db.execute(
+                        "UPDATE workspaces SET status = 'integrated' WHERE id = ?",
+                        (isolated_workspace["workspace_id"],),
+                    )
+                    main.emit_job_event(
+                        db,
+                        job["task_id"],
+                        "agent.worktree_integrated",
+                        f"{employee} worktree integrated",
+                        job_id=job["id"],
+                        agent_id=employee,
+                        payload=integration,
+                    )
+        finally:
+            if isolated_workspace.get("isolated"):
+                agent_worktree.cleanup(
+                    main.Path(isolated_workspace["base_path"]),
+                    isolated_workspace,
+                )
         if not safe_point(job):
             with main.database() as db:
                 db.execute("UPDATE agent_runs SET state = 'interrupted', finished_at = ? WHERE id = ?", (main.utc_now(), run_id))
@@ -552,7 +716,26 @@ def process_execute(job: dict) -> None:
         plan = task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else {}
         lead = plan.get("final_owner") or task.get("lead_id") or next((employee for employee in task["assigned_employees"] if employee in main.LEAD_IDS and employee != "NAVI"), None)
         department_deliverables = [item for item in task["deliverables"] if item["status"] == "department_draft"]
-        if lead and department_deliverables:
+        incomplete_phases = [
+            phase for phase in task["phases"]
+            if phase["status"] not in {"completed", "skipped"}
+        ]
+        active_execute = db.execute(
+            "SELECT 1 FROM jobs WHERE task_id = ? AND kind = 'execute' AND id != ? "
+            "AND state IN ('queued','running','pause_requested','cancel_requested') LIMIT 1",
+            (job["task_id"], job["id"]),
+        ).fetchone()
+        if incomplete_phases or active_execute:
+            db.execute("UPDATE tasks SET state = 'executing', updated_at = ? WHERE id = ?", (main.utc_now(), job["task_id"]))
+            main.emit_job_event(
+                db,
+                job["task_id"],
+                "execution.wave_completed",
+                "Parallel wave completed; waiting for ready downstream phases.",
+                job_id=job["id"],
+                payload={"remaining_phases": [phase["phase_id"] for phase in incomplete_phases]},
+            )
+        elif lead and department_deliverables:
             synthesize_job = main.enqueue_job(db, job["task_id"], "synthesize", {
                 "lead_id": lead,
                 "workspace_id": payload["workspace_id"],
@@ -652,6 +835,21 @@ def process_synthesize(job: dict) -> None:
             filename=standard["filename"],
             status="final_candidate",
         )
+        formats = ["html", "docx", "pdf"]
+        if artifact_kind == "financial_model_report":
+            formats.append("xlsx")
+        rendered = [
+            main.register_existing_deliverable(
+                db,
+                workspace,
+                job["task_id"],
+                lead,
+                f"{artifact_kind}:{path.suffix.lstrip('.') or 'manifest'}",
+                path,
+                "rendered_candidate",
+            )
+            for path in main.render_bundle(workspace / final["path"], formats)
+        ]
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (job["task_id"], lead, "synthesis", content, main.utc_now()))
         reviewer = "LENS" if lead == "GUARD" else "GUARD"
         review_job = main.enqueue_job(
@@ -739,7 +937,12 @@ def process_review(job: dict) -> None:
                     workspace,
                     current_job_id=job["id"],
                 )
-                db.execute("UPDATE deliverables SET status = 'approved', updated_at = ? WHERE id = ?", (main.utc_now(), final["id"]))
+                db.execute(
+                    "UPDATE deliverables SET status = CASE "
+                    "WHEN status = 'final_candidate' THEN 'approved' ELSE 'rendered_approved' END, updated_at = ? "
+                    "WHERE task_id = ? AND status IN ('final_candidate', 'rendered_candidate')",
+                    (main.utc_now(), job["task_id"]),
+                )
                 next_state = "completed"
         elif verdict == "blocked":
             next_state = "blocked"
@@ -783,9 +986,42 @@ def process(job: dict) -> None:
             set_job(job, "succeeded", "작업 완료")
     except main.JobControlSignal:
         safe_point(job)
+    except main.HTTPException as error:
+        if error.status_code == 428:
+            set_job(job, "paused", "권한 승인을 기다립니다.", str(error.detail))
+            with main.database() as db:
+                for employee in job.get("payload", {}).get("employee_ids", []):
+                    main.set_session_state(db, job["task_id"], employee, "paused")
+                db.execute(
+                    "UPDATE tasks SET state = 'paused', updated_at = ? WHERE id = ?",
+                    (main.utc_now(), job["task_id"]),
+                )
+                main.emit_job_event(
+                    db,
+                    job["task_id"],
+                    "permission.awaiting",
+                    str(error.detail),
+                    job_id=job["id"],
+                )
+        else:
+            set_job(job, "failed", "작업 실패", str(error.detail))
+            with main.database() as db:
+                db.execute(
+                    "UPDATE tasks SET state = 'blocked', updated_at = ? WHERE id = ?",
+                    (main.utc_now(), job["task_id"]),
+                )
+                main.emit_job_event(
+                    db,
+                    job["task_id"],
+                    "job.failed",
+                    str(error.detail),
+                    job_id=job["id"],
+                )
     except Exception as error:
         set_job(job, "failed", "작업 실패", str(error))
         with main.database() as db:
+            for employee in job.get("payload", {}).get("employee_ids", []):
+                main.set_session_state(db, job["task_id"], employee, "failed")
             db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("blocked", main.utc_now(), job["task_id"]))
             main.emit_job_event(db, job["task_id"], "job.failed", str(error), job_id=job["id"])
     finally:
@@ -793,18 +1029,31 @@ def process(job: dict) -> None:
         lease_thread.join(timeout=3)
 
 
-def main_loop() -> None:
-    main.init_db()
-    recover_orphaned_jobs()
+def worker_loop() -> None:
     while True:
         heartbeat()
-        reconcile_failed_jobs()
-        schedule_autonomous_tasks()
         job = claim_job()
         if job:
             process(job)
         else:
             time.sleep(0.5)
+
+
+def main_loop() -> None:
+    main.init_db()
+    recover_orphaned_jobs()
+    workers = [
+        Thread(target=worker_loop, daemon=True, name=f"ai-office-worker-{index}")
+        for index in range(1, WORKER_CONCURRENCY + 1)
+    ]
+    for thread in workers:
+        thread.start()
+    while True:
+        heartbeat()
+        reconcile_failed_jobs()
+        schedule_autonomous_tasks()
+        schedule_ready_phase_jobs()
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
