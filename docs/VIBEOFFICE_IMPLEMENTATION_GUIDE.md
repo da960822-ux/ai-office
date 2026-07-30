@@ -163,9 +163,9 @@ GET   /api/vibe/projects/{id}/exports/{exportId}
 - 성공 조건: Blocker 0 이전에는 출고 불가. secret·절대경로 검출 시 실패. 동일 finding 2회 반복 시 자동 루프 중단. 산출물이 `reference-output/`과 동일 구조.
 - 검증: `test_vibeoffice_export.py` + Golden Path E2E 1건
 
-### S6. (그 다음) 오피스 UI 7화면, 직접 시각 편집
+### S6. (그 다음) 대화형 지시 계층, 오피스 UI 7화면, 직접 시각 편집
 
-앞의 5개 슬라이스가 끝나기 전에 착수하지 않는다.
+앞의 5개 슬라이스가 끝나기 전에 착수하지 않는다. 대화형 지시와 자율 실행은 별도 목표 문서를 따른다: [CONVERSATIONAL_AGENT_TARGET.md](CONVERSATIONAL_AGENT_TARGET.md). 두 목표는 충돌하지 않는다 — 제품 파이프라인은 부서 순서와 게이트를 정하고, 대화 계층은 그 파이프라인을 **버튼 대신 말로** 굴리는 표면이다. 승인 지점 3개(기획·시안·출고)는 대화에서도 유지한다.
 
 ## 8. 게이트 체크리스트 (09A 요약)
 

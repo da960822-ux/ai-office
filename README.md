@@ -258,6 +258,7 @@ npm.cmd run build
 | [docs/RUNTIME_ROADMAP.md](docs/RUNTIME_ROADMAP.md) | P0/P1 완료 항목, P2 수용 harness 계획 |
 | [docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md](docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) | 제품 파이프라인 구현 지침 (신규 작업 1순위) |
 | [docs/VIBEOFFICE_GAP_ANALYSIS.md](docs/VIBEOFFICE_GAP_ANALYSIS.md) | 구현됨 / 부분 / 미구현 목록 |
+| [docs/CONVERSATIONAL_AGENT_TARGET.md](docs/CONVERSATIONAL_AGENT_TARGET.md) | 대화형 지시 + 자율 실행 목표와 설계안 |
 | [reference/README.md](reference/README.md) | 참고 자료·보관 산출물 규칙 |
 | [reference/corporate-os/](reference/corporate-os/) | Corporate OS v6.2 원본 명세 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 변경 원칙과 필수 검증 |
@@ -271,6 +272,8 @@ npm.cmd run build
 - 목표 명세: [reference/product-context/](reference/product-context/)
 - 현재 격차: [docs/VIBEOFFICE_GAP_ANALYSIS.md](docs/VIBEOFFICE_GAP_ANALYSIS.md) — 실행 계층은 충족, 제품 계층(Blueprint·산출물 버전·handoff 계약·준비도·Export)은 미구현
 - 구현 순서와 게이트: [docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md](docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md)
+
+또 하나의 목표는 **대화형 지시 + 자율 실행**입니다. 지금은 팀장·실행자를 사용자가 직접 고르고 단계별 버튼으로 진행하지만, 목표는 기존 AI 채팅처럼 한 창에서 말하면 오피스가 접수·계획·실행·검증·보고까지 스스로 진행하고 사람은 대화로만 개입하는 것입니다. 파괴적·외부 전송·비용·배포 행동의 명시 승인은 자율성 레벨과 무관하게 유지합니다. 설계안: [docs/CONVERSATIONAL_AGENT_TARGET.md](docs/CONVERSATIONAL_AGENT_TARGET.md)
 
 런타임 쪽 남은 경계: 바이너리 `.hwp` 직접 작성 불가(표준 `.hwpx`로 생성·검증), Python 외 언어의 의미 진단은 해당 LSP 설치 시에만 지원.
 

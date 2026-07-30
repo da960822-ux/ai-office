@@ -54,6 +54,7 @@
 | 산출물 버전 | 파일 + hash | `Artifact`/`ArtifactVersion`(type·status·currentVersionId·dependsOn) |
 | 오피스 UI | 회사 오피스 맵 + 업무 콘솔 | Start·Planning Room·Design Studio·Architecture Lab·Build Floor·Review Room·Shipping Dock 화면 |
 | 초보자 오류 표시 | 토스트 경고 | 쉬운 설명 → 영향 → 재시도 → 기술 세부 4단 형식 |
+| 대화형 지시 | 실행 중 steering 큐 + SSE 이벤트만 존재 | 대화 스레드·의도 분류·자율 팀 구성·상태 질의·자연어 승인 → [CONVERSATIONAL_AGENT_TARGET.md](CONVERSATIONAL_AGENT_TARGET.md) |
 
 ## 4. 미구현 (코드 0)
 
