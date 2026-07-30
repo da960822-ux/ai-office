@@ -1,0 +1,61 @@
+{
+  "id": "research-to-prd-001",
+  "category": "research_to_prd",
+  "task_request": "새 구독 요금제 시장 기회를 조사해 단일 사업안을 PRD로 확정한다",
+  "plan": {
+    "summary": "research then single recommendation",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: research-to-prd",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "verify market evidence from two independent primary sources",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "decision",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "use research.md to decide a single recommendation and write PRD",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Research\n\nTwo independent primary sources confirm demand for tiered pricing.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Collected and cross-verified market evidence."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# PRD\n\n## Recommendation\nShip a single mid-tier subscription plan.\n\n## Evidence\nSee research.md.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Selected single recommendation and wrote PRD referencing research.md."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {
+    "GROW": ["ui-ux-pro-max"]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": true,
+    "final_owner": "FRAME"
+  }
+}
