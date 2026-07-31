@@ -1,0 +1,75 @@
+{
+  "id": "policy-market-research-ui-skill-001",
+  "category": "policy_regression",
+  "task_request": "경쟁사 가격 정책을 조사한다",
+  "plan": {
+    "summary": "market research only, no UI authorship",
+    "artifact_kind": "business_document",
+    "final_owner": "GROW",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: market research must never load a UI skill",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "task_kind": "market_research",
+        "objective": "compare competitor pricing from primary sources",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "FINAL.md",
+      "content": "# Competitor Pricing\n\nThree competitors compared using primary pricing pages.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Compared competitor pricing from primary sources."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {
+    "MOSS": {
+      "skill_ids": ["ui-ux-pro-max"],
+      "task_kind": "market_research",
+      "error_contains": "Skills are blocked for market_research",
+      "reason": "MOSS genuinely holds ui-ux-pro-max (required binding); the task_kind policy, not a missing binding, must be what blocks it here"
+    }
+  },
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Competitor pricing pages",
+        "url": "https://example.com/verified-competitor-pricing",
+        "snippet": "Three competitor pricing pages captured directly."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Three competitors compared using primary pricing data collected directly from public pricing pages.",
+        "source_url": "https://example.com/verified-competitor-pricing",
+        "publisher": "Example Research",
+        "published_at": "2026-06-01",
+        "retrieved_span": "2026-07-01/2026-07-02",
+        "confidence": 0.9,
+        "contradictions": [
+          "Three competitors compared using primary pricing snapshots may already be stale by the time of publication."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW"],
+    "completion_ok": true,
+    "final_owner": "GROW"
+  }
+}

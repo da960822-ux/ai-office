@@ -1,0 +1,63 @@
+{
+  "id": "prd-to-code-004",
+  "category": "prd_to_code",
+  "task_request": "API 회귀 테스트 프레임워크를 설계하고 10개의 핵심 엔드포인트에 대한 테스트 스위트를 작성한다",
+  "plan": {
+    "summary": "API testing framework design and implementation",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test execution",
+    "reason": "fixture: prd-to-code with test_engineering task kind",
+    "phases": [
+      {
+        "id": "specification",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "define API test framework requirements and test scenarios",
+        "output": "TESTING_SPEC.md",
+        "handoff_to": "BUILD",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "test_implementation",
+        "department": "application",
+        "lead_id": "BUILD",
+        "task_kind": "test_engineering",
+        "objective": "implement comprehensive API regression test suite and verify all tests pass",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["specification"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "FRAME": {
+      "path": "TESTING_SPEC.md",
+      "content": "# API Regression Test Specification\n\n## Scope\nTest 10 core API endpoints covering authentication, user management, and data operations.\n\n## Test Categories\n1. Authentication: login, logout, token refresh\n2. User CRUD: create, read, update, delete operations\n3. Data API: list, filter, sort operations\n4. Error Handling: 4xx/5xx responses and error messages\n\n## Coverage Target\nMinimum 80% line coverage, all critical paths tested.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Defined API test framework specification."
+    },
+    "BUILD": {
+      "path": "FINAL.md",
+      "content": "# API Test Suite Implementation\n\nImplemented comprehensive regression test suite with 45 test cases:\n- Authentication tests: 6 cases\n- User management tests: 12 cases\n- Data API tests: 20 cases\n- Error handling tests: 7 cases\n\nTest Coverage: 82% line coverage achieved.\nExecution Time: 2.3 seconds for full suite.\nAll tests passing.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Implemented API regression test suite with 45 test cases."
+    }
+  },
+  "verify_run": {
+    "command": "pytest tests/api/ -v --cov=api --cov-report=term",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["FRAME", "BUILD"],
+    "completion_ok": true,
+    "final_owner": "BUILD"
+  }
+}

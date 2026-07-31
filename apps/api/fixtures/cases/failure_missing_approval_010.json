@@ -1,0 +1,42 @@
+{
+  "id": "failure-missing-approval-010",
+  "category": "failure_matrix",
+  "task_request": "개인정보보호 정책을 검토하고 최종 승인을 받는다",
+  "plan": {
+    "summary": "privacy policy review requiring user approval",
+    "artifact_kind": "business_document",
+    "final_owner": "GUARD",
+    "workspace_context": "none",
+    "requires_web_research": false,
+    "evidence_strategy": "none",
+    "reason": "fixture: privacy review requires explicit user approval",
+    "phases": [
+      {
+        "id": "review",
+        "department": "service-knowledge",
+        "lead_id": "GUARD",
+        "task_kind": "privacy_review",
+        "objective": "review and update privacy policy",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GUARD": {
+      "path": "FINAL.md",
+      "content": "# 개인정보보호 정책 검토 보고서\n\n## 정책 검토 결과\n\n### 준수 상황\n- GDPR 요구사항: 100% 준수\n- CCPA 요구사항: 95% 준수\n- 국내 개인정보보호법: 100% 준수\n\n### 개선 권장사항\n1. 동의 관리 시스템 강화\n2. 데이터 소거 정책 자동화\n3. 사용자 권리 행사 시스템 개선\n\n## 결론\n현재 개인정보보호 정책이 주요 규제요구사항을 충족하고 있습니다.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Reviewed privacy policy and provided recommendations."
+    }
+  },
+  "reviewer_id": "FRAME",
+  "expected": {
+    "phase_order": ["GUARD"],
+    "completion_ok": false,
+    "error_contains": "Completion requires explicit user approval"
+  }
+}

@@ -5,6 +5,22 @@
 export type AgentAction = 'idle' | 'walk' | 'work' | 'review' | 'meeting';
 export type OfficeZone = 'desk' | 'meeting' | 'qa' | 'ceo';
 export type MotionPoint = { x: number; y: number; zone: OfficeZone };
+export type AgentStateKey = 'idle' | 'planning' | 'meeting' | 'reviewing' | 'running' | 'approval' | 'blocked' | 'done';
+export type AvatarDirection = 'front-left' | 'front-right' | 'back-left' | 'back-right';
+
+export const WALK_SPEED_WORLD_PX_PER_SECOND = 105;
+export const WALK_MIN_DURATION_MS = 350;
+export const WALK_MAX_DURATION_MS = 3000;
+
+const waypoints: Record<string, MotionPoint> = {
+  hub: {x:50, y:48, zone:'desk'},
+  north: {x:50, y:35, zone:'desk'},
+  west: {x:31, y:35, zone:'desk'},
+  east: {x:74, y:35, zone:'desk'},
+  ceoDoor: {x:30, y:20, zone:'ceo'},
+  meetingDoor: {x:55, y:35, zone:'meeting'},
+  qaDoor: {x:77, y:28, zone:'qa'},
+};
 
 export type MotionInput = {
   employeeId: string;
@@ -52,6 +68,17 @@ export function targetZone(taskState: string | null | undefined, active: boolean
   return 'desk';
 }
 
+export function taskStateKey(taskState: string | null | undefined, active: boolean): AgentStateKey {
+  if (!active || !taskState || ['draft', 'cancelled'].includes(taskState)) return 'idle';
+  if (planningStates.has(taskState)) return 'planning';
+  if (taskState === 'meeting') return 'meeting';
+  if (reviewStates.has(taskState)) return taskState === 'failed' ? 'blocked' : 'reviewing';
+  if (taskState === 'blocked' || taskState === 'escalated') return 'blocked';
+  if (taskState === 'awaiting_approval') return 'approval';
+  if (taskState === 'completed') return 'done';
+  return 'running';
+}
+
 export function targetLocation(input: MotionInput): MotionPoint {
   const zone = targetZone(input.taskState, input.active, input.isLead);
   if (zone === 'desk') return deskTargets[input.employeeId] ?? {x:50, y:50, zone:'desk'};
@@ -82,10 +109,51 @@ export function motionDuration(action: AgentAction, employeeId: string): number 
   return Math.round(base[action] + motionSeed(employeeId) * variance[action]);
 }
 
+/** Distance is measured in a 1000px-wide world so CSS timing stays stable. */
+export function routeDistance(points: MotionPoint[]): number {
+  return points.slice(1).reduce((total, point, index) => {
+    const previous = points[index];
+    return total + Math.hypot((point.x - previous.x) * 10, (point.y - previous.y) * 6.46);
+  }, 0);
+}
+
+export function routeDuration(points: MotionPoint[]): number {
+  return Math.round(Math.max(WALK_MIN_DURATION_MS, Math.min(WALK_MAX_DURATION_MS, routeDistance(points) / WALK_SPEED_WORLD_PX_PER_SECOND * 1000)));
+}
+
+function doorFor(point: MotionPoint) {
+  if (point.zone === 'meeting') return waypoints.meetingDoor;
+  if (point.zone === 'qa') return waypoints.qaDoor;
+  if (point.zone === 'ceo') return waypoints.ceoDoor;
+  return point.x < 35 ? waypoints.west : point.x > 70 ? waypoints.east : waypoints.hub;
+}
+
+/** Minimal walkable corridor graph. Returned points never cut directly through a room. */
+export function routeBetween(from: MotionPoint, to: MotionPoint): MotionPoint[] {
+  if (from.x === to.x && from.y === to.y) return [to];
+  const startDoor = doorFor(from);
+  const endDoor = doorFor(to);
+  const route = [from, startDoor];
+  if (startDoor.x !== endDoor.x || startDoor.y !== endDoor.y) {
+    if (startDoor !== waypoints.hub && endDoor !== waypoints.hub) route.push(waypoints.hub);
+    route.push(endDoor);
+  }
+  route.push(to);
+  return route.filter((point, index, all) => index === 0 || point.x !== all[index - 1].x || point.y !== all[index - 1].y);
+}
+
+export function directionForSegment(from: MotionPoint, to: MotionPoint): AvatarDirection {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (dy < 0) return dx < 0 ? 'back-left' : 'back-right';
+  return dx < 0 ? 'front-left' : 'front-right';
+}
+
 export function resolveMotion(input: MotionInput) {
   const action = taskStateToAction(input.taskState, input.active, input.isLead);
   return {
     action,
+    stateKey: taskStateKey(input.taskState, input.active),
     target: targetLocation(input),
     delayMs: motionStagger(input.employeeId),
     durationMs: motionDuration(action, input.employeeId),

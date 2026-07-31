@@ -11,12 +11,11 @@
 - [ ] CLAUDE.md
 - [ ] README.md
 - [ ] NEXT_ACTION.md
-- [ ] docs/PRODUCT_BRIEF.md
-- [ ] docs/MVP_SCOPE.md
-- [ ] docs/REQUIREMENTS.md
+- [ ] docs/PRD.md
 - [ ] docs/TASKS.md
 - [ ] docs/TEST_PLAN.md
-- [ ] docs/DECISIONS.md
+- [ ] .vibeoffice/decision-register.json
+- [ ] .vibeoffice/risk-register.json
 - [ ] .vibeoffice/project-blueprint.json
 
 ## Validation

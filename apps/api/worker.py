@@ -56,11 +56,13 @@ def review_and_integrate_worktree(job: dict, employee_id: str, agent_workspace: 
         return agent_worktree.integrate_reviewed(agent_workspace, pending.get("commit"))
     reviewer = "LENS" if employee_id == "GUARD" else "GUARD"
     role = main.agent_role(reviewer)
+    with main.database() as db:
+        model = main.task_model_assignment(db, job["task_id"], reviewer)["model"]
     response = main.cancellable_model_response(
         main.model_client(),
         job["task_id"],
         job["id"],
-        model=main.model_settings()[role["model_role"]],
+        model=model,
         instructions=(
             "Review this isolated agent Git diff. You are independent reviewer, not author. "
             "Pass only if change is scoped, safe, and has no obvious correctness/security regression. "
@@ -402,9 +404,10 @@ def process_meeting(job: dict) -> None:
     for index, employee in enumerate(participants, 1):
         if not safe_point(job):
             return
-        role = main.agent_role(employee); model = main.NAVI_MODEL if employee == "NAVI" else main.model_settings()[role["model_role"]]
+        role = main.agent_role(employee)
         run_id = f"AR-{job['id']}-{index:02d}"
         with main.database() as db:
+            model = main.task_model_assignment(db, job["task_id"], employee)["model"]
             existing = db.execute("SELECT state, summary FROM agent_runs WHERE id = ?", (run_id,)).fetchone()
             if existing and existing["state"] == "succeeded":
                 transcript.append(f"{employee}: {existing['summary'] or ''}")
@@ -618,7 +621,7 @@ def process_execute(job: dict) -> None:
         if not safe_point(job):
             return
         with main.database() as db:
-            model = main.model_settings()[main.agent_role(employee)["model_role"]]
+            model = main.task_model_assignment(db, job["task_id"], employee)["model"]
             assignment = db.execute("SELECT description FROM action_items WHERE task_id = ? AND owner = ? ORDER BY sequence LIMIT 1", (job["task_id"], employee)).fetchone()
             work_summary = assignment["description"] if assignment else "배정된 업무 수행"
             scope = db.execute("SELECT * FROM task_agent_scopes WHERE task_id = ? AND employee_id = ?", (job["task_id"], employee)).fetchone()
@@ -856,13 +859,14 @@ def process_synthesize(job: dict) -> None:
         selected_skill_ids=final_skill_ids,
         task_kind=final_task_kind,
     ) if final_skill_ids else {"required_skills": []}
+    model = main.technical_integration_model()
     response = main.cancellable_model_response(
         main.model_client(),
         job["task_id"],
         job["id"],
-        model=main.model_settings()[role["model_role"]],
+        model=model,
         instructions=(
-            f"You are {lead}, final integration owner. Produce one Korean Markdown deliverable. "
+            f"You are {lead}, technical integration owner. Produce one Korean Markdown deliverable. "
             "Reconcile contradictions instead of concatenating drafts. Follow required sections exactly. "
             "When the standard requires a single recommendation, choose exactly one and explain why alternatives lost. "
             "Use only supplied source URLs for factual citations. Mark unsupported numbers as estimates. "
@@ -909,7 +913,7 @@ def process_synthesize(job: dict) -> None:
             for path in main.render_bundle(workspace / final["path"], formats)
         ]
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (job["task_id"], lead, "synthesis", content, main.utc_now()))
-        reviewer = "LENS" if lead == "GUARD" else "GUARD"
+        reviewer = "NAVI"
         review_job = main.enqueue_job(
             db,
             job["task_id"],
@@ -917,19 +921,17 @@ def process_synthesize(job: dict) -> None:
             {"lead_id": lead, "reviewer_id": reviewer, "workspace_id": workspace_id},
         )
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("lead_review_running", main.utc_now(), job["task_id"]))
-        main.emit_job_event(db, job["task_id"], "synthesis.completed", f"최종 산출물 생성: {final['path']}", job_id=job["id"], agent_id=lead, payload={"deliverable": final})
-        main.emit_job_event(db, job["task_id"], "review.queued", "최종 파일 기준 독립 리뷰를 시작합니다.", job_id=review_job["id"], agent_id=reviewer)
+        main.emit_job_event(db, job["task_id"], "synthesis.completed", f"DeepSeek V4 Pro 기술 통합 완료: {final['path']}", job_id=job["id"], agent_id=lead, payload={"deliverable": final, "model": model})
+        main.emit_job_event(db, job["task_id"], "review.queued", "NAVI(GLM-5.2) 증거 검토와 완료 판정을 시작합니다.", job_id=review_job["id"], agent_id=reviewer)
 
 
 def process_review(job: dict) -> None:
     lead = job["payload"]["lead_id"]
-    reviewer = job["payload"].get("reviewer_id") or ("LENS" if lead == "GUARD" else "GUARD")
-    if reviewer == lead:
-        raise RuntimeError("Final owner cannot review their own deliverable")
-    role = main.agent_role(reviewer); model = main.model_settings()[role["model_role"]]
+    reviewer = "NAVI"
     with main.database() as db:
         task = main.task_payload(db, job["task_id"])
-        main.emit_job_event(db, job["task_id"], "review.started", "독립 검증팀 실제 리뷰 시작", job_id=job["id"], agent_id=reviewer, payload={"zone": "qa", "action": "review"})
+        model = main.final_completion_model()
+        main.emit_job_event(db, job["task_id"], "review.started", "NAVI(GLM-5.2) 증거 검토와 완료 판정 시작", job_id=job["id"], agent_id=reviewer, payload={"zone": "qa", "action": "review"})
         final = next((item for item in task["deliverables"] if item["status"] == "final_candidate"), None)
         if not final:
             raise RuntimeError("Lead review requires a final_candidate deliverable")
@@ -960,7 +962,7 @@ def process_review(job: dict) -> None:
         instructions=(
             "Review the actual final file against every required section and rule. "
             "Pass only when the file is coherent, complete, evidence-grounded, and directly answers the task. "
-            "Return strict JSON only: {\"verdict\":\"pass|changes_requested|blocked\",\"findings\":\"Korean actionable review\"}."
+            "Return strict JSON only: {\"verdict\":\"pass|changes_requested|blocked\",\"findings\":\"Korean actionable review\",\"final_report\":\"Korean executive completion report\"}."
         ),
         input=json.dumps({"task": task["request"], "execution_plan": plan, "artifact_kind": artifact_kind, "standard": standard, "final_file": final_content, "evidence": evidence}, ensure_ascii=False),
     )
@@ -971,15 +973,33 @@ def process_review(job: dict) -> None:
         review = json.loads(raw[raw.find("{"):raw.rfind("}") + 1])
         verdict = review.get("verdict", "changes_requested")
         findings = review.get("findings", raw)
+        final_report = review.get("final_report", findings)
     except Exception:
-        verdict, findings = "changes_requested", raw
+        verdict, findings, final_report = "changes_requested", raw, raw
     if verdict not in {"pass", "changes_requested", "blocked"}:
         verdict = "changes_requested"
+    final_report = str(final_report).strip() or str(findings)
     with main.database() as db:
+        final_status = {"pass": "COMPLETE", "changes_requested": "RETURNED", "blocked": "BLOCKED"}[verdict]
+        run_results = list(db.execute("SELECT command, status, exit_code FROM runs WHERE task_id = ? ORDER BY created_at", (job["task_id"],)))
+        changed_files = [item["path"] for item in task["deliverables"] if item["status"] != "completion_report"]
+        report = "\n".join([
+            "# NAVI Final Report",
+            "## 요청 목표", task["request"],
+            "## 구현 범위", str(plan.get("summary") or task["title"]),
+            "## 변경된 주요 파일", "\n".join(f"- {path}" for path in changed_files) or "- 변경 파일 없음",
+            "## 실행한 검증 명령", "\n".join(f"- {row['command']}" for row in run_results) or "- 실행된 검증 명령 없음",
+            "## 테스트 결과", "\n".join(f"- {row['status']} (exit {row['exit_code']})" for row in run_results) or "- 검증 결과 없음",
+            "## 완료 조건별 판정", final_report,
+            "## 미해결 사항 및 위험", str(findings) or "- 없음",
+            f"## 최종 상태: {final_status}",
+        ])
         count = db.execute("SELECT COUNT(*) FROM reviews WHERE task_id = ?", (job["task_id"],)).fetchone()[0] + 1
         review_id = f"REV-{job['task_id'].split('-')[-1]}-{count:02d}"
         db.execute("INSERT INTO reviews VALUES (?, ?, ?, ?, ?, ?)", (review_id, job["task_id"], reviewer, verdict, findings, main.utc_now()))
         db.execute("INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (f"EVD-{job['task_id'].split('-')[-1]}-LEAD-REVIEW", job["task_id"], None, "lead_review", "pass" if verdict == "pass" else "fail", main.hashlib.sha256(findings.encode()).hexdigest(), 0, main.utc_now()))
+        main.persist_deliverable(db, workspace, job["task_id"], "NAVI", "completion_report", report, filename="reports/NAVI_FINAL_REPORT.md", status="completion_report")
+        db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (job["task_id"], "NAVI", "final_report", report, main.utc_now()))
         if verdict == "pass":
             if main.task_requires_user_approval(db, job["task_id"]):
                 next_state = "awaiting_approval"

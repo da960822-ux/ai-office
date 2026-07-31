@@ -179,7 +179,12 @@ def _validate_rendered(paths: Iterable[Path]) -> None:
                 raise RuntimeError("PDF validation found no extractable text")
         elif suffix == ".xlsx":
             from openpyxl import load_workbook
-            if load_workbook(path, read_only=True).active.max_row < 2:
+            workbook = load_workbook(path, read_only=True)
+            try:
+                rows = workbook.active.max_row
+            finally:
+                workbook.close()
+            if rows < 2:
                 raise RuntimeError("XLSX validation found no content rows")
         elif suffix == ".pptx":
             from pptx import Presentation

@@ -28,7 +28,7 @@
 
 ## 산출물
 
-- Product Brief, Requirements, Tasks, AGENTS.md는 필수다.
+- PRD, Tasks, AGENTS.md는 필수다. Product Brief·Requirements는 외부 인계나 대형 프로젝트에서만 PRD에서 파생한다.
 - 프로젝트명과 기능명이 파일 간 일치한다.
 - 각 Must 요구사항은 화면과 작업에 연결된다.
 - Markdown과 JSON으로 내려받을 수 있다.

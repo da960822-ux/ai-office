@@ -1,0 +1,58 @@
+{
+  "id": "missing-final-deliverable-001",
+  "category": "failure_matrix",
+  "task_request": "새 구독 요금제 시장 기회를 조사하되 최종 산출물 없이 완료를 시도한다",
+  "plan": {
+    "summary": "research then decision, but decision never produces a final artifact",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: missing final deliverable must block completion",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "verify market evidence",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "decision",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "use research.md to decide",
+        "output": "draft-decision.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Research\n\nEvidence collected.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Collected market evidence."
+    },
+    "FRAME": {
+      "path": "draft-decision.md",
+      "content": "# Draft\n\nStill deciding.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Left decision as a draft, not a final candidate."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": false,
+    "error_contains": "Completion requires a final deliverable"
+  }
+}

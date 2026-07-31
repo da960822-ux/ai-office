@@ -11,7 +11,7 @@ FastAPI
   │ Job enqueue / state query
 SQLite (WAL)
   │ atomic lease
-Single local worker
+Local worker processes (one OS process per ready phase)
   ├─ OpenRouter model calls
   ├─ workspace file tools
   ├─ verification commands

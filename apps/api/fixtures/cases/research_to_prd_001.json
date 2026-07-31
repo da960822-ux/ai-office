@@ -51,7 +51,36 @@
   },
   "reviewer_id": "GUARD",
   "prohibited_skills": {
-    "GROW": ["ui-ux-pro-max"]
+    "GROW": {
+      "skill_ids": ["ui-ux-pro-max"],
+      "error_contains": "Skills are not bound to GROW",
+      "reason": "GROW has no ui-ux-pro-max binding at all; this checks the not-bound rejection path (distinct from the task_kind policy rule covered by the policy_regression fixtures)"
+    }
+  },
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Subscription pricing demand study",
+        "url": "https://example.com/verified-source-1",
+        "snippet": "Independent survey confirms demand for tiered pricing."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Ship a single mid-tier subscription plan is the pricing move both primary sources support strongly.",
+        "source_url": "https://example.com/verified-source-1",
+        "publisher": "Example Research",
+        "published_at": "2026-06-01",
+        "retrieved_span": "2026-07-01/2026-07-02",
+        "confidence": 0.9,
+        "contradictions": [
+          "Ship a single mid-tier subscription plan is disputed by procurement stakeholders who prefer enterprise-only pricing."
+        ]
+      }
+    ]
   },
   "expected": {
     "phase_order": ["GROW", "FRAME"],

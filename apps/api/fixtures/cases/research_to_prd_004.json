@@ -1,0 +1,84 @@
+{
+  "id": "research-to-prd-004",
+  "category": "research_to_prd",
+  "task_request": "소매 업체의 글로벌 확장 전략을 조사해 한국 시장 진출 방안을 권장하는 PRD를 작성한다",
+  "plan": {
+    "summary": "research retail expansion then recommend Korea entry strategy",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: research-to-prd korea expansion",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "research Korea market entry barriers and successful retail models",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "strategy",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write Korea expansion strategy PRD",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# 한국 시장 소매 확장 조사\n\n한국 소매 시장의 경쟁 구조와 성공 모델을 분석했다.\n\n## 시장 특성\n모바일 결제가 90% 이상 보급되어 있다. 대형 마트와 편의점 체인이 지배적이다. 온라인 채널 통합이 필수 성공 요인이다.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "한국 소매 시장 진출 장벽과 성공 모델을 조사했다."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# 한국 진출 전략 PRD\n\n## 추천 전략\n모바일 기반 결제 플랫폼 통합과 기존 편의점 체인과의 파트너십을 우선 추진한다.\n\n## 시장 근거\nhttps://example.com/verified/korea-retail-market 의 한국 소매 시장 조사에 따르면 모바일 결제 통합 기업의 성공률이 85%에 달한다.\n\n## 리스크 고려사항\n기존 대형 마트의 독점력에 대한 경쟁 압력에 대응하는 전략이 필요하다.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "한국 시장 진출 전략 PRD를 작성했다."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {},
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "한국 소매 시장 분석 보고서",
+        "url": "https://example.com/verified/korea-retail-market",
+        "snippet": "모바일 결제 통합 기업의 85% 성공률."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "한국 소매 시장에서 모바일 결제 플랫폼을 통합한 기업의 성공률이 85%에 달한다.",
+        "source_url": "https://example.com/verified/korea-retail-market",
+        "publisher": "한국 시장 연구소",
+        "published_at": "2026-06-01",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.91,
+        "contradictions": [
+          "대형 마트의 독점력이 신규 진입자에게 진출 장벽이 될 수 있다는 우려가 있다."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": true,
+    "final_owner": "FRAME"
+  }
+}

@@ -28,6 +28,7 @@ class Fixture:
     prohibited_skills: dict = field(default_factory=dict)
     reviewer_id: str = "GUARD"
     verify_run: dict | None = None
+    research_data: dict | None = None
 
     @property
     def expected_phase_order(self) -> list[str]:
@@ -50,12 +51,28 @@ class Fixture:
         """Declaring these opts the fixture into the real office-render step."""
         return self.expected.get("rendered_suffixes")
 
+    @property
+    def research(self) -> dict | None:
+        """Optional research fixture block: {"sources": [...], "claims": [...]}.
+
+        Returns None when the fixture does not declare one so existing
+        fixtures are unaffected.
+        """
+        return self.research_data or None
+
 
 def load_fixture(path: Path) -> Fixture:
     data = json.loads(path.read_text(encoding="utf-8"))
     missing = REQUIRED_KEYS - data.keys()
     if missing:
         raise ValueError(f"{path.name} missing required keys: {sorted(missing)}")
+    for employee, spec in data.get("prohibited_skills", {}).items():
+        if not isinstance(spec, dict) or not spec.get("error_contains"):
+            raise ValueError(
+                f"{path.name}: prohibited_skills.{employee} must be a dict declaring "
+                "'error_contains' (the expected rejection-message substring) - without it a fixture "
+                "can pass on ANY exception, including a fabricated/not-bound skill id, and proves nothing"
+            )
     return Fixture(
         id=data["id"],
         category=data["category"],
@@ -66,6 +83,7 @@ def load_fixture(path: Path) -> Fixture:
         prohibited_skills=data.get("prohibited_skills", {}),
         reviewer_id=data.get("reviewer_id", "GUARD"),
         verify_run=data.get("verify_run"),
+        research_data=data.get("research"),
     )
 
 

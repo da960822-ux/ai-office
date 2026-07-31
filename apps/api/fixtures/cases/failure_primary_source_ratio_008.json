@@ -1,0 +1,104 @@
+{
+  "id": "failure-primary-source-ratio-008",
+  "category": "failure_matrix",
+  "task_request": "업계 분석 보고서를 작성하되 주요 출처들로부터 비롯된 데이터만 사용한다",
+  "plan": {
+    "summary": "a single well-cited, contradiction-resolved claim, but most of the recorded sources are unverified web-search snippets rather than primary sources",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: primary_source_ratio must fail on its own even when claim_source_coverage, contradiction_resolution, and recommendation_linkage all pass - the one claim used is fully verified and resolved, but 3 of the 4 sources gathered along the way were never verified as primary, dragging the source-pool ratio below the 0.7 threshold",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "research industry trends and competitive landscape, mostly from unverified web search results",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "synthesis",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "synthesize research into industry analysis report, citing only the one verified finding",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Industry Research\n\nGathered one verified analyst report and three unverified web-search snippets for background context.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Researched industry trends, mostly from unverified web search."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Industry Analysis Report\n\nBased on https://example.com/verified/analyst-report, industry growth is predicted at 25% CAGR through 2030. Earlier commentary had questioned whether growth would slow after 2028, but the verified analyst report supersedes that concern.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Synthesized industry research, citing only the verified analyst report."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Industry Market Analysis Report",
+        "url": "https://example.com/verified/analyst-report",
+        "snippet": "Analyst consensus on market trends and growth projections."
+      },
+      {
+        "employee_id": "GROW",
+        "query": "broad-market-search",
+        "title": "Blog post on industry buzz",
+        "url": "https://example.com/unverified/industry-blog-1",
+        "snippet": "A search result snippet, never opened or verified as an original source."
+      },
+      {
+        "employee_id": "GROW",
+        "query": "broad-market-search",
+        "title": "Forum discussion on market trends",
+        "url": "https://example.com/unverified/industry-forum-2",
+        "snippet": "A search result snippet, never opened or verified as an original source."
+      },
+      {
+        "employee_id": "GROW",
+        "query": "broad-market-search",
+        "title": "Aggregator roundup of industry news",
+        "url": "https://example.com/unverified/industry-roundup-3",
+        "snippet": "A search result snippet, never opened or verified as an original source."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Industry growth is predicted at 25% CAGR through 2030.",
+        "source_url": "https://example.com/verified/analyst-report",
+        "publisher": "Market Research Firm",
+        "published_at": "2026-06-15",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.88,
+        "contradictions": [
+          "Earlier commentary had questioned whether growth would slow after 2028."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": false,
+    "error_contains": "primary_source_ratio=0.25"
+  }
+}

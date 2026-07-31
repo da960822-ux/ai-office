@@ -1,0 +1,54 @@
+{
+  "id": "policy-test-engineering-skill-011",
+  "category": "policy_regression",
+  "task_request": "사용자 인터페이스 자동화 테스트 스위트를 구축한다",
+  "plan": {
+    "summary": "test engineering with UI skill blocked for this task kind",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test execution",
+    "reason": "fixture: ui-ux-pro-max skill blocked for test_engineering task kind",
+    "phases": [
+      {
+        "id": "test_implementation",
+        "department": "quality-security",
+        "lead_id": "BUILD",
+        "task_kind": "test_engineering",
+        "objective": "implement UI automation test framework",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "BUILD": {
+      "path": "FINAL.md",
+      "content": "# UI Automation Test Suite\n\nImplemented comprehensive Selenium-based test suite:\n- 120 test cases covering critical user journeys\n- Cross-browser compatibility: Chrome, Firefox, Safari\n- Mobile responsiveness testing: iOS Safari, Android Chrome\n- Flakiness reduced to 0.3% through improved waits\n\nTest execution time: 12 minutes full suite\nCoverage: 78% of UI interactions\nAll tests passing.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Implemented UI automation test framework."
+    }
+  },
+  "verify_run": {
+    "command": "npm run test:e2e -- --headless",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {
+    "MOSS": {
+      "skill_ids": ["ui-ux-pro-max"],
+      "task_kind": "test_engineering",
+      "error_contains": "Skills are blocked for test_engineering",
+      "reason": "MOSS genuinely holds ui-ux-pro-max (optional binding); it is only allowed for frontend_implementation/ui_design/research, so test_engineering must reject it on task_kind policy"
+    }
+  },
+  "expected": {
+    "phase_order": ["BUILD"],
+    "completion_ok": true,
+    "final_owner": "BUILD"
+  }
+}

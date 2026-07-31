@@ -1,0 +1,63 @@
+{
+  "id": "prd-to-code-005",
+  "category": "prd_to_code",
+  "task_request": "Kubernetes multi-cluster deployment strategy: configure cross-region failover and service mesh integration",
+  "plan": {
+    "summary": "Kubernetes deployment architecture and implementation",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "successful deployment verification",
+    "reason": "fixture: prd-to-code with cloud_operations task kind",
+    "phases": [
+      {
+        "id": "architecture",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "design multi-cluster Kubernetes architecture with failover strategy",
+        "output": "ARCHITECTURE.md",
+        "handoff_to": "BUILD",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "deployment",
+        "department": "infrastructure",
+        "lead_id": "SHIP",
+        "task_kind": "cloud_operations",
+        "objective": "implement Kubernetes manifests and service mesh configuration with cross-region failover",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["architecture"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "FRAME": {
+      "path": "ARCHITECTURE.md",
+      "content": "# Multi-Cluster Kubernetes Architecture\n\n## Design Overview\nPrimary cluster: us-east-1\nSecondary cluster: eu-west-1\n\n## Failover Strategy\n- Automatic health checks every 10 seconds\n- DNS-based traffic routing with TTL 30 seconds\n- Service mesh (Istio) for canary deployments\n- Data replication with RPO 5 minutes\n\n## High Availability\nTarget: 99.99% uptime\nRTO: < 5 minutes for cluster failover\nRPO: < 5 minutes for data loss\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Designed multi-cluster architecture with failover."
+    },
+    "SHIP": {
+      "path": "FINAL.md",
+      "content": "# Kubernetes Multi-Cluster Deployment\n\n## Implemented Components\n1. Primary cluster configuration (us-east-1)\n   - 3 master nodes, 5 worker nodes\n   - Auto-scaling group 2-10 nodes\n\n2. Secondary cluster configuration (eu-west-1)\n   - 3 master nodes, 3 worker nodes\n   - Standby auto-scaling enabled\n\n3. Service mesh (Istio 1.14)\n   - Cross-cluster communication configured\n   - Canary traffic splitting implemented\n\n4. DNS and traffic management\n   - Route53 health checks active\n   - Automatic failover validated\n\nAll health checks passing. Cross-region latency < 100ms. Failover tested and verified.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Deployed multi-cluster Kubernetes setup with cross-region failover."
+    }
+  },
+  "verify_run": {
+    "command": "kubectl get nodes --all-namespaces && helm test monitoring",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["FRAME", "SHIP"],
+    "completion_ok": true,
+    "final_owner": "SHIP"
+  }
+}

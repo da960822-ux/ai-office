@@ -45,12 +45,11 @@
 @AGENTS.md
 @NEXT_ACTION.md
 @PROJECT_STATUS.md
-@docs/PRODUCT_BRIEF.md
-@docs/MVP_SCOPE.md
-@docs/REQUIREMENTS.md
+@docs/PRD.md
 @docs/TASKS.md
 @docs/TEST_PLAN.md
-@docs/DECISIONS.md
+@.vibeoffice/decision-register.json
+@.vibeoffice/risk-register.json
 ```
 
 ### NEXT_ACTION.md
@@ -82,9 +81,7 @@
 ## 4. docs 필수 파일
 
 ```text
-PRODUCT_BRIEF.md
-MVP_SCOPE.md
-REQUIREMENTS.md
+PRD.md
 USER_FLOWS.md
 SCREEN_SPEC.md
 DESIGN_SYSTEM.md
@@ -93,7 +90,6 @@ API_CONTRACT.yaml
 DATA_MODEL.md
 TASKS.md
 TEST_PLAN.md
-DECISIONS.md
 TRACEABILITY.md
 ```
 
@@ -102,6 +98,8 @@ TRACEABILITY.md
 ```text
 .vibeoffice/
 ├── project-blueprint.json
+├── decision-register.json
+├── risk-register.json
 ├── roadmap.json
 ├── artifact-index.json
 ├── traceability-map.json

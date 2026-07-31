@@ -97,7 +97,7 @@ DRAFT → PLANNING → PLANNING_REVIEW → PLANNING_APPROVED
 ```text
 <workspace>/
 ├── AGENTS.md  CLAUDE.md  NEXT_ACTION.md  PROJECT_STATUS.md  README.md
-├── docs/       PRODUCT_BRIEF.md … TRACEABILITY.md
+├── docs/       PRD.md … TRACEABILITY.md
 ├── prototype/ 또는 실제 source
 └── .vibeoffice/ project-blueprint.json roadmap.json artifact-index.json
                 traceability-map.json current-state.json review-findings.json
@@ -138,24 +138,37 @@ GET   /api/vibe/projects/{id}/exports/{exportId}
 - 구현: 시작 카드, 자유 입력 정규화, 추정값 8종(projectType·targetUser·coreProblem·successMoment·deadline·teamSize·skillLevel·data/auth/ai), 질문 ≤3, Blueprint 생성·승인
 - 성공 조건: 30자 입력 1건이 스키마 검증을 통과하는 `project-blueprint.json`을 만든다. Must 3~5개, Later·Out 존재. 재질문 없음.
 - 검증: `test_vibeoffice_intake.py` — 짧은 입력 fixture 3건, 질문 개수 상한, 스키마 검증
+- 상태: **완료**
 
 ### S2. 기획 승인 → 디자인 패키지 + handoff 계약
 
 - 구현: `vo_handoffs` 봉투(inputVersions·requiredOutputs·acceptanceCriteria), USER_FLOWS·SCREEN_SPEC 생성, 산출물 버전·stale 표시, 거부 조건 검사
 - 성공 조건: 승인된 Blueprint 버전만 입력으로 쓴다. 화면 3~7개, 모든 Must가 화면에 연결, 각 데이터 화면에 loading·empty·error. 거부 조건 위반 시 handoff가 `rejected`가 된다.
 - 검증: `test_vibeoffice_handoff.py` — 승인 안 된 draft 인계 차단, Must 미연결 시 거부
+- 상태: **완료**
 
 ### S3. 디자인 승인 → 기술설계 계약
 
 - 구현: API_CONTRACT.yaml, DATA_MODEL, TECHNICAL_TASKS 생성, 화면↔데이터 source 매핑, 필드 일치 검사
 - 성공 조건: API와 Data Model 필드가 일치한다. 데이터 화면마다 source가 있다. 작업이 한 세션 크기로 쪼개지고 의존성이 있다.
 - 검증: `test_vibeoffice_contracts.py` — 필드 불일치 fixture가 Gate D에서 차단
+- 상태: **완료**. 승인 2(시안 승인)를 위한 `POST /artifacts/design/approve`도 이 슬라이스에서 함께 구현했다 - S2가 만든 `DESIGN_REVIEW`에서 이 엔드포인트가 빠져 있었다.
+
+### S3.5. 기술설계 승인 → Product Execution Baseline
+
+- 목적: 기존 Planning 산출물을 대체하지 않는다. 승인된 Blueprint·Scope·Requirements·Decisions와 S3 기술설계에서 개발 AI가 재해석 없이 사용할 사업 목표·제품 요구사항·위험을 파생 산출물로 고정한다.
+- 구현: `PRD.md`, `project-blueprint.json`, `decision-register.json`, `risk-register.json` 생성. PRD는 기본 모드의 유일한 사람용 기획서이며 Problem·OKR·Scope·Requirements·비기능 요구사항·Decision·Risk를 한 문서에 둔다. JSON은 기계 검증·추적용이다. OKR/Risk/Decision을 별도 Markdown으로 중복 생성하지 않는다. Decision마다 상태(`confirmed`/`assumption`/`deferred`)·영향 산출물·재검토 조건을 둔다.
+- Gate PE: 모든 Must Requirement가 PRD 섹션·수용 기준·Task·Test에 연결돼야 한다. 모든 KR은 최소 한 Requirement 또는 출시 후 측정 계획에 연결돼야 한다. Build 전 결정이 필요한 `deferred` 항목은 handoff를 차단한다. owner 또는 mitigation 없는 High/Critical 위험은 차단한다.
+- 성공 조건: `PRD.md`는 개발 AI의 단일 진입 문서로서 scope·비기능 요구사항·명시적 Out·open decision·OKR·Risk를 담는다. 모든 핵심 ID는 JSON register와 version/hash가 일치하고, `TRACEABILITY.md`와 `traceability-map.json`에 반영된다.
+- 검증: `test_vibeoffice_execution_baseline.py` — 끊긴 Requirement→Task/Test, 측정 불가 KR, owner 없는 High risk, Build 전 deferred 결정 fixture를 각각 차단.
+- 상태: **완료**. OKR/Decision 상태(`confirmed`/`assumption`/`deferred`)는 blueprint 스키마에 없는 필드라 Blueprint를 건드리지 않고 `openQuestions`/`risks`에서 결정론적으로 파생한다. 이 슬라이스는 새 project state를 추가하지 않는다 - 가이드의 상태 목록에 S3.5 전용 상태가 없고, "기존 Planning 산출물을 대체하지 않는다"는 파생 산출물 고정 작업이라 `ARCHITECTURE_REVIEW`에 머문다.
 
 ### S4. 기술설계 승인 → 내부 MVP 빌드
 
 - 구현: starter/template 기반 골격, 핵심 route, mock adapter, 상태 처리, build·smoke 실행, PROJECT_STATUS·BUILD_REPORT·current-state.json
 - 성공 조건: 공식 build 성공 evidence가 있다. mock 경계가 문서에 명시된다. 미구현 항목이 명시된다. 완성형 SaaS를 목표로 하지 않는다(70점대).
 - 검증: 기존 evidence 게이트 재사용 + `test_vibeoffice_build.py`
+- 상태: **완료**. `main.tasks`/`TaskContract`/Job 큐는 그대로 두고, 명령 안전성만 기존 `apps/api/policy.py`의 `validate_command`를 재사용했다(2절의 "부서 phase를 실행 요청으로 변환" 다이어그램은 이 구현이 아직 도달하지 못한 목표 형태로 남아 있다). 스캐폴드는 React/Vite 설치 없는 정적 HTML + vanilla JS 골격이다 - 실제 프레임워크 설치는 네트워크·시간 비용이 크고, 이 슬라이스의 70점대 목표에 필요하지 않다. mock 경계는 `PROJECT_STATUS.md`/`BUILD_REPORT.md`에 명시된다.
 
 ### S5. QA 반송 루프 → H4 Export
 
@@ -177,7 +190,7 @@ GET   /api/vibe/projects/{id}/exports/{exportId}
 | D Technical | 화면 데이터 source, API↔Data 일치, 인증 일치, 외부 API 실패 처리, secret 규칙 | Architecture 반송 |
 | E Task | 한 세션 크기, 의존성, 검증 가능한 done, Out 작업 없음 | Architecture 반송 |
 | F Build | install·dev·build·test, 공식 build 성공, 치명 콘솔 오류 없음, smoke, 미구현 명시 | Build 반송 |
-| G Handoff | AGENTS·CLAUDE·NEXT_ACTION·PROJECT_STATUS 최신, Blocker 0, secret scan, ZIP manifest | 출고 차단 |
+| G Handoff | AGENTS·CLAUDE·NEXT_ACTION·PROJECT_STATUS·PRD·register JSON 최신, Blocker 0, secret scan, ZIP manifest | 출고 차단 |
 
 ## 9. 반송과 stale 규칙
 
@@ -230,7 +243,7 @@ npm.cmd test -- --run
 npm.cmd run build
 ```
 
-현재 상태(2026-07-30): API 31개 중 28 pass. `test_agent_tools`의 3건은 로컬 `ripgrep` 미설치로 실패한다. 검색·심볼 도구를 쓰는 작업 전에 `rg`를 설치한다.
+현재 상태(2026-07-31): API 161개 중 158 pass. `test_agent_tools`의 3건은 로컬 `ripgrep` 미설치로 실패한다. 검색·심볼 도구를 쓰는 작업 전에 `rg`를 설치한다. S1~S4 구현 완료(각 슬라이스 상태는 7절 참고); S5(QA 반송 루프 → H4 Export)가 다음 수직 슬라이스다.
 
 ## 13. 완료 보고 형식
 

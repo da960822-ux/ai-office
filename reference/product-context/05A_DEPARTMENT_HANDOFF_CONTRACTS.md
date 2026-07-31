@@ -45,10 +45,10 @@
 ### 필수 입력
 
 - project-blueprint.json
-- PRODUCT_BRIEF.md
-- MVP_SCOPE.md
-- REQUIREMENTS.md
-- DECISIONS.md
+- PRD.md
+- project-blueprint.json
+- decision-register.json
+- risk-register.json
 
 ### 인계 요약
 
@@ -106,6 +106,9 @@
 - ENVIRONMENT.md
 - TECHNICAL_TASKS.md
 - TEST_PLAN.md
+- PRD.md
+- decision-register.json
+- risk-register.json
 - 승인된 prototype
 
 ### 인계 요약
@@ -117,6 +120,8 @@
 - 작업 의존성
 - 공식 검증 명령
 - 보안 금지 사항
+- Build 전 해결해야 하는 deferred decision
+- High/Critical 위험의 owner·mitigation·trigger
 
 ### 거부 조건
 
@@ -126,6 +131,9 @@
 - 실제 스택과 문서 충돌
 - 한 작업이 전체 앱 재작성 수준
 - secret 처리 규칙 없음
+- 측정 불가 KR 또는 Requirement·출시 측정 계획에 연결되지 않은 KR
+- owner 또는 mitigation 없는 High/Critical 위험
+- Build 전에 결정해야 하는 deferred decision
 
 ## 6. 개발부 → QA
 

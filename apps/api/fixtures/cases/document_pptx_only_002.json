@@ -1,0 +1,43 @@
+{
+  "id": "document-pptx-only-002",
+  "category": "document",
+  "task_request": "분기 실적 발표를 위한 슬라이드 자료를 만들어 줘. 영업, 마케팅, 기술 실적을 요약해서",
+  "plan": {
+    "summary": "author quarterly earnings presentation slides",
+    "artifact_kind": "business_document",
+    "final_owner": "LENS",
+    "workspace_context": "none",
+    "requires_web_research": false,
+    "evidence_strategy": "rendered documents reopen successfully",
+    "reason": "fixture: document with pptx only (no hwpx)",
+    "phases": [
+      {
+        "id": "authoring",
+        "department": "service-knowledge",
+        "lead_id": "LENS",
+        "task_kind": "document_authoring",
+        "objective": "write quarterly earnings presentation with sales, marketing, and technical achievements",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "LENS": {
+      "path": "FINAL.md",
+      "content": "# 분기 실적 발표\n\n## 영업 실적\n분기 매출 2억 5천만 원 달성. 전년 대비 18% 성장.\n\n## 마케팅 성과\n브랜드 인지도 42%에서 58%로 상승. SNS 팔로워 50만 명 돌파.\n\n## 기술 마일스톤\nAPI 응답 시간 평균 80ms. 서비스 가용률 99.95% 유지.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Authored quarterly earnings presentation with key metrics."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["LENS"],
+    "completion_ok": true,
+    "final_owner": "LENS",
+    "rendered_suffixes": [".html", ".docx", ".pdf", ".pptx", ".json"]
+  }
+}

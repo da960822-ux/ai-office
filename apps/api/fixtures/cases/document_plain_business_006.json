@@ -1,0 +1,43 @@
+{
+  "id": "document-plain-business-006",
+  "category": "document",
+  "task_request": "Company expansion strategy: write a comprehensive business document covering market entry, partnership strategy, and 3-year financial projections",
+  "plan": {
+    "summary": "author comprehensive business expansion strategy document",
+    "artifact_kind": "business_document",
+    "final_owner": "LENS",
+    "workspace_context": "none",
+    "requires_web_research": false,
+    "evidence_strategy": "rendered documents reopen successfully",
+    "reason": "fixture: plain business_document with html/docx/pdf/json (no xlsx, no pptx, no hwpx)",
+    "phases": [
+      {
+        "id": "authoring",
+        "department": "service-knowledge",
+        "lead_id": "LENS",
+        "task_kind": "document_authoring",
+        "objective": "write comprehensive business expansion strategy covering market entry and partnerships",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "LENS": {
+      "path": "FINAL.md",
+      "content": "# Company Expansion Strategy 2026-2029\n\n## Executive Summary\nPhased expansion strategy targeting three new geographic markets and two strategic partnerships.\n\n## Market Entry Strategy\n\n### Primary Target: Southeast Asia\n- Market size: $45B\n- Entry year: Q4 2026\n- Initial investment: $8M\n- Target customer acquisition: 500 SMEs\n\n### Secondary Target: Latin America\n- Market size: $28B\n- Entry year: Q2 2027\n- Initial investment: $6M\n- Target customer acquisition: 300 SMEs\n\n## Partnership Strategy\n\n### Strategic Partnership 1: Regional Distribution\n- Partner focus: Local market penetration\n- Revenue sharing: 70/30 model\n- Expected revenue contribution: 35% by 2029\n\n### Strategic Partnership 2: Technology Integration\n- Partner focus: API ecosystem expansion\n- Revenue model: Per-transaction fee\n- Expected revenue contribution: 15% by 2029\n\n## Financial Projections\n\n### Year 1 (2026-2027)\n- Expansion costs: $14M\n- Projected revenue: $8M\n- Net investment: -$6M\n\n### Year 2 (2027-2028)\n- Incremental costs: $4M\n- Projected revenue: $28M\n- EBITDA: +$12M\n\n### Year 3 (2028-2029)\n- Costs: $2M (maintenance)\n- Projected revenue: $65M\n- EBITDA: +$38M\n\n## Risk Assessment\n- Regulatory approval delay: Medium risk, 6-month mitigation buffer\n- Local competition: High risk, mitigated through partnerships\n- Currency volatility: Medium risk, hedging strategy in place\n\n## Recommendation\nProceeds with phased market entry with strong partnership support.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Authored comprehensive business expansion strategy document."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["LENS"],
+    "completion_ok": true,
+    "final_owner": "LENS",
+    "rendered_suffixes": [".html", ".docx", ".pdf", ".json"]
+  }
+}

@@ -43,13 +43,11 @@
 #### 출력
 
 ```text
-PRODUCT_BRIEF.md
-MVP_SCOPE.md
-USER_STORIES.md
-REQUIREMENTS.md
-ROADMAP.md
-DECISIONS.md
+PRD.md
 project-blueprint.json
+decision-register.json
+risk-register.json
+traceability-map.json
 roadmap.json
 ```
 

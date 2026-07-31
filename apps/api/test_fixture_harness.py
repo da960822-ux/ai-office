@@ -8,6 +8,7 @@ mocked, matching the seam already used by test_workflow_acceptance.py.
 Add coverage by adding a fixture JSON file, not by adding a test method.
 """
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -153,14 +154,48 @@ class FixtureHarnessTests(unittest.TestCase):
             self.render_final_deliverable(fixture, task_id)
 
         for employee, spec in fixture.prohibited_skills.items():
-            skill_ids = spec.get("skill_ids", []) if isinstance(spec, dict) else spec
-            task_kind = spec.get("task_kind") if isinstance(spec, dict) else None
+            # schema.load_fixture already rejects any entry that skips
+            # error_contains, so by construction every entry here is a dict
+            # declaring the exact policy reason the rejection must state.
+            skill_ids = spec.get("skill_ids", [])
+            task_kind = spec.get("task_kind")
+            error_contains = spec["error_contains"]
             kwargs = {"task_kind": task_kind} if task_kind else {}
             for skill_id in skill_ids:
                 with self.assertRaises(
                     Exception, msg=f"{fixture.id}: {employee} must not select prohibited skill {skill_id}"
-                ):
+                ) as raised:
                     main.validate_selected_skills(employee, [skill_id], **kwargs)
+                self.assertIn(
+                    error_contains, str(raised.exception),
+                    f"{fixture.id}: {employee}/{skill_id} rejected for the wrong reason "
+                    f"(expected to contain {error_contains!r})",
+                )
+
+        if fixture.research:
+            with main.database() as db:
+                now = main.utc_now()
+                for source in fixture.research.get("sources", []):
+                    db.execute(
+                        "INSERT INTO research_sources (task_id, employee_id, query, title, url, snippet, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            task_id, source["employee_id"], source["query"],
+                            source["title"], source["url"], source["snippet"], now,
+                        ),
+                    )
+                for claim in fixture.research.get("claims", []):
+                    db.execute(
+                        "INSERT INTO research_claims "
+                        "(task_id, employee_id, claim, source_url, publisher, published_at, retrieved_span, "
+                        "confidence, contradictions, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            task_id, claim["employee_id"], claim["claim"], claim["source_url"],
+                            claim["publisher"], claim.get("published_at"), claim["retrieved_span"],
+                            float(claim["confidence"]), json.dumps(claim.get("contradictions", []), ensure_ascii=False), now,
+                        ),
+                    )
 
         if fixture.verify_run:
             with main.database() as db:

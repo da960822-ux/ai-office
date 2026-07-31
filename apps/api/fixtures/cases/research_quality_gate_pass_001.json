@@ -1,0 +1,100 @@
+{
+  "id": "research-quality-gate-pass-001",
+  "category": "research_quality_gate",
+  "task_request": "가격 전략 조사 결과를 근거로 정리해 최종 조사 보고서를 작성한다",
+  "plan": {
+    "summary": "research with verified provenance backing every claim",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources cited in the final artifact",
+    "reason": "fixture: research quality gate must pass when provenance is real",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "verify pricing and onboarding findings from independent primary sources",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "decision",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "summarize research.md into a final report citing both sources",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Research\n\nVerified two independent primary sources on pricing and onboarding.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Collected and cross-verified market evidence."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Research Brief\n\n## Finding 1\nEnterprise buyers prefer usage-based pricing over flat annual tiers when evaluating renewal contracts, confirmed at https://example.com/verified/pricing-report.\n\n## Finding 2\nMid-market churn drops meaningfully when onboarding includes a live product demo within the first week, confirmed at https://example.com/verified/onboarding-study.\n\n## Contradiction addressed\nEarly interviews suggested flat-tier preference among enterprise buyers before the verified pricing report (https://example.com/verified/pricing-report) was reviewed and superseded that signal.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Synthesized both verified findings into the final report and cited both sources."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Enterprise pricing preference report",
+        "url": "https://example.com/verified/pricing-report",
+        "snippet": "Enterprise buyers prefer usage-based pricing over flat annual tiers."
+      },
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Onboarding churn study",
+        "url": "https://example.com/verified/onboarding-study",
+        "snippet": "Live demos during onboarding reduce mid-market churn."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Enterprise buyers prefer usage-based pricing over flat annual tiers when evaluating renewal contracts.",
+        "source_url": "https://example.com/verified/pricing-report",
+        "publisher": "Example Research",
+        "published_at": "2026-06-01",
+        "retrieved_span": "2026-07-01/2026-07-02",
+        "confidence": 0.9,
+        "contradictions": [
+          "Early interviews suggested flat-tier preference among enterprise buyers before the verified pricing report was reviewed."
+        ]
+      },
+      {
+        "employee_id": "GROW",
+        "claim": "Mid-market churn drops meaningfully when onboarding includes a live product demo within the first week.",
+        "source_url": "https://example.com/verified/onboarding-study",
+        "publisher": "Example Research",
+        "published_at": "2026-06-10",
+        "retrieved_span": "2026-07-01/2026-07-02",
+        "confidence": 0.85,
+        "contradictions": []
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": true,
+    "final_owner": "FRAME"
+  }
+}

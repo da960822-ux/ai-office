@@ -1,0 +1,84 @@
+{
+  "id": "research-to-prd-003",
+  "category": "research_to_prd",
+  "task_request": "Research healthcare compliance frameworks for HIPAA and propose a data architecture that meets audit requirements",
+  "plan": {
+    "summary": "research healthcare compliance then propose architecture",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: research-to-prd healthcare",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "research HIPAA compliance requirements from official sources and case studies",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "architecture",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write PRD proposing compliant data architecture",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Healthcare Compliance Research\n\nReviewed HIPAA Security Rule requirements and encryption standards from CMS official documentation.\n\n## Compliance Requirements\nData at rest must use AES-256 encryption. Data in transit requires TLS 1.2 minimum. Audit logs must be immutable for 7 years.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Researched HIPAA compliance framework from official CMS sources."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Healthcare Data Architecture PRD\n\n## Compliance Approach\nImplement end-to-end AES-256 encryption with immutable audit trails per HIPAA requirements documented at https://example.com/verified/hipaa-security-rule.\n\n## Architecture Decision\nUse managed database services with built-in encryption and 7-year retention policies. We follow TLS 1.2+ as mandated by the HIPAA Security Rule, noting that while TLS 1.3 offers forward secrecy, TLS 1.2 compliance is sufficient for regulatory requirements.\n\n## Risk Mitigations\nMonitored access controls address potential unauthorized data exposure risks highlighted in compliance research.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "PRD proposing HIPAA-compliant data architecture."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {},
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "HIPAA Security Rule Official Requirements",
+        "url": "https://example.com/verified/hipaa-security-rule",
+        "snippet": "Data encryption, audit logging, and access controls required by Security Rule."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "HIPAA Security Rule mandates AES-256 encryption at rest, TLS 1.2+ in transit, and 7-year immutable audit logs.",
+        "source_url": "https://example.com/verified/hipaa-security-rule",
+        "publisher": "CMS/HHS",
+        "published_at": "2026-01-01",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.98,
+        "contradictions": [
+          "Some healthcare systems prefer TLS 1.3 for forward secrecy protection."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": true,
+    "final_owner": "FRAME"
+  }
+}

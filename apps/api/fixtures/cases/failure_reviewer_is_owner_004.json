@@ -1,0 +1,91 @@
+{
+  "id": "failure-reviewer-is-owner-004",
+  "category": "failure_matrix",
+  "task_request": "고객 만족도 조사를 실시하고 최종 권장사항을 작성한다",
+  "plan": {
+    "summary": "research then decision, but reviewer is the final owner",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: reviewer cannot be the final owner",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "conduct customer satisfaction research",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "decision",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write recommendations based on research",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Customer Satisfaction Research\n\nSurveyed 500 customers across three segments.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Conducted customer satisfaction survey."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Recommendations\n\nBased on https://example.com/verified/satisfaction-survey, we should prioritize customer support improvements. Satisfaction score improvement potential: +15 points.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Wrote recommendations for improving customer satisfaction."
+    }
+  },
+  "reviewer_id": "FRAME",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Customer Satisfaction Survey",
+        "url": "https://example.com/verified/satisfaction-survey",
+        "snippet": "500 customers surveyed across three segments."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Customer support is the top priority improvement area identified by survey respondents.",
+        "source_url": "https://example.com/verified/satisfaction-survey",
+        "publisher": "Customer Research",
+        "published_at": "2026-07-01",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.92,
+        "contradictions": []
+      },
+      {
+        "employee_id": "GROW",
+        "claim": "Customer retention improvement is a secondary priority area.",
+        "source_url": "https://example.com/verified/satisfaction-survey",
+        "publisher": "Customer Research",
+        "published_at": "2026-07-01",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.87,
+        "contradictions": ["Some competitors show higher retention rates in similar market segments, suggesting industry headwinds rather than operational gaps."]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": false,
+    "error_contains": "Final owner cannot approve their own deliverable"
+  }
+}

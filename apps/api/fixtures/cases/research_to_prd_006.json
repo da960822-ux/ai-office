@@ -1,0 +1,83 @@
+{
+  "id": "research-to-prd-006",
+  "category": "research_to_prd",
+  "task_request": "SaaS enterprise feature gap analysis: identify and prioritize missing capabilities vs. three major competitors",
+  "plan": {
+    "summary": "competitive feature research then prioritized roadmap",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: research-to-prd enterprise SaaS comparison",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "map feature parity against three primary competitors across all modules",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "prioritization",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "rank missing features by customer impact and development complexity",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Enterprise SaaS Feature Comparison\n\nCompetitor A: 87 features in core modules, SSO not bundled\nCompetitor B: 94 features, includes advanced audit trail\nCompetitor C: 72 features, focuses on ease of use over breadth\n\nGap analysis reveals 12 high-priority missing features across reporting and security modules.",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Mapped feature gaps against three enterprise SaaS competitors."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Enterprise Feature Roadmap\n\n## P1 Features (Q3-Q4)\n1. Advanced audit trail (per https://example.com/verified-competitor-features)\n2. Custom SAML/SSO endpoints\n3. Role-based API scoping\n\n## P2 Features (Q1 2027)\n1. Granular export controls\n2. Real-time collaboration features\n3. Enhanced reporting dashboards\n\nImplementation prioritizes revenue impact and competitive differentiation.",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Prioritized enterprise feature roadmap based on competitive analysis."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Enterprise SaaS Competitor Features Q2 2026",
+        "url": "https://example.com/verified-competitor-features",
+        "snippet": "Three leading enterprise SaaS platforms compared across 25+ feature categories."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Advanced audit trail is a baseline enterprise requirement implemented by all major competitors.",
+        "source_url": "https://example.com/verified-competitor-features",
+        "publisher": "Enterprise Software Research",
+        "published_at": "2026-06-20",
+        "retrieved_span": "2026-07-18/2026-07-19",
+        "confidence": 0.94,
+        "contradictions": [
+          "Some mid-market SaaS providers still do not offer native audit logging."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": true,
+    "final_owner": "FRAME"
+  }
+}

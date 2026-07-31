@@ -196,7 +196,10 @@ class DurableJobWorkflowE2E(unittest.TestCase):
         self.assertTrue(any(item["type"] == "lead_review" and item["status"] == "pass" for item in completed["evidence"]))
         self.assertTrue(any(item["status"] == "completed" for item in completed["action_items"]))
         self.assertEqual([review["verdict"] for review in reversed(completed["reviews"])], ["changes_requested", "pass"])
-        self.assertEqual({review["reviewer_id"] for review in completed["reviews"]}, {"GUARD"})
+        # Reviewer routing was changed to a fixed NAVI final-completion reviewer
+        # (apps/api/worker.py process_synthesize/process_review) instead of the
+        # GUARD/LENS peer-review pair. Updated to match the current runtime.
+        self.assertEqual({review["reviewer_id"] for review in completed["reviews"]}, {"NAVI"})
         self.assertTrue(all(phase["status"] == "completed" and phase["artifact_ids"] for phase in completed["phases"]))
         final = next(item for item in completed["deliverables"] if item["status"] == "approved")
         self.assertEqual(final["path"], f"AI_OFFICE_OUTPUTS/{task['id']}/FINAL.md")

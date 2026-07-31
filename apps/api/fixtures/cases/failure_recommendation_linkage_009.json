@@ -1,0 +1,102 @@
+{
+  "id": "failure-recommendation-linkage-009",
+  "category": "failure_matrix",
+  "task_request": "제품 도입 현황을 조사해 최종 노트를 작성하되 핵심 주장은 인용하지 않는다",
+  "plan": {
+    "summary": "research with well-cited, well-resolved claims that the final artifact never actually draws on",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: recommendation_linkage gate must fail when claims are fully covered, sourced, and contradiction-resolved, yet the final artifact never draws on the claims themselves (no source_url, no claim text) - it only restates the dissenting notes",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "research product adoption signals from verified sources",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "decision",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write final notes that record the dissenting context but never cite the underlying claims or sources",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Product Adoption Research\n\nVerified two independent adoption signals, each with a dissenting note captured alongside it.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Researched product adoption signals from verified sources."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Product Adoption Notes\n\nDuring review, we surfaced two dissenting notes worth recording.\n\nEarly support tickets indicated the transition was mostly smooth for enterprise accounts with minimal friction reported, though this note is preserved for context.\n\nSome account managers noted seat expansion was already trending upward before the workspace feature launched, which we flag for future analysis.\n\nNo final recommendation is made at this time.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Wrote final notes that resolve both dissenting notes but never restate either underlying claim or cite its source."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Tier Migration Friction Study",
+        "url": "https://example.com/verified/tier-migration-friction",
+        "snippet": "Enterprise migration to the usage-based tier shows onboarding friction."
+      },
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Seat Expansion Signal",
+        "url": "https://example.com/verified/seat-expansion-signal",
+        "snippet": "Mid-market seat purchases rise after collaborative workspace adoption."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Enterprise customers migrating to the new usage-based tier reported significant onboarding friction during the transition period.",
+        "source_url": "https://example.com/verified/tier-migration-friction",
+        "publisher": "Internal Product Research",
+        "published_at": "2026-06-01",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.9,
+        "contradictions": [
+          "Early support tickets indicated the transition was mostly smooth for enterprise accounts with minimal friction reported."
+        ]
+      },
+      {
+        "employee_id": "GROW",
+        "claim": "Mid-market customers increased seat purchases within 30 days of adopting the new collaborative workspace feature.",
+        "source_url": "https://example.com/verified/seat-expansion-signal",
+        "publisher": "Internal Product Research",
+        "published_at": "2026-06-10",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.85,
+        "contradictions": [
+          "Some account managers noted seat expansion was already trending upward before the workspace feature launched."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": false,
+    "error_contains": "recommendation_linkage=0.00"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "id": "research-to-prd-007",
+  "category": "research_to_prd",
+  "task_request": "모바일 앱 사용성 개선을 위한 경쟁사 UX 분석 및 권장 개선사항을 작성한다",
+  "plan": {
+    "summary": "mobile UX competitive research then redesign recommendations",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: research-to-prd mobile UX with Korean language",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "analyze mobile UX patterns in peer applications and identify usability gaps",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "redesign",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "propose mobile interface redesigns based on UX research findings",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# 모바일 앱 UX 경쟁사 분석\n\n주요 경쟁사 3개 분석:\n- 앱 A: 평균 태스크 완료 시간 2.3초, 포기율 12%\n- 앱 B: 평균 태스크 완료 시간 1.8초, 포기율 8%\n- 앱 C: 평균 태스크 완료 시간 2.1초, 포기율 15%\n\n주요 발견: 바텀 네비게이션 + 탭 기반 UI가 가장 효율적. 온보딩 프로세스 간소화가 포기율 감소의 핵심.",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "분석한 3개 경쟁사의 모바일 UI/UX 패턴과 사용성 지표."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# 모바일 앱 UX 개선 계획\n\n## 권장 개선사항\n1. 바텀 네비게이션 도입 (https://example.com/verified-ux-patterns 기준)\n2. 온보딩 프로세스 3단계로 단축\n3. 주요 액션을 홈 화면에 노출\n\n## 예상 효과\n- 태스크 완료 시간 30% 단축\n- 초기 포기율 50% 감소\n- 사용자 만족도 4.2점 → 4.7점\n\n## 구현 순서\n1분기: 온보딩 개선 및 홈 화면 리디자인\n2분기: 네비게이션 구조 개편\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "경쟁사 분석 기반 모바일 UX 개선 권장사항 작성 완료."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Mobile UX Best Practices 2026",
+        "url": "https://example.com/verified-ux-patterns",
+        "snippet": "Bottom navigation and tabbed interfaces show highest task completion rates in mobile applications."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Bottom navigation combined with tabbed interfaces achieves lowest task abandonment rates across all mobile app categories.",
+        "source_url": "https://example.com/verified-ux-patterns",
+        "publisher": "Mobile UX Research Lab",
+        "published_at": "2026-06-10",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.92,
+        "contradictions": [
+          "Drawer navigation with hamburger menus remains popular in some enterprise mobile applications."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": true,
+    "final_owner": "FRAME"
+  }
+}

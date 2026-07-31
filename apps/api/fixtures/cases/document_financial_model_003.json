@@ -1,0 +1,43 @@
+{
+  "id": "document-financial-model-003",
+  "category": "document",
+  "task_request": "5년 사업계획서를 재무 모델로 작성해서 손익계산과 현금흐름을 모두 포함시켜줘",
+  "plan": {
+    "summary": "author 5-year financial model with P&L and cash flow",
+    "artifact_kind": "financial_model_report",
+    "final_owner": "LENS",
+    "workspace_context": "none",
+    "requires_web_research": false,
+    "evidence_strategy": "rendered documents reopen successfully",
+    "reason": "fixture: financial model document with xlsx",
+    "phases": [
+      {
+        "id": "authoring",
+        "department": "service-knowledge",
+        "lead_id": "LENS",
+        "task_kind": "document_authoring",
+        "objective": "write 5-year financial model including P&L and cash flow projections",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "LENS": {
+      "path": "FINAL.md",
+      "content": "# 5년 재무 모델\n\n## 매출 추정\n1년차: 5억, 2년차: 12억, 3년차: 25억, 4년차: 42억, 5년차: 65억\n\n## 원가 구조\n제조원가 35%, 인건비 28%, 운영비 15%, 마케팅 12%, 기타 10%\n\n## 손익분기점\n2년차 후반 누적 손익분기점 도달. 월 손익분기점은 2년차 3분기.\n\n## 현금흐름\nInitial investment: 3억. 운전자본 요구: 2억 (2년차). 회수기간: 3.2년.\n",
+      "kind": "financial_model_report",
+      "status": "final_candidate",
+      "summary": "Authored 5-year financial model with projections."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["LENS"],
+    "completion_ok": true,
+    "final_owner": "LENS",
+    "rendered_suffixes": [".html", ".docx", ".pdf", ".xlsx", ".json"]
+  }
+}

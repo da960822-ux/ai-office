@@ -1,0 +1,102 @@
+{
+  "id": "failure-contradiction-resolution-003",
+  "category": "failure_matrix",
+  "task_request": "고객지원 운영 개선 결과를 조사해 최종 보고서를 작성하되 반박 의견은 다루지 않는다",
+  "plan": {
+    "summary": "research with flagged contradictions never addressed in the final artifact",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: contradiction_resolution gate must fail when a flagged contradiction is never surfaced (no source_url cite, no contradiction text) even though every claim is otherwise well-cited and linked",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "research support operations improvements from verified sources",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "decision",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write final report citing both claims but never mentioning either dissenting note",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Support Operations Research\n\nVerified two independent findings on support ticket volume and response time, each with a dissenting note on file.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Researched support operations improvements from verified sources."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Support Operations Report\n\nSupport ticket volume dropped by 30% after the new self-service portal launched broadly.\n\nAverage response time improved by 40% for tickets routed through the new triage system.\n\nWe recommend continued investment in self-service and triage tooling.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Wrote the final report citing both claims verbatim but never surfaced either dissenting note or its source."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Support Portal Impact Study",
+        "url": "https://example.com/verified/support-portal-impact",
+        "snippet": "Self-service portal launch correlates with a 30% drop in ticket volume."
+      },
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "Triage System Results",
+        "url": "https://example.com/verified/triage-system-results",
+        "snippet": "New triage routing improves average response time by 40%."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Support ticket volume dropped by 30% after the new self-service portal launched broadly.",
+        "source_url": "https://example.com/verified/support-portal-impact",
+        "publisher": "Internal Ops Research",
+        "published_at": "2026-06-01",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.9,
+        "contradictions": [
+          "An earlier support audit suggested ticket volume was already declining before the portal launched for unrelated staffing reasons."
+        ]
+      },
+      {
+        "employee_id": "GROW",
+        "claim": "Average response time improved by 40% for tickets routed through the new triage system.",
+        "source_url": "https://example.com/verified/triage-system-results",
+        "publisher": "Internal Ops Research",
+        "published_at": "2026-06-10",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.87,
+        "contradictions": [
+          "A separate ops review argued the response-time improvement was driven mainly by a temporary staffing surge, not the triage system."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": false,
+    "error_contains": "contradiction_resolution=0.00"
+  }
+}

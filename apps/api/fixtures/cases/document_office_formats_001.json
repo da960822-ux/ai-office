@@ -1,0 +1,43 @@
+{
+  "id": "document-office-formats-001",
+  "category": "document",
+  "task_request": "3년 재무 모델을 정리해서 발표 슬라이드와 한글 문서(HWPX)로 만들어줘",
+  "plan": {
+    "summary": "author a financial model report and render every requested office format",
+    "artifact_kind": "financial_model_report",
+    "final_owner": "LENS",
+    "workspace_context": "none",
+    "requires_web_research": false,
+    "evidence_strategy": "rendered documents reopen successfully",
+    "reason": "fixture: requested document formats must render and reopen",
+    "phases": [
+      {
+        "id": "authoring",
+        "department": "service-knowledge",
+        "lead_id": "LENS",
+        "task_kind": "document_authoring",
+        "objective": "write the 3-year financial model report",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "LENS": {
+      "path": "FINAL.md",
+      "content": "# 3년 재무 모델\n\n## 매출 가정\n1년차 3억, 2년차 9억, 3년차 21억으로 성장한다.\n\n## 비용 구조\n인건비가 전체 비용의 62%를 차지한다.\n\n## 손익 분기\n2년차 4분기에 월 단위 손익 분기에 도달한다.\n",
+      "kind": "financial_model_report",
+      "status": "final_candidate",
+      "summary": "Authored the 3-year financial model report."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["LENS"],
+    "completion_ok": true,
+    "final_owner": "LENS",
+    "rendered_suffixes": [".html", ".docx", ".pdf", ".xlsx", ".pptx", ".hwpx", ".json"]
+  }
+}

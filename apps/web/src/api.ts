@@ -15,6 +15,11 @@ export type Employee = {
     model_role: 'lead_model' | 'worker_model';
     responsibility: string;
   };
+  model_assignment?: {
+    role: string;
+    model: string;
+    source: 'role' | 'team' | 'employee' | 'failure_escalation';
+  };
 };
 
 export type Event = {
@@ -129,6 +134,9 @@ export type ModelSettings = {
   provider: string;
   lead_model: string;
   worker_model: string;
+  role_models: Record<string, string>;
+  team_overrides: Record<string, string>;
+  employee_overrides: Record<string, string>;
   configured: boolean;
 };
 
@@ -162,10 +170,10 @@ export const api = {
   usageSummary: () => request<UsageSummary>('/usage/summary'),
   modelSettings: () => request<ModelSettings>('/settings/model'),
   providerModels: () => request<ProviderModel[]>('/settings/models'),
-  saveModelSettings: (leadModel: string, workerModel: string, apiKey: string) =>
+  saveModelSettings: (roleModels:Record<string,string>, teamOverrides:Record<string,string>, employeeOverrides:Record<string,string>, apiKey: string) =>
     request<ModelSettings>('/settings/model', {
       method: 'POST',
-      body: JSON.stringify({ provider:'openrouter', lead_model: leadModel, worker_model: workerModel, api_key: apiKey || undefined }),
+      body: JSON.stringify({ provider:'openrouter', role_models:roleModels, team_overrides:teamOverrides, employee_overrides:employeeOverrides, api_key: apiKey || undefined }),
     }),
   mcpConnections: () => request<McpConnection[]>('/settings/mcp'),
   saveMcpConnection: (provider:McpConnection['provider'], name:string, transport:McpConnection['transport'], serverUrl:string, authToken:string) => request<McpConnection>('/settings/mcp',{method:'POST',body:JSON.stringify({provider,name,transport,server_url:serverUrl,auth_token:authToken||undefined})}),

@@ -1,0 +1,81 @@
+{
+  "id": "research-quality-gate-fail-001",
+  "category": "research_quality_gate",
+  "task_request": "가격 전략을 조사해 최종 보고서를 작성한다 (출처 미검증)",
+  "plan": {
+    "summary": "research with claims never backed by a verified-original source",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: research quality gate must block weak provenance",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "gather pricing signal from an unverified phone survey",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "decision",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write the final report",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# Research\n\nCollected a pricing signal from an unverified phone survey.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Gathered an unverified pricing signal."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Decision\n\nWe recommend a mid-tier subscription plan based on internal judgment.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Wrote the final report without citing any source."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "broad-market-search",
+        "title": "Unverified pricing snippet",
+        "url": "https://example.com/unverified/pricing-snippet",
+        "snippet": "A search result snippet, never opened or verified as an original source."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Enterprise buyers said they preferred flat annual pricing during an unverified phone survey with no primary source captured.",
+        "source_url": "https://example.com/unverified/pricing-snippet",
+        "publisher": "Unverified Survey",
+        "published_at": null,
+        "retrieved_span": "2026-07-01/2026-07-01",
+        "confidence": 0.4,
+        "contradictions": []
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": false,
+    "error_contains": "claim_source_coverage=0.00"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "role_models": {
+    "orchestrator": "z-ai/glm-5.2",
+    "development_basic": "deepseek/deepseek-v4-flash",
+    "complex_design_integration": "deepseek/deepseek-v4-pro",
+    "document_research_test_repeat": "stepfun/step-3.5-flash",
+    "frontend_cicd_operations": "tencent/hy3",
+    "ui_video_mock_review": "stepfun/step-3.7-flash",
+    "multimodal_audio_analysis": "xiaomi/mimo-v2.5",
+    "debug_escalation": "moonshotai/kimi-k2.7-code",
+    "final_completion": "z-ai/glm-5.2"
+  },
+  "employee_roles": {
+    "NAVI": "orchestrator",
+    "ROUTE": "document_research_test_repeat",
+    "CLOCK": "document_research_test_repeat",
+    "FRAME": "complex_design_integration",
+    "FLOW": "complex_design_integration",
+    "MOSS": "ui_video_mock_review",
+    "BUILD": "complex_design_integration",
+    "FRONT": "frontend_cicd_operations",
+    "BACK": "development_basic",
+    "LINK": "complex_design_integration",
+    "SIGNAL": "multimodal_audio_analysis",
+    "EVAL": "document_research_test_repeat",
+    "SHIP": "frontend_cicd_operations",
+    "SRE": "frontend_cicd_operations",
+    "COST": "frontend_cicd_operations",
+    "GUARD": "complex_design_integration",
+    "TRACE": "document_research_test_repeat",
+    "SHIELD": "complex_design_integration",
+    "GROW": "document_research_test_repeat",
+    "VOICE": "multimodal_audio_analysis",
+    "PULSE": "document_research_test_repeat",
+    "LENS": "document_research_test_repeat",
+    "JOURNEY": "document_research_test_repeat",
+    "DOCS": "document_research_test_repeat"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "id": "research-to-prd-002",
+  "category": "research_to_prd",
+  "task_request": "SaaS onboarding flows that reduce first-week churn by 30% — research the best practices and recommend our approach",
+  "plan": {
+    "summary": "research onboarding best practices then write PRD recommendation",
+    "artifact_kind": "business_document",
+    "final_owner": "FRAME",
+    "workspace_context": "none",
+    "requires_web_research": true,
+    "evidence_strategy": "primary sources",
+    "reason": "fixture: research-to-prd onboarding",
+    "phases": [
+      {
+        "id": "research",
+        "department": "growth-marketing",
+        "lead_id": "GROW",
+        "objective": "analyze SaaS onboarding from primary sources and best-practice case studies",
+        "output": "research.md",
+        "handoff_to": "FRAME",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "recommendation",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "synthesize research and write PRD for our onboarding flow",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["research"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "GROW": {
+      "path": "research.md",
+      "content": "# SaaS Onboarding Research\n\nAnalyzed 8 leading SaaS companies' onboarding flows from their published case studies and public documentation.\n\n## Key Findings\nLive demos during first 48 hours reduce churn. Interactive tutorials with immediate value delivery outperform text-only guides.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Researched SaaS onboarding best practices from primary sources."
+    },
+    "FRAME": {
+      "path": "FINAL.md",
+      "content": "# Onboarding Flow PRD\n\n## Recommended Approach\nImplement a guided tour with hands-on demo in the first login experience.\n\n## Research Basis\nEvidence from https://example.com/verified/saas-onboarding-report confirms that interactive onboarding reduces first-week churn by 28-35% compared to static guides.\n\n## Counter-evidence\nSome enterprise customers prefer minimal onboarding; addressed by optional advanced flow.\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "PRD recommending interactive guided onboarding based on research."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {},
+  "research": {
+    "sources": [
+      {
+        "employee_id": "GROW",
+        "query": "verified-original",
+        "title": "SaaS Onboarding Best Practices Report",
+        "url": "https://example.com/verified/saas-onboarding-report",
+        "snippet": "Interactive onboarding reduces first-week churn by 28-35%."
+      }
+    ],
+    "claims": [
+      {
+        "employee_id": "GROW",
+        "claim": "Interactive onboarding with hands-on demo reduces first-week churn by 28-35% compared to text-only guides.",
+        "source_url": "https://example.com/verified/saas-onboarding-report",
+        "publisher": "SaaS Research Institute",
+        "published_at": "2026-05-15",
+        "retrieved_span": "2026-07-20/2026-07-21",
+        "confidence": 0.92,
+        "contradictions": [
+          "Enterprise customers sometimes prefer lightweight onboarding to avoid operational overhead."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "phase_order": ["GROW", "FRAME"],
+    "completion_ok": true,
+    "final_owner": "FRAME"
+  }
+}

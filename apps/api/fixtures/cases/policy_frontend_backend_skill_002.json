@@ -1,0 +1,54 @@
+{
+  "id": "policy-frontend-backend-skill-002",
+  "category": "policy_regression",
+  "task_request": "백엔드 스토리지 계층을 재구성한다",
+  "plan": {
+    "summary": "backend implementation with context-engineering skill blocked",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test run",
+    "reason": "fixture: context-engineering (bound to ai-data lead LINK) blocked for backend_implementation task kind",
+    "phases": [
+      {
+        "id": "implementation",
+        "department": "application",
+        "lead_id": "BUILD",
+        "task_kind": "backend_implementation",
+        "objective": "refactor backend storage layer",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "BUILD": {
+      "path": "FINAL.md",
+      "content": "# Storage Layer Refactoring\n\nRefactored database abstraction layer. Reduced query latency by 40%.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Refactored backend storage layer."
+    }
+  },
+  "verify_run": {
+    "command": "npm run test:integration",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {
+    "LINK": {
+      "skill_ids": ["context-engineering"],
+      "task_kind": "backend_implementation",
+      "error_contains": "Skills are blocked for backend_implementation",
+      "reason": "LINK genuinely holds context-engineering (optional binding); it is only allowed for architecture_design/ai_data_implementation, so this backend_implementation phase must reject it on the task_kind policy, not on a missing binding"
+    }
+  },
+  "expected": {
+    "phase_order": ["BUILD"],
+    "completion_ok": true,
+    "final_owner": "BUILD"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": 3,
+  "atlas": "agent-sprites-v3.png",
+  "grid": { "columns": 8, "rows": 3 },
+  "anchor": { "x": 0.5, "y": 1 },
+  "directional_overrides": {
+    "NAVI": "agent-navi-v3.png",
+    "BUILD": "agent-build-v3.png",
+    "GUARD": "agent-guard-v3.png"
+  }
+}

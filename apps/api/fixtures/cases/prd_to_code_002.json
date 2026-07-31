@@ -1,0 +1,63 @@
+{
+  "id": "prd-to-code-002",
+  "category": "prd_to_code",
+  "task_request": "시맨틱 검색 엔진을 구현해서 테스트 통과 및 성능 기준을 충족시킨다",
+  "plan": {
+    "summary": "PRD then AI/data implementation with passing verification",
+    "artifact_kind": "implementation_report",
+    "final_owner": "LINK",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test run",
+    "reason": "fixture: prd-to-code AI/data",
+    "phases": [
+      {
+        "id": "design",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write PRD for semantic search engine",
+        "output": "PRD.md",
+        "handoff_to": "LINK",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "implementation",
+        "department": "ai-data",
+        "lead_id": "LINK",
+        "task_kind": "ai_data_implementation",
+        "objective": "implement semantic search with vector embeddings and pass performance tests",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["design"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "FRAME": {
+      "path": "PRD.md",
+      "content": "# Semantic Search Engine PRD\n\n## Requirements\nImplement vector-based semantic search using BERT embeddings. Query response time must be < 100ms for 95th percentile. Support up to 1M documents.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Wrote PRD for semantic search engine."
+    },
+    "LINK": {
+      "path": "FINAL.md",
+      "content": "# Semantic Search Implementation Report\n\nImplemented vector embedding pipeline using BERT-large model with FAISS indexing. Query response time: 85ms (p95). Tested on 500K documents. All performance tests pass.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Implemented semantic search engine meeting all performance requirements."
+    }
+  },
+  "verify_run": {
+    "command": "python -m pytest tests/semantic_search/ -v",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["FRAME", "LINK"],
+    "completion_ok": true,
+    "final_owner": "LINK"
+  }
+}

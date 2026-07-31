@@ -1,0 +1,43 @@
+{
+  "id": "document-hwpx-4-korean-005",
+  "category": "document",
+  "task_request": "연간 성과 평가 보고서를 한글 문서로 정리해주고 PDF도 같이 만들어줄래",
+  "plan": {
+    "summary": "author annual performance review report in Korean format",
+    "artifact_kind": "business_document",
+    "final_owner": "LENS",
+    "workspace_context": "none",
+    "requires_web_research": false,
+    "evidence_strategy": "rendered documents reopen successfully",
+    "reason": "fixture: hwpx document (Korean request) without pptx (no slide/presentation keywords)",
+    "phases": [
+      {
+        "id": "authoring",
+        "department": "service-knowledge",
+        "lead_id": "LENS",
+        "task_kind": "document_authoring",
+        "objective": "write annual performance review report in Korean format",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "LENS": {
+      "path": "FINAL.md",
+      "content": "# 2026 연간 성과 평가 보고서\n\n## 부문별 성과 요약\n\n### 매출 성과\n- 목표: 500억 원\n- 실적: 520억 원\n- 달성율: 104%\n\n### 고객 만족도\n- NPS: 67점 (업계 평균 52점)\n- 이탈율: 3.2% (목표 5%)\n\n### 운영 효율성\n- 인건비 효율성: 4.8배\n- 마케팅 ROI: 3.2배\n\n## 주요 성과\n1. 신규 고객 확보 188개사 (목표 150개)\n2. 시스템 안정성 99.97% (목표 99.9%)\n3. 팀 이직률 0% (동종업계 평균 8%)\n\n## 차년도 목표\n- 매출 650억 원 (30% 성장)\n- NPS 75점 (8점 상승)\n- 새로운 시장 진출 2개 국가\n",
+      "kind": "business_document",
+      "status": "final_candidate",
+      "summary": "Authored annual performance review report in Korean format."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["LENS"],
+    "completion_ok": true,
+    "final_owner": "LENS",
+    "rendered_suffixes": [".html", ".docx", ".pdf", ".hwpx", ".json"]
+  }
+}

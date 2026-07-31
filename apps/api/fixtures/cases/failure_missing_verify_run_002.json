@@ -1,0 +1,59 @@
+{
+  "id": "failure-missing-verify-run-002",
+  "category": "failure_matrix",
+  "task_request": "REST API 인증 기능을 구현하되 검증 테스트를 건너뛴다",
+  "plan": {
+    "summary": "implementation task without verification run",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test run",
+    "reason": "fixture: implementation task must block completion without passing verify_run",
+    "phases": [
+      {
+        "id": "design",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write PRD for REST API authentication",
+        "output": "PRD.md",
+        "handoff_to": "BUILD",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "implementation",
+        "department": "application",
+        "lead_id": "BUILD",
+        "task_kind": "backend_implementation",
+        "objective": "implement REST API auth without running tests",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["design"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "FRAME": {
+      "path": "PRD.md",
+      "content": "# REST API Authentication PRD\n\n## Requirements\nImplement JWT-based authentication with token refresh capability.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Wrote PRD for REST API authentication."
+    },
+    "BUILD": {
+      "path": "FINAL.md",
+      "content": "# API Authentication Implementation\n\nImplemented JWT token generation and validation. Support refresh tokens with 7-day expiry.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Implemented REST API authentication."
+    }
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["FRAME", "BUILD"],
+    "completion_ok": false,
+    "error_contains": "Implementation and release completion require a passing executed verification command"
+  }
+}

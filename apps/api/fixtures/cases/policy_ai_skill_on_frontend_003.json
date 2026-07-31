@@ -1,0 +1,55 @@
+{
+  "id": "policy-ai-skill-on-frontend-003",
+  "category": "policy_regression",
+  "task_kind": "frontend_implementation",
+  "task_request": "실시간 대시보드 UI를 구현한다",
+  "plan": {
+    "summary": "frontend implementation with screen-reader-testing blocked for this task kind",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test run",
+    "reason": "fixture: screen-reader-testing (bound to quality-security worker TRACE) allowed only for accessibility_review, test_engineering, frontend_implementation - blocked here because this phase is backend_implementation",
+    "phases": [
+      {
+        "id": "implementation",
+        "department": "application",
+        "lead_id": "BUILD",
+        "task_kind": "backend_implementation",
+        "objective": "implement real-time data pipeline backend",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": [],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "BUILD": {
+      "path": "FINAL.md",
+      "content": "# Real-time Data Pipeline\n\nImplemented WebSocket-based data streaming backend. Supports 10K concurrent connections. Latency < 50ms p95.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Implemented real-time data pipeline backend."
+    }
+  },
+  "verify_run": {
+    "command": "npm run test:e2e",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "prohibited_skills": {
+    "TRACE": {
+      "skill_ids": ["screen-reader-testing"],
+      "task_kind": "backend_implementation",
+      "error_contains": "Skills are blocked for backend_implementation",
+      "reason": "TRACE genuinely holds screen-reader-testing (optional binding); it is only allowed for accessibility_review/test_engineering/frontend_implementation, so this backend_implementation phase must reject it on the task_kind policy, not on a missing binding"
+    }
+  },
+  "expected": {
+    "phase_order": ["BUILD"],
+    "completion_ok": true,
+    "final_owner": "BUILD"
+  }
+}

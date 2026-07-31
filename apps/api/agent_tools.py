@@ -6,6 +6,7 @@ supplies a task workspace and TaskContract allow-list, then translates
 """
 from __future__ import annotations
 
+import fnmatch
 import html
 import ipaddress
 import json
@@ -345,8 +346,10 @@ class WorkspaceAgentTools:
         command.extend([query, str(target)])
         try:
             run = subprocess.run(command, cwd=self.workspace, capture_output=True, text=True, timeout=20, shell=False)
-        except FileNotFoundError as error:
-            raise AgentToolError(503, "ripgrep (rg) is required for search_files") from error
+        except FileNotFoundError:
+            # ripgrep is not on PATH in this environment. Degrade to a pure-Python
+            # fallback instead of failing the whole tool (see docs/LAUNCH_HARNESS_PLAN.md B0).
+            return self._search_files_fallback(query, target, glob=glob, max_results=max_results)
         except subprocess.TimeoutExpired as error:
             raise AgentToolError(504, "search_files timed out") from error
         if run.returncode not in {0, 1}:
@@ -370,7 +373,50 @@ class WorkspaceAgentTools:
             results.append({"path": file_path, "line": data.get("line_number"), "text": data.get("lines", {}).get("text", "").rstrip()[:1000]})
             if len(results) >= max_results:
                 break
-        return {"query": query, "results": results, "truncated": len(results) >= max_results}
+        return {"query": query, "results": results, "truncated": len(results) >= max_results, "engine": "ripgrep"}
+
+    def _search_files_fallback(self, query: str, target: Path, *, glob: str | None, max_results: int) -> dict[str, Any]:
+        """Pure stdlib line-search used when ripgrep is unavailable on PATH.
+
+        Mirrors ripgrep's default behaviour closely enough for this tool's callers:
+        regex line search, ignored-directory exclusion, optional glob filter, and a
+        max_results cap. Binary/non-UTF-8 files are skipped rather than erroring out.
+        """
+        try:
+            pattern = re.compile(query)
+        except re.error as error:
+            raise AgentToolError(422, f"Invalid search pattern: {error}") from error
+        if target.is_file():
+            candidates = [target]
+        else:
+            candidates = sorted(target.rglob("*"))
+        results: list[dict[str, Any]] = []
+        for item in candidates:
+            if len(results) >= max_results:
+                break
+            if not item.is_file():
+                continue
+            try:
+                relative = item.relative_to(self.workspace)
+            except ValueError:
+                continue
+            if any(part in IGNORED_PARTS for part in relative.parts):
+                continue
+            file_path = relative.as_posix()
+            if not _is_permitted(file_path, self.allowed_paths):
+                continue
+            if glob and not fnmatch.fnmatch(file_path, glob) and not fnmatch.fnmatch(item.name, glob):
+                continue
+            try:
+                text = item.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for line_number, line in enumerate(text.splitlines(), start=1):
+                if pattern.search(line):
+                    results.append({"path": file_path, "line": line_number, "text": line.rstrip()[:1000]})
+                    if len(results) >= max_results:
+                        break
+        return {"query": query, "results": results, "truncated": len(results) >= max_results, "engine": "python_fallback"}
 
     def replace_exact_text(self, path: str, old_text: str, new_text: str, expected_count: int = 1) -> dict[str, Any]:
         if not old_text:

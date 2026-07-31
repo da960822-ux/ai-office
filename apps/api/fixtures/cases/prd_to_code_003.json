@@ -1,0 +1,63 @@
+{
+  "id": "prd-to-code-003",
+  "category": "prd_to_code",
+  "task_request": "대시보드 필터링 UI를 구현해서 E2E 테스트를 통과시킨다",
+  "plan": {
+    "summary": "PRD then frontend implementation with passing verification",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test run",
+    "reason": "fixture: prd-to-code frontend",
+    "phases": [
+      {
+        "id": "design",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write PRD for dashboard filtering UI",
+        "output": "PRD.md",
+        "handoff_to": "BUILD",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "implementation",
+        "department": "application",
+        "lead_id": "BUILD",
+        "task_kind": "frontend_implementation",
+        "objective": "implement filter UI component and pass E2E tests",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["design"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "FRAME": {
+      "path": "PRD.md",
+      "content": "# Dashboard Filter UI PRD\n\n## Requirements\nImplement multi-select filter for dashboard supporting date range, status, and tags. Must support keyboard navigation and accessibility standards. Performance target: render < 50ms.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Wrote PRD for dashboard filter component."
+    },
+    "BUILD": {
+      "path": "FINAL.md",
+      "content": "# Filter UI Implementation Report\n\nImplemented React filter component with date picker, status selector, and tag multi-select. WCAG 2.1 AA compliant. Render time: 35ms. All E2E tests pass (47/47).\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Implemented filter UI component meeting all requirements and tests."
+    }
+  },
+  "verify_run": {
+    "command": "npm run test:e2e -- --spec='cypress/e2e/filters/**'",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["FRAME", "BUILD"],
+    "completion_ok": true,
+    "final_owner": "BUILD"
+  }
+}

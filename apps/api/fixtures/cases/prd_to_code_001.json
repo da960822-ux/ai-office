@@ -1,0 +1,63 @@
+{
+  "id": "prd-to-code-001",
+  "category": "prd_to_code",
+  "task_request": "PRD를 받아 로그인 API를 구현하고 테스트를 통과시킨다",
+  "plan": {
+    "summary": "PRD then implementation",
+    "artifact_kind": "implementation_report",
+    "final_owner": "BUILD",
+    "workspace_context": "existing project",
+    "requires_web_research": false,
+    "evidence_strategy": "passing test run",
+    "reason": "fixture: prd-to-code",
+    "phases": [
+      {
+        "id": "design",
+        "department": "product-experience",
+        "lead_id": "FRAME",
+        "objective": "write PRD for login API",
+        "output": "PRD.md",
+        "handoff_to": "BUILD",
+        "depends_on": [],
+        "skill_ids": []
+      },
+      {
+        "id": "implementation",
+        "department": "application",
+        "lead_id": "BUILD",
+        "task_kind": "backend_implementation",
+        "objective": "implement login API per PRD.md and pass tests",
+        "output": "FINAL.md",
+        "handoff_to": null,
+        "depends_on": ["design"],
+        "skill_ids": []
+      }
+    ]
+  },
+  "phase_outputs": {
+    "FRAME": {
+      "path": "PRD.md",
+      "content": "# PRD\n\n## Login API\nPOST /login accepts email+password, returns a session token.\n",
+      "kind": "business_document",
+      "status": "department_draft",
+      "summary": "Wrote PRD for login API."
+    },
+    "BUILD": {
+      "path": "FINAL.md",
+      "content": "# Implementation Report\n\nImplemented POST /login per PRD.md. Tests pass.\n",
+      "kind": "implementation_report",
+      "status": "final_candidate",
+      "summary": "Implemented login API and ran tests."
+    }
+  },
+  "verify_run": {
+    "command": "pytest -q",
+    "exit_code": 0
+  },
+  "reviewer_id": "GUARD",
+  "expected": {
+    "phase_order": ["FRAME", "BUILD"],
+    "completion_ok": true,
+    "final_owner": "BUILD"
+  }
+}

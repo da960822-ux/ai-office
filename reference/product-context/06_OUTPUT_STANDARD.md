@@ -17,24 +17,20 @@ depends_on:
 
 ## 필수 파일
 
-### PRODUCT_BRIEF.md
+### PRD.md
 
-- 한 문장 정의
-- 대상 사용자
-- 문제
-- 가치 제안
-- 성공 장면
-- 차별점
-- 제약
+- 기본 모드의 유일한 사람용 기획서. `PRODUCT_BRIEF`, `MVP_SCOPE`, `REQUIREMENTS`, `DECISIONS`, OKR, 위험 목록을 별도 문서로 중복 생성하지 않는다.
+- 문제·대상 사용자·가치 제안·성공 장면
+- Objective와 KR별 baseline·목표값·측정 source·판정 시점
+- Must/Should/Later/Explicitly Out과 판단 근거
+- Requirement ID별 사용자 가치·동작·전제 조건·수용 기준·예외·우선순위
+- 주요 사용자 흐름 링크, 비기능 요구사항, 결정·가정·보류, 위험·완화책
+- 개발 AI가 참조하는 단일 진입 문서다. 기계 검증용 원본은 `project-blueprint.json`과 register JSON이며, PRD의 ID·값과 불일치하면 오류다.
 
-### MVP_SCOPE.md
+### 선택 파생 문서
 
-- Must
-- Should
-- Later
-- Explicitly Out
-- 판단 근거
-- 가장 큰 위험
+- 외부 고객, 대형 팀, 규제/감사 요구가 있을 때만 PRD에서 `PRODUCT_BRIEF.md`, `MVP_SCOPE.md`, `REQUIREMENTS.md`, `DECISIONS.md`, `OKR.md`, `RISK_REGISTER.md`를 생성한다.
+- 파생 문서는 편집 원본이 아니다. 수정은 PRD 또는 구조화 JSON에서만 하고 재생성한다.
 
 ### USER_FLOWS.md
 
@@ -48,7 +44,7 @@ depends_on:
 
 화면별 목적, 행동, 컴포넌트, 데이터, 이벤트, loading/empty/error, 반응형, 접근성.
 
-### REQUIREMENTS.md
+### 파생 REQUIREMENTS.md
 
 요구사항별 ID, 사용자 가치, 동작, 전제조건, 수용 기준, 관련 화면, 우선순위, 제외 조건.
 
@@ -76,7 +72,7 @@ ID, 사용자 가치, owner, dependencies, files/modules, done criteria, verific
 
 핵심 E2E, 단위·통합, 상태 테스트, 수동 확인, 시연 체크리스트.
 
-### DECISIONS.md
+### 파생 DECISIONS.md
 
 결정, 이유, 대안, 영향, 되돌릴 조건.
 
@@ -115,9 +111,7 @@ project/
 ├── README.md
 ├── NEXT_ACTION.md
 ├── docs/
-│   ├── PRODUCT_BRIEF.md
-│   ├── MVP_SCOPE.md
-│   ├── REQUIREMENTS.md
+│   ├── PRD.md
 │   ├── USER_FLOWS.md
 │   ├── SCREEN_SPEC.md
 │   ├── DESIGN.md
@@ -126,9 +120,11 @@ project/
 │   ├── DATA_MODEL.md
 │   ├── TASKS.md
 │   ├── TEST_PLAN.md
-│   └── DECISIONS.md
+│   └── TRACEABILITY.md
 └── .vibeoffice/
     ├── project-blueprint.json
+    ├── decision-register.json
+    ├── risk-register.json
     ├── artifact-index.json
     ├── review-findings.json
     └── export-manifest.json
@@ -176,13 +172,11 @@ project/
 
 ```text
 planning/
-├── PRODUCT_BRIEF.md
-├── MVP_SCOPE.md
-├── USER_STORIES.md
-├── REQUIREMENTS.md
-├── ROADMAP.md
-├── DECISIONS.md
+├── PRD.md
 ├── project-blueprint.json
+├── decision-register.json
+├── risk-register.json
+├── traceability-map.json
 └── planning-handoff.json
 ```
 
