@@ -14,11 +14,12 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/test-driven-development/SKILL.md`
-- `@./skills/systematic-debugging/SKILL.md`
-- `@./skills/e2e-testing-patterns/SKILL.md`
-- `@./skills/verification-before-completion/SKILL.md`
+- `@../../../skills/test-driven-development/SKILL.md`
+- `@../../../skills/systematic-debugging/SKILL.md`
+- `@../../../skills/e2e-testing-patterns/SKILL.md`
+- `@../../../skills/verification-before-completion/SKILL.md`
 
 ## 조건부 스킬
 

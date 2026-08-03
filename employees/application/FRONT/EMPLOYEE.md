@@ -14,12 +14,12 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/frontend-ui-engineering/SKILL.md`
-- `@./skills/browser-testing-with-devtools/SKILL.md`
-- `@./skills/ui-ux-pro-max/SKILL.md`
-- `@./skills/gsap-react/SKILL.md`
-- `@./skills/gsap-performance/SKILL.md`
+- `@../../../skills/frontend-ui-engineering/SKILL.md`
+- `@../../../skills/browser-testing-with-devtools/SKILL.md`
+- `@../../../skills/gsap-react/SKILL.md`
+- `@../../../skills/gsap-performance/SKILL.md`
 
 ## 조건부 스킬
 

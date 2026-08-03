@@ -1,4 +1,0 @@
-interface:
-  display_name: "Customer Support Operations"
-  short_description: "Design verified, approval-gated support workflows"
-  default_prompt: "Use $customer-support-operations to design a support workflow with evidence checks and protected-action gates."

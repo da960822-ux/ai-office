@@ -24,7 +24,7 @@
 | GUARD | quality-security | REVIEWER | code-review-and-quality, verification-before-completion, security-and-hardening, code-review-excellence | - | `employees/quality-security/GUARD/EMPLOYEE.md` |
 | TRACE | quality-security | VERIFIER | test-driven-development, systematic-debugging, e2e-testing-patterns, verification-before-completion | - | `employees/quality-security/TRACE/EMPLOYEE.md` |
 | SHIELD | quality-security | SPECIALIST | security-and-hardening, auth-implementation-patterns, source-driven-development, doubt-driven-development | - | `employees/quality-security/SHIELD/EMPLOYEE.md` |
-| GROW | growth-marketing | SPECIALIST | product-marketing, launch, customer-research | positioning-statement | `employees/growth-marketing/GROW/EMPLOYEE.md` |
+| GROW | growth-marketing | SPECIALIST | product-marketing, launch, customer-research | — | `employees/growth-marketing/GROW/EMPLOYEE.md` |
 | VOICE | growth-marketing | SPECIALIST | copywriting, humanizer, product-marketing, design-first-ui-prompting | - | `employees/growth-marketing/VOICE/EMPLOYEE.md` |
 | PULSE | growth-marketing | SPECIALIST | analytics, ab-testing, cro, seo-audit | - | `employees/growth-marketing/PULSE/EMPLOYEE.md` |
 | LENS | service-knowledge | REVIEWER | code-review-and-quality, verification-before-completion, impeccable, ui-ux-pro-max | - | `employees/service-knowledge/LENS/EMPLOYEE.md` |

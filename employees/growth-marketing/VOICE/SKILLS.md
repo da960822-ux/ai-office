@@ -1,10 +1,9 @@
 # 설치 스킬
 
 ## 필수
-- `copywriting` → `./skills/copywriting/SKILL.md`
-- `humanizer` → `./skills/humanizer/SKILL.md`
-- `product-marketing` → `./skills/product-marketing/SKILL.md`
-- `design-first-ui-prompting` → `./skills/design-first-ui-prompting/SKILL.md`
+- `copywriting` → `../../../skills/copywriting/SKILL.md`
+- `humanizer` → `../../../skills/humanizer/SKILL.md`
+- `product-marketing` → `../../../skills/product-marketing/SKILL.md`
 
 ## 조건부
 - 없음

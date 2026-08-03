@@ -14,16 +14,13 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/ui-ux-pro-max/SKILL.md`
-- `@./skills/source-driven-development/SKILL.md`
-- `@./skills/customer-research/SKILL.md`
+- `@../../../skills/customer-research/SKILL.md`
 
 ## 조건부 스킬
 
-- `@./skills/customer-journey-map/SKILL.md` — 설치·라이선스 승인 후 작업 관련 시 로드
-- `@./skills/user-story-mapping/SKILL.md` — 설치·라이선스 승인 후 작업 관련 시 로드
-- `@./skills/discovery-process/SKILL.md` — 설치·라이선스 승인 후 작업 관련 시 로드
+- 없음
 
 ## 실행 규칙
 

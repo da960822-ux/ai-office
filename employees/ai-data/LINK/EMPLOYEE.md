@@ -14,14 +14,15 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/prompt-engineering-patterns/SKILL.md`
-- `@./skills/llm-evaluation/SKILL.md`
-- `@./skills/rag-implementation/SKILL.md`
+- `@../../../skills/prompt-engineering-patterns/SKILL.md`
+- `@../../../skills/llm-evaluation/SKILL.md`
+- `@../../../skills/rag-implementation/SKILL.md`
 
 ## 조건부 스킬
 
-- `@./skills/agent-orchestration-advisor/SKILL.md` — 설치·라이선스 승인 후 작업 관련 시 로드
+- 없음
 
 ## 실행 규칙
 

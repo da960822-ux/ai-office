@@ -1,10 +1,9 @@
 # 설치 스킬
 
 ## 필수
-- `code-review-and-quality` → `./skills/code-review-and-quality/SKILL.md`
-- `verification-before-completion` → `./skills/verification-before-completion/SKILL.md`
-- `security-and-hardening` → `./skills/security-and-hardening/SKILL.md`
-- `code-review-excellence` → `./skills/code-review-excellence/SKILL.md`
+- `code-review-and-quality` → `../../../skills/code-review-and-quality/SKILL.md`
+- `verification-before-completion` → `../../../skills/verification-before-completion/SKILL.md`
+- `security-and-hardening` → `../../../skills/security-and-hardening/SKILL.md`
 
 ## 조건부
 - 없음

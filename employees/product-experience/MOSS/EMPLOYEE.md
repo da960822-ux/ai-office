@@ -14,16 +14,15 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/ui-ux-pro-max/SKILL.md`
-- `@./skills/impeccable/SKILL.md`
-- `@./skills/design-first-ui-prompting/SKILL.md`
-- `@./skills/humanizer/SKILL.md`
+- `@../../../skills/impeccable/SKILL.md`
+- `@../../../skills/design-first-ui-prompting/SKILL.md`
+- `@../../../skills/humanizer/SKILL.md`
 
 ## 조건부 스킬
 
-- `@./skills/gsap-core/SKILL.md` — 설치·라이선스 승인 후 작업 관련 시 로드
-- `@./skills/gsap-timeline/SKILL.md` — 설치·라이선스 승인 후 작업 관련 시 로드
+- 없음
 
 ## 실행 규칙
 

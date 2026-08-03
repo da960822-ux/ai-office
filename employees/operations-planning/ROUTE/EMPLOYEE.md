@@ -14,11 +14,9 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/planning-and-task-breakdown/SKILL.md`
-- `@./skills/dispatching-parallel-agents/SKILL.md`
-- `@./skills/using-git-worktrees/SKILL.md`
-- `@./skills/git-workflow-and-versioning/SKILL.md`
+- `@../../../skills/dispatching-parallel-agents/SKILL.md`
 
 ## 조건부 스킬
 

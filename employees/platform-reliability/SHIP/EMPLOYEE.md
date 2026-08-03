@@ -14,11 +14,12 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/ci-cd-and-automation/SKILL.md`
-- `@./skills/shipping-and-launch/SKILL.md`
-- `@./skills/git-workflow-and-versioning/SKILL.md`
-- `@./skills/verification-before-completion/SKILL.md`
+- `@../../../skills/ci-cd-and-automation/SKILL.md`
+- `@../../../skills/shipping-and-launch/SKILL.md`
+- `@../../../skills/git-workflow-and-versioning/SKILL.md`
+- `@../../../skills/verification-before-completion/SKILL.md`
 
 ## 조건부 스킬
 

@@ -9,7 +9,7 @@
     "workspace_context": "existing project",
     "requires_web_research": false,
     "evidence_strategy": "passing test execution",
-    "reason": "fixture: ui-ux-pro-max skill blocked for test_engineering task kind",
+    "reason": "fixture: design-first-ui-prompting skill blocked for test_engineering task kind",
     "phases": [
       {
         "id": "test_implementation",
@@ -40,10 +40,10 @@
   "reviewer_id": "GUARD",
   "prohibited_skills": {
     "MOSS": {
-      "skill_ids": ["ui-ux-pro-max"],
+      "skill_ids": ["design-first-ui-prompting"],
       "task_kind": "test_engineering",
       "error_contains": "Skills are blocked for test_engineering",
-      "reason": "MOSS genuinely holds ui-ux-pro-max (optional binding); it is only allowed for frontend_implementation/ui_design/research, so test_engineering must reject it on task_kind policy"
+      "reason": "MOSS genuinely holds design-first-ui-prompting; it is only allowed for UI work, so test_engineering must reject it on task_kind policy"
     }
   },
   "expected": {

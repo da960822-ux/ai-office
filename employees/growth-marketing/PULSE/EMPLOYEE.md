@@ -14,8 +14,9 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
+- `@../../../constitution/DIAGNOSIS.md`
 - `@./skills/_local-role-core/SKILL.md`
-- `@./skills/analytics/SKILL.md`
+- `@../../../skills/analytics/SKILL.md`
 
 ## 조건부 스킬
 
