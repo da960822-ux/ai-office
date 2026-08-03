@@ -111,7 +111,7 @@ npm install
 cd ..\..
 ```
 
-내장 스킬 설치·검증:
+내장 스킬 설치·검증 (설치본은 공용 풀 `skills/`에 1부만 생기고, `--employee`는 어떤 스킬을 받을지만 좁힙니다):
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\install_skills.py --employee ALL
