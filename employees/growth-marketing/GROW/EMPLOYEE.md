@@ -14,8 +14,6 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
-- `@./ROLE.md`
-- `@./SOP.md`
 - `@./skills/_local-role-core/SKILL.md`
 - Task Profile이 선택한 스킬만 읽는다. 시장조사는 `customer-research`, `product-marketing`만 후보이며 `launch`는 읽지 않는다.
 

@@ -14,8 +14,6 @@ skill_loading: local_files_progressive
 - `@../../../constitution/KARPATHY.md`
 - `@../../../constitution/CAVEMAN.md`
 - `@../../../constitution/TOKEN_ECONOMY.md`
-- `@./ROLE.md`
-- `@./SOP.md`
 - `@./skills/_local-role-core/SKILL.md`
 - `@./skills/frontend-ui-engineering/SKILL.md`
 - `@./skills/browser-testing-with-devtools/SKILL.md`
