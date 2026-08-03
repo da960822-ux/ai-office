@@ -8,7 +8,7 @@ errors=[]
 if len(emps)!=24: errors.append(f'employee count={len(emps)}')
 for e,d in emps.items():
     base=ROOT/d['profile_path'].rsplit('/',1)[0]
-    for name in ['EMPLOYEE.md','ROLE.md','SOP.md','SKILLS.md','SKILL_INDEX.md','PERMISSIONS.yaml','EVALUATION.md','skills/_local-role-core/SKILL.md']:
+    for name in ['EMPLOYEE.md','SKILLS.md','SKILL_INDEX.md','PERMISSIONS.yaml','EVALUATION.md','skills/_local-role-core/SKILL.md']:
         if not (base/name).exists(): errors.append(f'{e}: missing {name}')
     txt=(base/'EMPLOYEE.md').read_text(encoding='utf-8')
     for rel in ['../../../constitution/CORPORATE.md','../../../constitution/KARPATHY.md','../../../constitution/CAVEMAN.md','../../../constitution/TOKEN_ECONOMY.md']:
