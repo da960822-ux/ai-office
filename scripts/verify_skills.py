@@ -16,7 +16,7 @@ def main():
     fail=0
     for e in selected:
         base=ROOT/emps[e]['profile_path'].rsplit('/',1)[0]/'skills'
-        check=binds[e]['required']+(binds[e]['optional'] if a.include_optional else [])
+        check=binds[emps[e]['team']]['skills']  # skills are bound per department now, not per employee
         for sid in check:
             p=base/sid; key=f'{e}:{sid}'
             if not (p/'SKILL.md').exists(): print('[MISSING]',key); fail+=1; continue

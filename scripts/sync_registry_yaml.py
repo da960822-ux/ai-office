@@ -39,13 +39,16 @@ def render(value: object, indent: int = 0) -> list[str]:
     return [f"{prefix}{scalar(value)}"]
 
 
-bindings = json.loads((REGISTRY / "employee-skill-bindings.json").read_text(encoding="utf-8"))
+# Skills live in employee-skill-bindings.json keyed by department; employees.json
+# stays free of them. Callers read the pool through main.employee_skill_pool()
+# instead of a copy that goes stale the moment a binding changes.
 employees_path = REGISTRY / "employees.json"
 employees = json.loads(employees_path.read_text(encoding="utf-8"))
-for employee_id, groups in bindings.items():
-    employees[employee_id]["required_skills"] = groups["required"]
-    employees[employee_id]["optional_skills"] = groups["optional"]
-employees_path.write_text(json.dumps(employees, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+if any(key in info for info in employees.values() for key in ("required_skills", "optional_skills", "team_skills")):
+    for info in employees.values():
+        for key in ("required_skills", "optional_skills", "team_skills"):
+            info.pop(key, None)
+    employees_path.write_text(json.dumps(employees, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 for name in NAMES:
     data = json.loads((REGISTRY / f"{name}.json").read_text(encoding="utf-8"))

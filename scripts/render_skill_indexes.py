@@ -5,11 +5,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 employees = json.loads((ROOT / "registry/employees.json").read_text(encoding="utf-8"))
+bindings = json.loads((ROOT / "registry/employee-skill-bindings.json").read_text(encoding="utf-8"))
 
 for employee_id, employee in employees.items():
     base = ROOT / employee["profile_path"].rsplit("/", 1)[0]
+    # Index only what the lead can actually select. A folder left on disk after its
+    # skill was dropped from the department pool is still readable, and advertising it
+    # here makes the lead pick a skill that validate_selected_skills then rejects.
+    # _local-role-core is excluded on purpose: main.employee_skill_context always
+    # delivers it, so listing it here would only invite a pick that 403s.
+    selectable = set(bindings[employee["team"]]["skills"])
     rows = []
     for path in sorted((base / "skills").glob("*/SKILL.md")):
+        if path.parent.name not in selectable:
+            continue
         text = path.read_text(encoding="utf-8", errors="replace")
         title = next(
             (re.sub(r"^#\s*", "", line).strip() for line in text.splitlines() if line.startswith("#")),

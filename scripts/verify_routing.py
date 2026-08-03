@@ -44,20 +44,19 @@ def main() -> None:
     if missing:
         errors.append(f"employees without a department boundary: {missing}")
 
-    for employee, groups in bindings.items():
-        combined = [*groups["required"], *groups["optional"]]
+    known_teams = {info["team"] for info in employees.values()}
+    for team, groups in bindings.items():
+        combined = groups["skills"]
         if len(combined) != len(set(combined)):
-            errors.append(f"{employee}: duplicate skill binding")
-        if employee not in employees:
-            errors.append(f"{employee}: binding has no employee")
-        if len(groups["required"]) > 4:
-            errors.append(f"{employee}: more than four required skills")
+            errors.append(f"{team}: duplicate skill binding")
+        if team not in known_teams:
+            errors.append(f"{team}: binding has no department")
         for skill_id in combined:
             if skill_id not in definitions:
-                errors.append(f"{employee}: undefined skill {skill_id}")
+                errors.append(f"{team}: undefined skill {skill_id}")
                 continue
             if definitions[skill_id].get("install_policy") == "manual_accept_noncommercial":
-                errors.append(f"{employee}: noncommercial skill {skill_id} is bound")
+                errors.append(f"{team}: noncommercial skill {skill_id} is bound")
 
     ui_skill_ids = {
         "ui-ux-pro-max", "impeccable", "design-first-ui-prompting",
@@ -74,8 +73,8 @@ def main() -> None:
 
     if profiles:
         errors.append("task-profiles.json must remain empty; GLM designs workflows dynamically")
-    if "document-artifact-production" not in bindings["DOCS"]["required"]:
-        errors.append("DOCS is missing document-artifact-production")
+    if "document-artifact-production" not in bindings["service-knowledge"]["skills"]:
+        errors.append("service-knowledge is missing document-artifact-production")
 
     if errors:
         print("\n".join(f"[ERROR] {error}" for error in errors))

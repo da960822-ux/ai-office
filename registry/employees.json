@@ -4,429 +4,167 @@
     "team": "operations-planning",
     "title": "오피스 실장 / 최종 오케스트레이터",
     "runtime": "PLANNER",
-    "profile_path": "employees/operations-planning/NAVI/EMPLOYEE.md",
-    "required_skills": [
-      "using-agent-skills",
-      "planning-and-task-breakdown",
-      "executing-plans"
-    ],
-    "optional_skills": []
+    "profile_path": "employees/operations-planning/NAVI/EMPLOYEE.md"
   },
   "ROUTE": {
     "id": "ROUTE",
     "team": "operations-planning",
     "title": "작업 설계자 / 의존성 관리자",
     "runtime": "PLANNER",
-    "profile_path": "employees/operations-planning/ROUTE/EMPLOYEE.md",
-    "required_skills": [
-      "planning-and-task-breakdown",
-      "dispatching-parallel-agents",
-      "git-workflow-and-versioning"
-    ],
-    "optional_skills": [
-      "using-git-worktrees"
-    ]
+    "profile_path": "employees/operations-planning/ROUTE/EMPLOYEE.md"
   },
   "CLOCK": {
     "id": "CLOCK",
     "team": "operations-planning",
     "title": "실행 관제 / 비용·시간 관리자",
     "runtime": "OPERATOR",
-    "profile_path": "employees/operations-planning/CLOCK/EMPLOYEE.md",
-    "required_skills": [
-      "observability-and-instrumentation",
-      "debugging-and-error-recovery"
-    ],
-    "optional_skills": []
+    "profile_path": "employees/operations-planning/CLOCK/EMPLOYEE.md"
   },
   "FRAME": {
     "id": "FRAME",
     "team": "product-experience",
     "title": "제품 책임자 / 팀장",
     "runtime": "PLANNER",
-    "profile_path": "employees/product-experience/FRAME/EMPLOYEE.md",
-    "required_skills": [
-      "planning-and-task-breakdown",
-      "writing-plans"
-    ],
-    "optional_skills": [
-      "pm-deliver-prd",
-      "pm-develop-solution-brief",
-      "pm-foundation-lean-canvas",
-      "pm-foundation-meeting-synthesize",
-      "pm-deliver-user-stories",
-      "pm-define-problem-statement",
-      "pm-define-hypothesis",
-      "pm-define-prioritization-framework",
-      "spec-driven-development"
-    ]
+    "profile_path": "employees/product-experience/FRAME/EMPLOYEE.md"
   },
   "FLOW": {
     "id": "FLOW",
     "team": "product-experience",
     "title": "UX·서비스 설계자",
     "runtime": "SPECIALIST",
-    "profile_path": "employees/product-experience/FLOW/EMPLOYEE.md",
-    "required_skills": [
-      "source-driven-development",
-      "customer-research"
-    ],
-    "optional_skills": [
-      "pm-deliver-user-stories"
-    ]
+    "profile_path": "employees/product-experience/FLOW/EMPLOYEE.md"
   },
   "MOSS": {
     "id": "MOSS",
     "team": "product-experience",
     "title": "UI·콘텐츠 시스템 설계자",
     "runtime": "SPECIALIST",
-    "profile_path": "employees/product-experience/MOSS/EMPLOYEE.md",
-    "required_skills": [
-      "ui-ux-pro-max",
-      "design-first-ui-prompting"
-    ],
-    "optional_skills": [
-      "impeccable",
-      "humanizer"
-    ]
+    "profile_path": "employees/product-experience/MOSS/EMPLOYEE.md"
   },
   "BUILD": {
     "id": "BUILD",
     "team": "application",
     "title": "테크리드 / 팀장",
     "runtime": "REVIEWER",
-    "profile_path": "employees/application/BUILD/EMPLOYEE.md",
-    "required_skills": [
-      "incremental-implementation",
-      "code-simplification",
-      "code-review-and-quality",
-      "git-workflow-and-versioning"
-    ],
-    "optional_skills": [
-      "documentation-and-adrs",
-      "spec-driven-development",
-      "architecture-patterns",
-      "performance-optimization"
-    ]
+    "profile_path": "employees/application/BUILD/EMPLOYEE.md"
   },
   "FRONT": {
     "id": "FRONT",
     "team": "application",
     "title": "프론트엔드 엔지니어",
     "runtime": "BUILDER",
-    "profile_path": "employees/application/FRONT/EMPLOYEE.md",
-    "required_skills": [
-      "frontend-ui-engineering",
-      "browser-testing-with-devtools"
-    ],
-    "optional_skills": [
-      "ui-ux-pro-max",
-      "gsap-react",
-      "gsap-performance",
-      "performance-optimization"
-    ]
+    "profile_path": "employees/application/FRONT/EMPLOYEE.md"
   },
   "BACK": {
     "id": "BACK",
     "team": "application",
     "title": "백엔드·API 엔지니어",
     "runtime": "BUILDER",
-    "profile_path": "employees/application/BACK/EMPLOYEE.md",
-    "required_skills": [
-      "api-and-interface-design",
-      "auth-implementation-patterns",
-      "sql-optimization-patterns",
-      "security-and-hardening"
-    ],
-    "optional_skills": [
-      "architecture-patterns",
-      "openapi-spec-generation",
-      "distributed-tracing"
-    ]
+    "profile_path": "employees/application/BACK/EMPLOYEE.md"
   },
   "LINK": {
     "id": "LINK",
     "team": "ai-data",
     "title": "AI 시스템 리드 / 팀장",
     "runtime": "REVIEWER",
-    "profile_path": "employees/ai-data/LINK/EMPLOYEE.md",
-    "required_skills": [
-      "prompt-engineering-patterns",
-      "llm-evaluation",
-      "rag-implementation"
-    ],
-    "optional_skills": [
-      "context-engineering"
-    ]
+    "profile_path": "employees/ai-data/LINK/EMPLOYEE.md"
   },
   "SIGNAL": {
     "id": "SIGNAL",
     "team": "ai-data",
     "title": "AI 런타임·데이터 엔지니어",
     "runtime": "BUILDER",
-    "profile_path": "employees/ai-data/SIGNAL/EMPLOYEE.md",
-    "required_skills": [
-      "embedding-strategies",
-      "hybrid-search-implementation",
-      "rag-implementation",
-      "sql-optimization-patterns"
-    ],
-    "optional_skills": [
-      "context-engineering"
-    ]
+    "profile_path": "employees/ai-data/SIGNAL/EMPLOYEE.md"
   },
   "EVAL": {
     "id": "EVAL",
     "team": "ai-data",
     "title": "AI 평가·안전 엔지니어",
     "runtime": "VERIFIER",
-    "profile_path": "employees/ai-data/EVAL/EMPLOYEE.md",
-    "required_skills": [
-      "llm-evaluation",
-      "doubt-driven-development",
-      "verification-before-completion",
-      "security-and-hardening"
-    ],
-    "optional_skills": []
+    "profile_path": "employees/ai-data/EVAL/EMPLOYEE.md"
   },
   "SHIP": {
     "id": "SHIP",
     "team": "platform-reliability",
     "title": "플랫폼·릴리스 리드 / 팀장",
     "runtime": "OPERATOR",
-    "profile_path": "employees/platform-reliability/SHIP/EMPLOYEE.md",
-    "required_skills": [
-      "ci-cd-and-automation",
-      "shipping-and-launch",
-      "git-workflow-and-versioning",
-      "verification-before-completion"
-    ],
-    "optional_skills": [
-      "deployment-pipeline-design",
-      "github-actions-templates",
-      "secrets-management",
-      "terraform-module-library",
-      "multi-cloud-architecture",
-      "k8s-manifest-generator",
-      "helm-chart-scaffolding",
-      "gitops-workflow",
-      "pm-deliver-launch-checklist"
-    ]
+    "profile_path": "employees/platform-reliability/SHIP/EMPLOYEE.md"
   },
   "SRE": {
     "id": "SRE",
     "team": "platform-reliability",
     "title": "신뢰성·운영 엔지니어",
     "runtime": "OPERATOR",
-    "profile_path": "employees/platform-reliability/SRE/EMPLOYEE.md",
-    "required_skills": [
-      "observability-and-instrumentation",
-      "systematic-debugging",
-      "ci-cd-and-automation"
-    ],
-    "optional_skills": [
-      "debugging-and-error-recovery",
-      "distributed-tracing",
-      "prometheus-configuration",
-      "slo-implementation",
-      "incident-runbook-templates",
-      "on-call-handoff-patterns",
-      "postmortem-writing",
-      "gitops-workflow"
-    ]
+    "profile_path": "employees/platform-reliability/SRE/EMPLOYEE.md"
   },
   "COST": {
     "id": "COST",
     "team": "platform-reliability",
     "title": "인프라·성능·용량 관리자",
     "runtime": "OPERATOR",
-    "profile_path": "employees/platform-reliability/COST/EMPLOYEE.md",
-    "required_skills": [
-      "observability-and-instrumentation"
-    ],
-    "optional_skills": [
-      "cost-optimization",
-      "finance-unit-economics",
-      "finance-driver-based-model"
-    ]
+    "profile_path": "employees/platform-reliability/COST/EMPLOYEE.md"
   },
   "GUARD": {
     "id": "GUARD",
     "team": "quality-security",
     "title": "품질·보안 책임자 / 팀장",
     "runtime": "REVIEWER",
-    "profile_path": "employees/quality-security/GUARD/EMPLOYEE.md",
-    "required_skills": [
-      "code-review-and-quality",
-      "verification-before-completion",
-      "security-and-hardening"
-    ],
-    "optional_skills": [
-      "code-review-excellence",
-      "sast-configuration",
-      "security-requirement-extraction",
-      "stride-analysis-patterns",
-      "legal-compliance-check",
-      "legal-risk-assessment"
-    ]
+    "profile_path": "employees/quality-security/GUARD/EMPLOYEE.md"
   },
   "TRACE": {
     "id": "TRACE",
     "team": "quality-security",
     "title": "테스트·디버깅 엔지니어",
     "runtime": "VERIFIER",
-    "profile_path": "employees/quality-security/TRACE/EMPLOYEE.md",
-    "required_skills": [
-      "test-driven-development",
-      "systematic-debugging",
-      "e2e-testing-patterns",
-      "verification-before-completion"
-    ],
-    "optional_skills": [
-      "screen-reader-testing"
-    ]
+    "profile_path": "employees/quality-security/TRACE/EMPLOYEE.md"
   },
   "SHIELD": {
     "id": "SHIELD",
     "team": "quality-security",
     "title": "AppSec·Privacy 엔지니어",
     "runtime": "SPECIALIST",
-    "profile_path": "employees/quality-security/SHIELD/EMPLOYEE.md",
-    "required_skills": [
-      "security-and-hardening",
-      "auth-implementation-patterns",
-      "doubt-driven-development"
-    ],
-    "optional_skills": [
-      "gdpr-data-handling",
-      "sast-configuration",
-      "security-requirement-extraction",
-      "stride-analysis-patterns",
-      "secrets-management"
-    ]
+    "profile_path": "employees/quality-security/SHIELD/EMPLOYEE.md"
   },
   "GROW": {
     "id": "GROW",
     "team": "growth-marketing",
     "title": "성장·마케팅 책임자 / 팀장",
     "runtime": "SPECIALIST",
-    "profile_path": "employees/growth-marketing/GROW/EMPLOYEE.md",
-    "required_skills": [
-      "product-marketing",
-      "customer-research"
-    ],
-    "optional_skills": [
-      "launch",
-      "pm-discover-market-sizing",
-      "pm-discover-competitive-analysis",
-      "competitor-profiling",
-      "marketing-plan",
-      "pricing",
-      "pm-discover-interview-synthesis",
-      "pm-define-jtbd-canvas",
-      "community-marketing",
-      "co-marketing",
-      "sales-enablement",
-      "sales-operations",
-      "pm-deliver-launch-checklist"
-    ]
+    "profile_path": "employees/growth-marketing/GROW/EMPLOYEE.md"
   },
   "VOICE": {
     "id": "VOICE",
     "team": "growth-marketing",
     "title": "브랜드·콘텐츠·카피 전략가",
     "runtime": "SPECIALIST",
-    "profile_path": "employees/growth-marketing/VOICE/EMPLOYEE.md",
-    "required_skills": [
-      "copywriting",
-      "humanizer",
-      "product-marketing"
-    ],
-    "optional_skills": [
-      "content-strategy",
-      "copy-editing",
-      "emails",
-      "cold-email",
-      "social",
-      "brand-voice-analyzer",
-      "brand-consistency-checker",
-      "content-repurposer"
-    ]
+    "profile_path": "employees/growth-marketing/VOICE/EMPLOYEE.md"
   },
   "PULSE": {
     "id": "PULSE",
     "team": "growth-marketing",
     "title": "성장 분석·실험 담당",
     "runtime": "SPECIALIST",
-    "profile_path": "employees/growth-marketing/PULSE/EMPLOYEE.md",
-    "required_skills": [
-      "analytics"
-    ],
-    "optional_skills": [
-      "ab-testing",
-      "cro",
-      "seo-audit",
-      "attribution",
-      "ads",
-      "aso",
-      "programmatic-seo",
-      "churn-prevention",
-      "referrals",
-      "startup-metrics-framework",
-      "pm-measure-experiment-design",
-      "pm-measure-experiment-results"
-    ]
+    "profile_path": "employees/growth-marketing/PULSE/EMPLOYEE.md"
   },
   "LENS": {
     "id": "LENS",
     "team": "service-knowledge",
     "title": "독립 서비스 리뷰 책임자 / 팀장",
     "runtime": "REVIEWER",
-    "profile_path": "employees/service-knowledge/LENS/EMPLOYEE.md",
-    "required_skills": [
-      "code-review-and-quality",
-      "verification-before-completion"
-    ],
-    "optional_skills": [
-      "pm-critic",
-      "pm-deliver-acceptance-criteria",
-      "legal-contract-review",
-      "churn-prevention"
-    ]
+    "profile_path": "employees/service-knowledge/LENS/EMPLOYEE.md"
   },
   "JOURNEY": {
     "id": "JOURNEY",
     "team": "service-knowledge",
     "title": "사용자·운영 여정 검토자",
     "runtime": "SPECIALIST",
-    "profile_path": "employees/service-knowledge/JOURNEY/EMPLOYEE.md",
-    "required_skills": [
-      "cro",
-      "customer-research",
-      "onboarding"
-    ],
-    "optional_skills": [
-      "churn-prevention",
-      "pm-discover-interview-synthesis",
-      "customer-support-operations"
-    ]
+    "profile_path": "employees/service-knowledge/JOURNEY/EMPLOYEE.md"
   },
   "DOCS": {
     "id": "DOCS",
     "team": "service-knowledge",
     "title": "기술문서·지식 관리자",
     "runtime": "BUILDER",
-    "profile_path": "employees/service-knowledge/DOCS/EMPLOYEE.md",
-    "required_skills": [
-      "document-artifact-production"
-    ],
-    "optional_skills": [
-      "documentation-and-adrs",
-      "openapi-spec-generation",
-      "legal-contract-review",
-      "incident-runbook-templates",
-      "postmortem-writing",
-      "sales-enablement"
-    ]
+    "profile_path": "employees/service-knowledge/DOCS/EMPLOYEE.md"
   }
 }

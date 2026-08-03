@@ -15,7 +15,7 @@ for e,d in emps.items():
         if f'@{rel}' not in txt: errors.append(f'{e}: bad constitution ref {rel}')
         if not (base/rel).resolve().exists(): errors.append(f'{e}: unresolved {rel}')
     index=(base/'SKILL_INDEX.md').read_text(encoding='utf-8')
-    for sid in binds[e]['required']+binds[e]['optional']:
+    for sid in binds[d['team']]['skills']:
         if sid not in defs: errors.append(f'{e}: undefined {sid}')
         if not (base/'skills'/sid/'SKILL.md').exists(): errors.append(f'{e}: bound skill is not installed {sid}')
         if f'`{sid}`' not in index: errors.append(f'{e}: bound skill is absent from routing index {sid}')
@@ -35,4 +35,4 @@ for f in (ROOT/'scripts').glob('*.py'):
     except Exception as ex: errors.append(f'python {f.name}: {ex}')
 if errors:
     print('\n'.join('[FAIL] '+x for x in errors)); raise SystemExit(1)
-print(f'[OK] employees={len(emps)}, declared_bindings={sum(len(v["required"])+len(v["optional"]) for v in binds.values())}, skill_definitions={len(defs)}')
+print(f'[OK] employees={len(emps)}, declared_bindings={sum(len(v["skills"]) for v in binds.values())}, skill_definitions={len(defs)}')

@@ -20,7 +20,7 @@ from threading import Thread
 from html import unescape
 from xml.etree import ElementTree
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -30,6 +30,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import keyring
 import httpx
+
+from apps.api import pricing
 from openai import OpenAI
 from apps.api.agent_tools import AgentToolError, WorkspaceAgentTools, fetch_public_source, tool_definitions
 from apps.api.policy import validate_path, validate_command
@@ -371,7 +373,13 @@ def openrouter_models() -> list[dict]:
         request = urllib.request.Request(OPENROUTER_MODELS_URL, headers={"Accept": "application/json"})
         with urllib.request.urlopen(request, timeout=12) as response:
             data = json.loads(response.read().decode("utf-8"))["data"]
-        models = [{"id": item["id"], "name": item.get("name", item["id"]), "context_length": item.get("context_length", 0)} for item in data if item.get("id")]
+        models = [
+            {
+                "id": item["id"], "name": item.get("name", item["id"]), "context_length": item.get("context_length", 0),
+                "pricing": {"prompt": item.get("pricing", {}).get("prompt", "0"), "completion": item.get("pricing", {}).get("completion", "0")},
+            }
+            for item in data if item.get("id")
+        ]
         MODELS_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         MODELS_CACHE_PATH.write_text(json.dumps(models, ensure_ascii=False), encoding="utf-8")
         return models
@@ -436,6 +444,15 @@ def skill_ids_for_task(employee_id: str, request: str) -> list[str]:
     return []
 
 
+def team_skill_pool(team: str) -> list[str]:
+    """Skills belong to the department, not the individual -- a lead can command any skill its team holds."""
+    return json.loads(SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))[team]["skills"]
+
+
+def employee_skill_pool(employee_id: str) -> list[str]:
+    return team_skill_pool(registry()[employee_id]["team"])
+
+
 def validate_selected_skills(
     employee_id: str,
     skill_ids: list[str],
@@ -448,8 +465,7 @@ def validate_selected_skills(
     if len(skill_ids) > limit:
         raise HTTPException(422, f"At most {limit} skills may be selected")
     selected = list(dict.fromkeys(skill for skill in skill_ids if isinstance(skill, str)))
-    bindings = json.loads(SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))[employee_id]
-    unknown = sorted(set(selected) - set(bindings["required"] + bindings["optional"]))
+    unknown = sorted(set(selected) - set(employee_skill_pool(employee_id)))
     if unknown:
         raise HTTPException(403, f"Skills are not bound to {employee_id}: {', '.join(unknown)}")
     definitions = json.loads(SKILL_DEFINITIONS_PATH.read_text(encoding="utf-8"))
@@ -473,10 +489,10 @@ def employee_security(employee_id: str, skill_ids: list[str] | None = None) -> d
     employee = registry()[employee_id]
     base = ROOT / Path(employee["profile_path"]).parent
     permissions = __import__("yaml").safe_load((base / "PERMISSIONS.yaml").read_text(encoding="utf-8"))
-    bindings = json.loads(SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))[employee_id]
+    pool = employee_skill_pool(employee_id)
     lock = json.loads(SKILLS_LOCK_PATH.read_text(encoding="utf-8"))["installed"]
-    required = skill_ids if skill_ids is not None else bindings["required"]
-    unknown = sorted(set(required) - set(bindings["required"] + bindings["optional"]))
+    required = skill_ids if skill_ids is not None else pool
+    unknown = sorted(set(required) - set(pool))
     if unknown:
         raise HTTPException(500, f"Task profile has unbound skills for {employee_id}: {', '.join(unknown)}")
     checks = []
@@ -493,10 +509,14 @@ def require_skill_ready(employee_ids: list[str], request: str = "") -> None:
         raise HTTPException(409, f"Required skills are not ready for: {', '.join(unavailable)}")
 
 
+ROLE_CORE_SKILL_ID = "_local-role-core"
+
+
 def employee_skill_context(
     employee_id: str,
     request: str,
-    per_skill_limit: int = 3000,
+    # Measured: at 3000 only 19/151 bound skills arrived whole; at 16000, 133/151 do (worst case ~3 skills ~12k tokens).
+    per_skill_limit: int = 16000,
     selected_skill_ids: list[str] | None = None,
     *,
     task_kind: str | None = None,
@@ -506,6 +526,16 @@ def employee_skill_context(
     if not security["ready"]:
         raise HTTPException(409, f"Required skills are not ready for {employee_id}")
     content: list[dict] = []
+    # The role core is this system's own operating manual (tools, contract gate,
+    # evidence rules). It is deliberately not in the department pool: it must never
+    # compete with the lead's three task skills, and it is always delivered.
+    core = ROOT / Path(registry()[employee_id]["profile_path"]).parent / "skills" / ROLE_CORE_SKILL_ID / "SKILL.md"
+    if core.exists():
+        content.append({
+            "id": ROLE_CORE_SKILL_ID,
+            "path": str(core.relative_to(ROOT)),
+            "instructions": core.read_text(encoding="utf-8", errors="replace")[:per_skill_limit],
+        })
     for skill in security["skills"]:
         path = ROOT / skill["path"]
         text = path.read_text(encoding="utf-8", errors="replace")[:per_skill_limit]
@@ -537,7 +567,20 @@ TASK_KINDS = {
 }
 
 
-def default_task_kind(department: str) -> str:
+EMPLOYEE_TASK_KIND = {
+    "BUILD": "architecture_design", "FRONT": "frontend_implementation", "BACK": "backend_implementation",
+    "GUARD": "quality_review", "TRACE": "test_engineering", "SHIELD": "security_review",
+    "SHIP": "release_operations", "SRE": "observability_operations", "COST": "finops_review",
+    "FRAME": "product_planning", "FLOW": "ui_design", "MOSS": "ui_design",
+    "LINK": "architecture_design", "SIGNAL": "ai_data_implementation", "EVAL": "test_engineering",
+    "GROW": "market_research", "VOICE": "content_marketing", "PULSE": "experiment_analysis",
+    "LENS": "customer_support", "JOURNEY": "customer_discovery", "DOCS": "document_authoring",
+}
+
+
+def default_task_kind(department: str, employee_id: str | None = None) -> str:
+    if employee_id is not None and employee_id in EMPLOYEE_TASK_KIND:
+        return EMPLOYEE_TASK_KIND[employee_id]
     return {
         "product-experience": "product_planning",
         "application": "general",
@@ -875,6 +918,7 @@ def init_db() -> None:
         );
         """)
         ensure_session_schema(db)
+        ensure_column(db, "jobs", "error_class", "TEXT")
         ensure_column(db, "tasks", "route", "TEXT NOT NULL DEFAULT 'navi'")
         ensure_column(db, "tasks", "lead_id", "TEXT")
         ensure_column(db, "tasks", "parent_task_id", "TEXT")
@@ -958,11 +1002,76 @@ def consume_steering_messages(db: sqlite3.Connection, task_id: str) -> list[dict
     return [dict(row) for row in rows]
 
 
+HEARTBEAT_EVENTS_KEPT_PER_JOB = 5  # ponytail: job.heartbeat fires every 15s for a job's whole runtime and was the actual driver of 4000-event jobs; other event types are step-bounded and don't need trimming.
+
+
 def emit_job_event(db: sqlite3.Connection, task_id: str, event_type: str, summary: str, *, job_id: str | None = None, agent_id: str | None = None, payload: dict | None = None) -> None:
     db.execute("INSERT INTO job_events (task_id, job_id, agent_id, type, summary, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, job_id, agent_id, event_type, summary[:500], json.dumps(payload or {}, ensure_ascii=False), utc_now()))
+    if job_id and event_type == "job.heartbeat":
+        db.execute(
+            "DELETE FROM job_events WHERE job_id = ? AND type = 'job.heartbeat' AND id NOT IN "
+            "(SELECT id FROM job_events WHERE job_id = ? AND type = 'job.heartbeat' ORDER BY id DESC LIMIT ?)",
+            (job_id, job_id, HEARTBEAT_EVENTS_KEPT_PER_JOB),
+        )
+
+
+def purge_old_job_events(db: sqlite3.Connection, retain_days: int = 30) -> int:
+    """Drop job_events for jobs finished more than retain_days ago. Call this rarely, not per-request."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=retain_days)).isoformat()
+    deleted = db.execute(
+        "DELETE FROM job_events WHERE job_id IN (SELECT id FROM jobs WHERE state IN ('succeeded', 'failed', 'cancelled') AND updated_at < ?)",
+        (cutoff,),
+    ).rowcount
+    return deleted
+
+
+ERROR_CLASS_RULES = [  # checked in order, first substring match wins
+    ("budget_exceeded", "budget"),
+    ("invalid_prompt", "invalid_prompt"),
+    ("model_key_missing", "API key is not configured"),
+    ("contract_required", "TaskContract required"),
+    ("not_assigned", "not assigned"),
+    ("meeting_not_found", "meeting not found"),
+    ("worker_restarted", "Worker restarted"),
+    ("model_call_failed", "Model"),
+]
+
+
+def classify_error(error: str | None) -> str | None:
+    if not error:
+        return None
+    for label, needle in ERROR_CLASS_RULES:
+        if needle.lower() in error.lower():
+            return label
+    return "unknown"
+
+
+def record_usage(db: sqlite3.Connection, task_id: str, model: str, input_tokens: int = 0, output_tokens: int = 0, error: str | None = None) -> float:
+    """Single choke point for model_usage rows -- fills in real cost_usd from pricing.py."""
+    cost_usd = pricing.usd_cost(model, input_tokens, output_tokens)
+    db.execute(
+        "INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (task_id, model, input_tokens, output_tokens, cost_usd, error, utc_now()),
+    )
+    return cost_usd
+
+
+def check_budget(db: sqlite3.Connection, task_id: str) -> None:
+    """Reject new jobs once spend hits a configured ceiling. 0/unset = no cap."""
+    task_ceiling = float(os.environ.get("AI_OFFICE_TASK_BUDGET_USD", "0"))
+    if task_ceiling > 0:
+        spent = db.execute("SELECT COALESCE(SUM(cost_usd), 0) FROM model_usage WHERE task_id = ?", (task_id,)).fetchone()[0]
+        if spent >= task_ceiling:
+            raise HTTPException(402, f"Task budget ${task_ceiling:.2f} reached (spent ${spent:.2f})")
+    daily_ceiling = float(os.environ.get("AI_OFFICE_DAILY_BUDGET_USD", "0"))
+    if daily_ceiling > 0:
+        spent_today = db.execute("SELECT COALESCE(SUM(cost_usd), 0) FROM model_usage WHERE created_at >= ?", (utc_now()[:10],)).fetchone()[0]
+        if spent_today >= daily_ceiling:
+            raise HTTPException(402, f"Daily budget ${daily_ceiling:.2f} reached (spent ${spent_today:.2f})")
 
 
 def enqueue_job(db: sqlite3.Connection, task_id: str, kind: str, payload: dict) -> dict:
+    check_budget(db, task_id)
     count = db.execute("SELECT COUNT(*) FROM jobs WHERE task_id = ?", (task_id,)).fetchone()[0] + 1
     now = utc_now(); job_id = f"JOB-{task_id.split('-')[-1]}-{count:03d}"
     job = {"id": job_id, "task_id": task_id, "kind": kind, "payload": payload, "state": "queued", "step": 0, "created_at": now, "updated_at": now}
@@ -991,15 +1100,8 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
             "owns": boundary["owns"],
             "must_handoff": boundary["must_handoff"],
             "lead": boundary["lead"],
-            "members": [
-                {
-                    "id": employee,
-                    "title": people[employee]["title"],
-                    "required_skills": bindings[employee]["required"],
-                    "optional_skills": bindings[employee]["optional"],
-                }
-                for employee in members
-            ],
+            "team_skills": bindings[department]["skills"],  # pooled at department level; a lead may command any of these for any teammate
+            "members": [{"id": employee, "title": people[employee]["title"]} for employee in members],
         })
     instructions = (
         "You are the operating chief. Think through the request and design a minimal, adaptive company workflow; do not classify by keywords. "
@@ -1037,7 +1139,7 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
             continue
         task_kind = phase.get("task_kind")
         if task_kind not in TASK_KINDS:
-            task_kind = default_task_kind(valid_leads[lead])
+            task_kind = default_task_kind(valid_leads[lead], lead)
         selected_skills = validate_selected_skills(lead, phase.get("skill_ids", []), 3, task_kind=task_kind)
         phases.append({
             "id": str(phase.get("id") or f"phase-{index}")[:80],
@@ -1116,7 +1218,7 @@ def store_execution_plan(db: sqlite3.Connection, task_id: str, plan: dict) -> No
             "VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', '[]', 'plan', ?, ?, ?)",
             (
                 task_id, phase_id, registry()[lead]["team"], lead,
-                phase.get("task_kind") or default_task_kind(registry()[lead]["team"]),
+                phase.get("task_kind") or default_task_kind(registry()[lead]["team"], lead),
                 str(phase.get("objective") or "")[:800], str(phase.get("output") or "")[:500],
                 phase.get("handoff_to"), json.dumps(dependencies, ensure_ascii=False),
                 json.dumps(skill_ids, ensure_ascii=False), sequence * 100, now, now,
@@ -1272,7 +1374,7 @@ def fallback_execution_plan(roster: list[str], items: list[tuple[str, str]]) -> 
                 "id": f"fallback-{index}",
                 "department": registry()[lead]["team"],
                 "lead_id": lead,
-                "task_kind": default_task_kind(registry()[lead]["team"]),
+                "task_kind": default_task_kind(registry()[lead]["team"], lead),
                 "objective": next((description for owner, description in items if owner == lead), "요청을 재검토한다."),
                 "output": "검증 가능한 부서 산출물",
                 "handoff_to": leads[0],
@@ -1314,7 +1416,11 @@ app.add_middleware(
 # function bodies - a module-scope import here would close that cycle.
 from apps.api.vibeoffice.routes import router as vibeoffice_router  # noqa: E402
 
-app.include_router(vibeoffice_router)
+# ponytail: default off pending Phase 2 usage data (docs/WORK_LOG.md). Flip
+# AI_OFFICE_ENABLE_VIBEOFFICE=1 to restore; delete this guard, not the module,
+# once a keep/cut decision is made.
+if os.environ.get("AI_OFFICE_ENABLE_VIBEOFFICE") == "1":
+    app.include_router(vibeoffice_router)
 
 
 @app.on_event("startup")
@@ -1357,7 +1463,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
             ),
             None,
         )
-        task_kind = (active_phase or {}).get("task_kind") or default_task_kind(role["team"])
+        task_kind = (active_phase or {}).get("task_kind") or default_task_kind(role["team"], payload.employee_id)
         standards = json.loads(DELIVERABLE_STANDARDS_PATH.read_text(encoding="utf-8"))
         artifact_kind = dynamic_plan.get("artifact_kind")
         if artifact_kind in standards:
@@ -1769,9 +1875,8 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         except HTTPException:
             raise
         except Exception as error:
-            now = utc_now()
             error_text = str(error)[:4000]
-            db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, model, 0, 0, 0, error_text, now))
+            record_usage(db, task_id, model, error=error_text)
             db.commit()  # Preserve provider failure even though this request raises and outer context rolls back.
             raise HTTPException(502, "Model agent run failed; see local model_usage log") from error
 
@@ -1797,7 +1902,7 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
         evidence_id = f"EVD-{task_id.split('-')[-1]}-AGENT-{payload.employee_id}"
         db.execute("INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (evidence_id, task_id, None, "agent_run", "pass" if changed_files or command_results else "info", artifact, 0, now))
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, payload.employee_id, "run", summary, now))
-        db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, model, input_tokens, output_tokens, 0, None, now))
+        record_usage(db, task_id, model, input_tokens, output_tokens)
         session = record_session_turn(
             db,
             task_id,

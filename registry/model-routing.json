@@ -30,10 +30,10 @@
     "GUARD": "complex_design_integration",
     "TRACE": "document_research_test_repeat",
     "SHIELD": "complex_design_integration",
-    "GROW": "document_research_test_repeat",
+    "GROW": "complex_design_integration",
     "VOICE": "multimodal_audio_analysis",
     "PULSE": "document_research_test_repeat",
-    "LENS": "document_research_test_repeat",
+    "LENS": "complex_design_integration",
     "JOURNEY": "document_research_test_repeat",
     "DOCS": "document_research_test_repeat"
   }

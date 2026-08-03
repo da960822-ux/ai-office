@@ -276,6 +276,65 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 ---
 
+### 14. Phase 0/1 — 위생 + 계기판 복구 (2026-08-01)
+
+`main.py:1315` vibeoffice 라우터를 `AI_OFFICE_ENABLE_VIBEOFFICE=1` 환경변수 게이트 뒤로(기본 off, 삭제 아님). `_doccheck.txt` 삭제, 스크래치 파일 패턴 `.gitignore`에 추가. 실행 안 된 계획 문서 4개(`VIBEOFFICE_GAP_ANALYSIS`/`VIBEOFFICE_IMPLEMENTATION_GUIDE`/`LAUNCH_HARNESS_PLAN`/`CONVERSATIONAL_AGENT_TARGET`) `reference/legacy/`로 이동. `CONTRIBUTING.md`에 "코드 변경 없는 신규 계획 문서 금지" 규칙 추가, "현재 unittest 스위트는 배관 회귀 테스트지 완료·릴리스 판정 근거가 아니다" 명시.
+
+계기판: `apps/api/pricing.py` 신규 — OpenRouter `/models` 응답의 실제 pricing을 캐시해 사용(하드코딩 표 아님, `openrouter_models()` 재사용). `main.record_usage()`가 `model_usage` insert 10곳(main.py 2 / worker.py 2 / task_routes.py 6)을 대체, `cost_usd`가 이제 실제 값. `check_budget()` — `AI_OFFICE_TASK_BUDGET_USD`/`AI_OFFICE_DAILY_BUDGET_USD`(0=무제한) 초과 시 `enqueue_job`이 402. `job_events`: `job.heartbeat`가 15초마다 영구히 쌓이는 게 4000건의 실제 원인이었음(코드로 확인, DB 없이) — job당 최근 5개만 ring-buffer로 보존. `purge_old_job_events()`가 종료 30일 지난 job의 이벤트를 지우고 VACUUM, worker 메인 루프에서 6시간마다(스로틀) 실행. `jobs.error_class` 컬럼 + `classify_error()` — `set_job()` 단일 지점에서 분류.
+
+**검수에서 잡은 버그**: `check_budget()`이 raise하는 `HTTPException`을 `schedule_autonomous_tasks()`/`schedule_ready_phase_jobs()`가 잡지 않아 예산 초과 시 worker 메인 루프 전체가 죽을 수 있었다. `main_loop()`의 반복 본문 전체를 `try/except Exception: traceback.print_exc()`로 감싸 해결 — 하나의 스케줄링 틱 실패가 dispatcher를 죽이지 않게.
+
+검증: 전체 165건 중 baseline과 동일한 4 error(HWPX 렌더러 미설치 3, git identity 미설정 1 — 둘 다 이 머신 환경 문제, 코드 결함 아님). 회귀 0.
+
+### 15. 회의 자동 스케줄 — `awaiting_lead_selection` 병목 해소 (2026-08-01)
+
+**발견**: `schedule_autonomous_tasks()`는 `awaiting_worker_selection` 상태부터만 자동 진행한다. 거기 도달하려면 회의(`meeting`) job이 끝나야 하는데, 그 job은 `task_routes.py`(`POST /api/tasks/{id}/select-leads`)나 `job_routes.py`의 사람 액션으로만 큐잉됐다 — 자동 스케줄 없음. 프론트가 안 누르면 태스크가 `awaiting_lead_selection`에서 영구히 멈춘다. "완료 0건 / 취소 6건" 증상의 유력 원인.
+
+`worker.py`에 `schedule_lead_selection()` 추가 — `select_leads` 라우트 로직을 그대로 재현(NAVI가 제안한 팀장 후보 전원 자동 승인 후 회의 시작), `main_loop()`에 배선. 테스트는 라우트를 직접 호출하는 방식이라 회귀 없음(6/6 pass).
+
+### 16. Skill 개인 바인딩 → 부서 풀 전환 + 정상화 (2026-08-01)
+
+**배경**: skill이 `employee-skill-bindings.json`에 직원 개인 단위로 고정 바인딩되어 있었다. 팀장이 위임해도 실행은 "이 skill=이 사람" 고정 매핑이라 병목이었다(사용자 지적). 개인 바인딩을 제거하고 **부서(team) 단위 풀**로 재구조화 — 팀장이 위임 시 부서 skill 중 최대 3개를 명령하는 구조로 변경.
+
+- `registry/employee-skill-bindings.json` — 24명 개인 키 → 8개 부서 키, `{"skills":[...]}` 단일 목록(required/optional 구분 폐지, `skill_ids_for_task`가 항상 `[]`라 애초에 자동 로드된 적이 없었음).
+- `main.py` — `team_skill_pool()`/`employee_skill_pool()` 신규. `validate_selected_skills`/`employee_security`가 개인 bindings 대신 부서 풀 조회.
+- `scripts/install_skills.py`/`verify_skills.py` — 부서 풀 기준으로 재작성. `source: local`(직원 개인 소유 proprietary skill 3종: `sales-operations`, `customer-support-operations`, `document-artifact-production`) 복사 로직 추가 — 원래 스킵되던 것.
+- 447개 신규 설치, `verify_skills.py --employee ALL` exit 0 (453 OK).
+
+**정상화 (실측 기반)**: 별도 8-부서 병렬 감사(Sonnet)로 실제 SKILL.md 내용 대 부서 책임 대조.
+
+1. **`per_skill_limit` 3000→16000** (`main.py`) — 3000에서는 151개 중 19개(13%)만 온전히 전달, 중앙값 39%만 도달했다(실측: `code-review-and-quality`는 리뷰 프로세스 5단계·체크리스트·출력 양식이 전부 잘림). 16000에서 133/151(88%) 온전 전달.
+2. **`application`(BUILD/FRONT/BACK, 실제 코더) 팀에 엔지니어링 skill이 0개였음** — superpowers 7종(`systematic-debugging`/`test-driven-development`/`verification-before-completion`/`writing-plans`/`executing-plans`/`using-git-worktrees` 등)이 전부 `operations-planning`(기획팀, 구현을 `must_handoff`로 명시)에 있었다. 8종을 `application`으로 이동, 미바인딩 카탈로그 항목(`debugging-strategies`, `error-handling-patterns`)도 추가.
+3. **`default_task_kind`가 부서 단위라 자기 풀을 스스로 막는 경우 다수** — `application` 기본값이 `"general"`이라 코딩 특화 skill 8개가, `quality-security` 기본값이 `"quality_review"`라 보안 skill 8개가 활성화 게이트에서 차단됐다. `EMPLOYEE_TASK_KIND`(직원 21명 개별 매핑) 추가, `default_task_kind(department, employee_id=None)`로 하위호환 유지.
+4. **리드 모델 등급이 선택 난이도와 역상관** — skill 38개 중 3개를 고르는 GROW, 17개인 LENS가 flash 등급이었고, 10개뿐인 LINK가 최상위였다. GROW·LENS를 `complex_design_integration`으로 승격(비용 증가, 사용자 확인 대기 중).
+5. **misfit 정리** — `doubt-driven-development`(스스로 "페르소나에 넣지 말 것" 명시, quality-security에서 제거), finance-* 2종(platform-reliability→인프라와 무관, 제거), `code-review-and-quality`/`cro`(service-knowledge, 경계 위반) 등.
+
+**검수에서 잡은 것**:
+- Sonnet이 `default_task_kind` 호출부 1곳만 고치라는 지시를 문자 그대로 따랐으나(정직하게 flag), 실제로 employee를 쥔 호출부는 7곳(`main.py` 4 + `worker.py` 3)이었다 — 나머지 6곳을 마저 통일. 지시가 부실했던 것, Sonnet 잘못 아님.
+- `sync_registry_yaml.py`가 파생 데이터(`team_skills`)를 `employees.json` 24명 전원에 주입(+413줄, 계획 외 변경) — 실 소비자 0(둘 다 bindings에서 직접 계산), 단일 진실원천 붕괴 위험이라 되돌림.
+- `render_skill_indexes.py`가 **디스크의 skills/ 폴더를 스캔**하지 바인딩을 안 봐서, 부서 풀에서 뺀 skill의 폴더가 디스크에 남으면 `SKILL_INDEX.md`가 계속 광고 — 팀장이 그걸 고르면 `validate_selected_skills` 403 → 예외를 잡아 **조용히 `skill_ids=[]`로 퇴화**하는 버그(고아 폴더 55개 실측). 생성기를 바인딩 교집합 기준으로 수정, 24명 전원 index==pool 확인.
+
+검증: 전체 165건 baseline 4 error 그대로, `verify_skills`/`verify_routing`/`audit_package` 전부 exit 0.
+
+### 17. `_local-role-core` 상시 로드 전환 + 24개 매뉴얼 작성 (2026-08-01)
+
+**발견**: 직원별 "회사 고유 운영 매뉴얼"인 `_local-role-core`가 `skill-definitions.json`에도 부서 풀에도 등록돼 있지 않았다. 즉 **선택하면 항상 403 → 조용히 무시**, 애초에 아무에게도 전달된 적이 없었다(24개 중 23개가 빈 섹션인 채 방치된 이유이기도 함). 실측: `main.validate_selected_skills('BUILD', ['_local-role-core'], ...)` → `403 Skills are not bound to BUILD`.
+
+`main.py`에 `ROLE_CORE_SKILL_ID` 상수 + `employee_skill_context()`가 이걸 **선택 목록과 무관하게 항상 먼저 로드**하도록 변경(부서 풀 3개 선택 슬롯과 경쟁하지 않음). `render_skill_indexes.py`의 선택 가능 목록에서는 제외(항상 로드되니 골라봤자 403). `test_workflow_acceptance.py`의 관련 단언을 새 동작에 맞게 갱신(빈 리스트가 아니라 role-core 1개만 있어야 함).
+
+`registry/role-core-template.md` 신규 — 8섹션 고정 형식. 섹션 3(도구 15종)·4(계약 게이트)·5(인계 규약)는 24명 전원 글자 그대로 동일, 1·2·6·7·8은 역할 고유. Sonnet 8마리(부서당 1, 팀원 3명 동시 작성 — 부서 맥락 공유가 일관성에 유리)에 배정, Haiku 1마리로 기계적 형식 검사(섹션 누락/공백/도구명 오용/금지 항목 개수) 배정.
+
+- 24개 전량 8665~10503 bytes(이전 평균 690B), 빈 섹션 0, 금지 항목 3~6개.
+- `queue_ready_agent_jobs`의 인계 규칙(산출물 없는 phase 완료는 하류를 영구히 막는다)을 섹션 5에 전 직원 공통으로 명문화 — 이 시스템은 이미 회의에서 정한 `depends_on`/`handoff_to`로 부서 간 자동 인계가 되는 구조였으나, 그걸 아는 매뉴얼이 없었다.
+
+**검수에서 잡은 것**: 내 자동 검사 스크립트가 번호 목록(`1.`~)을 안 세고 `- ` 불릿만 세서 NAVI/ROUTE/CLOCK "금지 항목 0개"로 오탐(실제론 5개씩 있었음 — 검사 버그, 매뉴얼 버그 아님). GUARD가 공통 섹션5에 "독립 리뷰어로 투입될 때" 문단을 추가한 것은 형식 위반처럼 보였으나 내용이 GUARD 고유의 실제 상황(유일한 부서 간 리뷰어)이라 유지, 대신 계약 게이트·인계 규약 핵심 문장 7종이 24명 전원에 글자 그대로 보존됐는지 별도 검사로 확인(전원 통과).
+
+**비용 주의**: 매뉴얼이 이제 항상 로드되어 에이전트 호출당 평균 ~1,475 토큰 고정 추가(업무 skill 3개 최대 13,700 토큰과 합쳐 호출당 상한 ~15,000 토큰). `pricing.py`(§14)로 실측 가능해졌으니 Phase 3에서 이 비용이 값을 하는지 데이터로 볼 것.
+
+검증: 전체 165건 baseline 4 error 그대로, `audit_package` OK, 실제 `employee_skill_context` 호출로 전달 확인.
+
+---
+
 ## 진행 중
 
 **⚠️ 위 10~13번 항목과 겹침 주의.** 아래 두 "점유" 항목이 나열하는 파일(`schema.py`, `artifacts.py`, `routes.py`, `design.py`, `test_vibeoffice_handoff.py`, `test_vibeoffice_contracts.py`) 중 상당수를 이 세션이 이미 수정·완료했다(§10~13). Kiro 세션이 이 항목을 아직 "진행 중"으로 보고 같은 파일을 다시 건드리면 충돌한다 — 이 절을 다시 읽는 세션은 먼저 `git status`/`git diff`로 실제 파일 상태를 확인하고, 이미 끝난 부분은 재작업하지 말 것.
@@ -405,6 +464,9 @@ S4 완료로 `main.py` 동시 편집이 멈춘 것을 확인한 뒤(수정 시�
   **중요 — 3 error를 코드 결함으로 오진하지 말 것.** 이 3건은 `rg`가 PATH에 없을 때만 실패한다. 새 셸에서 PATH가 갱신되지 않은 경우가 흔하다. PowerShell: `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`. Git Bash: 위 설치 경로를 `PATH`에 `export`한다. 실패가 이 3건뿐이면 환경 문제이지 회귀가 아니다.
 - **`rg --version`이 세션마다 다르게 보이는 것은 정상이다. 쫓지 말 것.** 실측으로 확인했다: winget `rg.exe`를 절대경로로 호출하면 **15.2.0 (rev e89fff89ac)**, 같은 셸에서 그냥 `rg`를 호출하면 **14.1.1 (rev f6d0fcd24a)** 이 나온다. winget 디렉터리에는 `rg.exe` 하나뿐이고 기본 PATH에는 `rg`가 아예 없다(`which: no rg`). 즉 에이전트 셸이 **PATH에 노출되지 않는 번들 ripgrep을 먼저 잡는다.** 이전 기록의 "14.1.1이 보이면 잘못된 바이너리"라는 진단은 원인은 맞지만 결론이 틀렸다 — **두 버전 모두 테스트를 통과시키므로 조치할 것이 없다.** 버전 불일치를 원인으로 의심하며 시간을 쓰지 말고, `test_agent_tools` 3건이 통과하는지만 볼 것.
 - 루트에 `_verify.py`, `_mountcheck.py`, `_scratch_*.txt`, `.vo_*.txt` 같은 임시 스크립트가 남아 있을 수 있다. 추적되지 않는 스크래치 파일이며 제품 코드가 아니다. 커밋에 포함시키지 말고, 발견하면 지워도 된다.
+- **`test_agent_worktree_requires_review_gate_before_base_integration` 1건은 git identity 미설정 시 error가 된다.** `git config user.email`/`user.name`이 로컬에 없으면 `agent_worktree.integrate_reviewed`의 cherry-pick이 "Please tell me who you are"로 실패한다. 코드 결함 아님 — 이 세션은 사용자 git config를 임의로 바꾸지 않았으므로 그대로 둠. 고치려면 `git config --global user.email/user.name`을 실행할 사람이 직접 설정할 것.
+- **HWPX 렌더러 미설치 시 3건 error** (`test_fixture_harness`의 `document-hwpx-4-korean-005`/`document-office-formats-001`, `test_runtime_hardening`의 `test_markdown_renders_to_office_formats_and_manifest`). `artifact_renderer.render_bundle`이 외부 HWPX 변환 도구를 요구하는데 이 머신엔 없다. 위 `rg` 항목과 같은 성격 — 실패가 이 3건 + git identity 1건뿐이면 baseline이지 회귀가 아니다.
+- **이 머신에는 원래 진짜 Python이 없었다** (`WindowsApps\python.exe`는 스토어 실행 스텁). `winget install Python.Python.3.12`로 설치 후 `.venv` 재생성, `pip install -r requirements.txt`, `apps/web`은 `npm install` 필요(`node_modules` 없었음). 새 세션에서 `.venv/Scripts/python.exe -m unittest ...`가 즉시 실패하면 이 문제부터 의심할 것.
 - **배경 프로세스를 남기지 말 것.** `Start-Sleep -Seconds 3600` 같은 대기 명령으로 터미널을 붙잡아 두면 다른 세션의 셸이 응답하지 않게 된다. 실제로 한 번 발생했다. 작업이 끝나면 프로세스를 종료할 것.
 
 ## 전체 검증 명령

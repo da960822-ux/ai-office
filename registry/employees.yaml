@@ -9,11 +9,6 @@
     "PLANNER"
   "profile_path":
     "employees/operations-planning/NAVI/EMPLOYEE.md"
-  "required_skills":
-    - "using-agent-skills"
-    - "planning-and-task-breakdown"
-    - "executing-plans"
-  "optional_skills": []
 "ROUTE":
   "id":
     "ROUTE"
@@ -25,12 +20,6 @@
     "PLANNER"
   "profile_path":
     "employees/operations-planning/ROUTE/EMPLOYEE.md"
-  "required_skills":
-    - "planning-and-task-breakdown"
-    - "dispatching-parallel-agents"
-    - "git-workflow-and-versioning"
-  "optional_skills":
-    - "using-git-worktrees"
 "CLOCK":
   "id":
     "CLOCK"
@@ -42,10 +31,6 @@
     "OPERATOR"
   "profile_path":
     "employees/operations-planning/CLOCK/EMPLOYEE.md"
-  "required_skills":
-    - "observability-and-instrumentation"
-    - "debugging-and-error-recovery"
-  "optional_skills": []
 "FRAME":
   "id":
     "FRAME"
@@ -57,19 +42,6 @@
     "PLANNER"
   "profile_path":
     "employees/product-experience/FRAME/EMPLOYEE.md"
-  "required_skills":
-    - "planning-and-task-breakdown"
-    - "writing-plans"
-  "optional_skills":
-    - "pm-deliver-prd"
-    - "pm-develop-solution-brief"
-    - "pm-foundation-lean-canvas"
-    - "pm-foundation-meeting-synthesize"
-    - "pm-deliver-user-stories"
-    - "pm-define-problem-statement"
-    - "pm-define-hypothesis"
-    - "pm-define-prioritization-framework"
-    - "spec-driven-development"
 "FLOW":
   "id":
     "FLOW"
@@ -81,11 +53,6 @@
     "SPECIALIST"
   "profile_path":
     "employees/product-experience/FLOW/EMPLOYEE.md"
-  "required_skills":
-    - "source-driven-development"
-    - "customer-research"
-  "optional_skills":
-    - "pm-deliver-user-stories"
 "MOSS":
   "id":
     "MOSS"
@@ -97,12 +64,6 @@
     "SPECIALIST"
   "profile_path":
     "employees/product-experience/MOSS/EMPLOYEE.md"
-  "required_skills":
-    - "ui-ux-pro-max"
-    - "design-first-ui-prompting"
-  "optional_skills":
-    - "impeccable"
-    - "humanizer"
 "BUILD":
   "id":
     "BUILD"
@@ -114,16 +75,6 @@
     "REVIEWER"
   "profile_path":
     "employees/application/BUILD/EMPLOYEE.md"
-  "required_skills":
-    - "incremental-implementation"
-    - "code-simplification"
-    - "code-review-and-quality"
-    - "git-workflow-and-versioning"
-  "optional_skills":
-    - "documentation-and-adrs"
-    - "spec-driven-development"
-    - "architecture-patterns"
-    - "performance-optimization"
 "FRONT":
   "id":
     "FRONT"
@@ -135,14 +86,6 @@
     "BUILDER"
   "profile_path":
     "employees/application/FRONT/EMPLOYEE.md"
-  "required_skills":
-    - "frontend-ui-engineering"
-    - "browser-testing-with-devtools"
-  "optional_skills":
-    - "ui-ux-pro-max"
-    - "gsap-react"
-    - "gsap-performance"
-    - "performance-optimization"
 "BACK":
   "id":
     "BACK"
@@ -154,15 +97,6 @@
     "BUILDER"
   "profile_path":
     "employees/application/BACK/EMPLOYEE.md"
-  "required_skills":
-    - "api-and-interface-design"
-    - "auth-implementation-patterns"
-    - "sql-optimization-patterns"
-    - "security-and-hardening"
-  "optional_skills":
-    - "architecture-patterns"
-    - "openapi-spec-generation"
-    - "distributed-tracing"
 "LINK":
   "id":
     "LINK"
@@ -174,12 +108,6 @@
     "REVIEWER"
   "profile_path":
     "employees/ai-data/LINK/EMPLOYEE.md"
-  "required_skills":
-    - "prompt-engineering-patterns"
-    - "llm-evaluation"
-    - "rag-implementation"
-  "optional_skills":
-    - "context-engineering"
 "SIGNAL":
   "id":
     "SIGNAL"
@@ -191,13 +119,6 @@
     "BUILDER"
   "profile_path":
     "employees/ai-data/SIGNAL/EMPLOYEE.md"
-  "required_skills":
-    - "embedding-strategies"
-    - "hybrid-search-implementation"
-    - "rag-implementation"
-    - "sql-optimization-patterns"
-  "optional_skills":
-    - "context-engineering"
 "EVAL":
   "id":
     "EVAL"
@@ -209,12 +130,6 @@
     "VERIFIER"
   "profile_path":
     "employees/ai-data/EVAL/EMPLOYEE.md"
-  "required_skills":
-    - "llm-evaluation"
-    - "doubt-driven-development"
-    - "verification-before-completion"
-    - "security-and-hardening"
-  "optional_skills": []
 "SHIP":
   "id":
     "SHIP"
@@ -226,21 +141,6 @@
     "OPERATOR"
   "profile_path":
     "employees/platform-reliability/SHIP/EMPLOYEE.md"
-  "required_skills":
-    - "ci-cd-and-automation"
-    - "shipping-and-launch"
-    - "git-workflow-and-versioning"
-    - "verification-before-completion"
-  "optional_skills":
-    - "deployment-pipeline-design"
-    - "github-actions-templates"
-    - "secrets-management"
-    - "terraform-module-library"
-    - "multi-cloud-architecture"
-    - "k8s-manifest-generator"
-    - "helm-chart-scaffolding"
-    - "gitops-workflow"
-    - "pm-deliver-launch-checklist"
 "SRE":
   "id":
     "SRE"
@@ -252,19 +152,6 @@
     "OPERATOR"
   "profile_path":
     "employees/platform-reliability/SRE/EMPLOYEE.md"
-  "required_skills":
-    - "observability-and-instrumentation"
-    - "systematic-debugging"
-    - "ci-cd-and-automation"
-  "optional_skills":
-    - "debugging-and-error-recovery"
-    - "distributed-tracing"
-    - "prometheus-configuration"
-    - "slo-implementation"
-    - "incident-runbook-templates"
-    - "on-call-handoff-patterns"
-    - "postmortem-writing"
-    - "gitops-workflow"
 "COST":
   "id":
     "COST"
@@ -276,12 +163,6 @@
     "OPERATOR"
   "profile_path":
     "employees/platform-reliability/COST/EMPLOYEE.md"
-  "required_skills":
-    - "observability-and-instrumentation"
-  "optional_skills":
-    - "cost-optimization"
-    - "finance-unit-economics"
-    - "finance-driver-based-model"
 "GUARD":
   "id":
     "GUARD"
@@ -293,17 +174,6 @@
     "REVIEWER"
   "profile_path":
     "employees/quality-security/GUARD/EMPLOYEE.md"
-  "required_skills":
-    - "code-review-and-quality"
-    - "verification-before-completion"
-    - "security-and-hardening"
-  "optional_skills":
-    - "code-review-excellence"
-    - "sast-configuration"
-    - "security-requirement-extraction"
-    - "stride-analysis-patterns"
-    - "legal-compliance-check"
-    - "legal-risk-assessment"
 "TRACE":
   "id":
     "TRACE"
@@ -315,13 +185,6 @@
     "VERIFIER"
   "profile_path":
     "employees/quality-security/TRACE/EMPLOYEE.md"
-  "required_skills":
-    - "test-driven-development"
-    - "systematic-debugging"
-    - "e2e-testing-patterns"
-    - "verification-before-completion"
-  "optional_skills":
-    - "screen-reader-testing"
 "SHIELD":
   "id":
     "SHIELD"
@@ -333,16 +196,6 @@
     "SPECIALIST"
   "profile_path":
     "employees/quality-security/SHIELD/EMPLOYEE.md"
-  "required_skills":
-    - "security-and-hardening"
-    - "auth-implementation-patterns"
-    - "doubt-driven-development"
-  "optional_skills":
-    - "gdpr-data-handling"
-    - "sast-configuration"
-    - "security-requirement-extraction"
-    - "stride-analysis-patterns"
-    - "secrets-management"
 "GROW":
   "id":
     "GROW"
@@ -354,23 +207,6 @@
     "SPECIALIST"
   "profile_path":
     "employees/growth-marketing/GROW/EMPLOYEE.md"
-  "required_skills":
-    - "product-marketing"
-    - "customer-research"
-  "optional_skills":
-    - "launch"
-    - "pm-discover-market-sizing"
-    - "pm-discover-competitive-analysis"
-    - "competitor-profiling"
-    - "marketing-plan"
-    - "pricing"
-    - "pm-discover-interview-synthesis"
-    - "pm-define-jtbd-canvas"
-    - "community-marketing"
-    - "co-marketing"
-    - "sales-enablement"
-    - "sales-operations"
-    - "pm-deliver-launch-checklist"
 "VOICE":
   "id":
     "VOICE"
@@ -382,19 +218,6 @@
     "SPECIALIST"
   "profile_path":
     "employees/growth-marketing/VOICE/EMPLOYEE.md"
-  "required_skills":
-    - "copywriting"
-    - "humanizer"
-    - "product-marketing"
-  "optional_skills":
-    - "content-strategy"
-    - "copy-editing"
-    - "emails"
-    - "cold-email"
-    - "social"
-    - "brand-voice-analyzer"
-    - "brand-consistency-checker"
-    - "content-repurposer"
 "PULSE":
   "id":
     "PULSE"
@@ -406,21 +229,6 @@
     "SPECIALIST"
   "profile_path":
     "employees/growth-marketing/PULSE/EMPLOYEE.md"
-  "required_skills":
-    - "analytics"
-  "optional_skills":
-    - "ab-testing"
-    - "cro"
-    - "seo-audit"
-    - "attribution"
-    - "ads"
-    - "aso"
-    - "programmatic-seo"
-    - "churn-prevention"
-    - "referrals"
-    - "startup-metrics-framework"
-    - "pm-measure-experiment-design"
-    - "pm-measure-experiment-results"
 "LENS":
   "id":
     "LENS"
@@ -432,14 +240,6 @@
     "REVIEWER"
   "profile_path":
     "employees/service-knowledge/LENS/EMPLOYEE.md"
-  "required_skills":
-    - "code-review-and-quality"
-    - "verification-before-completion"
-  "optional_skills":
-    - "pm-critic"
-    - "pm-deliver-acceptance-criteria"
-    - "legal-contract-review"
-    - "churn-prevention"
 "JOURNEY":
   "id":
     "JOURNEY"
@@ -451,14 +251,6 @@
     "SPECIALIST"
   "profile_path":
     "employees/service-knowledge/JOURNEY/EMPLOYEE.md"
-  "required_skills":
-    - "cro"
-    - "customer-research"
-    - "onboarding"
-  "optional_skills":
-    - "churn-prevention"
-    - "pm-discover-interview-synthesis"
-    - "customer-support-operations"
 "DOCS":
   "id":
     "DOCS"
@@ -470,12 +262,3 @@
     "BUILDER"
   "profile_path":
     "employees/service-knowledge/DOCS/EMPLOYEE.md"
-  "required_skills":
-    - "document-artifact-production"
-  "optional_skills":
-    - "documentation-and-adrs"
-    - "openapi-spec-generation"
-    - "legal-contract-review"
-    - "incident-runbook-templates"
-    - "postmortem-writing"
-    - "sales-enablement"

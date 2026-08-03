@@ -12,11 +12,7 @@ class LifecycleCapabilityTests(unittest.TestCase):
     def test_every_specialized_task_kind_has_a_bound_lazy_skill(self):
         definitions = json.loads(main.SKILL_DEFINITIONS_PATH.read_text(encoding="utf-8"))
         bindings = json.loads(main.SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))
-        bound = {
-            skill_id
-            for groups in bindings.values()
-            for skill_id in [*groups["required"], *groups["optional"]]
-        }
+        bound = {skill_id for groups in bindings.values() for skill_id in groups["skills"]}
         covered = {
             task_kind
             for skill_id in bound
