@@ -1229,5 +1229,50 @@
     "license": "Proprietary",
     "install_policy": "local",
     "status": "active"
+  },
+  "requesting-code-review": {
+    "id": "requesting-code-review",
+    "source": "superpowers",
+    "source_path": "skills/requesting-code-review",
+    "entry": "SKILL.md",
+    "license": "MIT",
+    "install_policy": "auto",
+    "status": "active"
+  },
+  "receiving-code-review": {
+    "id": "receiving-code-review",
+    "source": "superpowers",
+    "source_path": "skills/receiving-code-review",
+    "entry": "SKILL.md",
+    "license": "MIT",
+    "install_policy": "auto",
+    "status": "active"
+  },
+  "writing-skills": {
+    "id": "writing-skills",
+    "source": "superpowers",
+    "source_path": "skills/writing-skills",
+    "entry": "SKILL.md",
+    "license": "MIT",
+    "install_policy": "auto",
+    "status": "active"
+  },
+  "subagent-driven-development": {
+    "id": "subagent-driven-development",
+    "source": "superpowers",
+    "source_path": "skills/subagent-driven-development",
+    "entry": "SKILL.md",
+    "license": "MIT",
+    "install_policy": "auto",
+    "activation": {
+      "allowed_task_kinds": [
+        "architecture_design",
+        "frontend_implementation",
+        "backend_implementation",
+        "ai_data_implementation",
+        "test_engineering"
+      ]
+    },
+    "status": "active"
   }
 }

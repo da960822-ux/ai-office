@@ -3,6 +3,7 @@
     "skills": [
       "dispatching-parallel-agents",
       "executing-plans",
+      "subagent-driven-development",
       "systematic-debugging",
       "using-agent-skills",
       "writing-plans"
@@ -45,9 +46,12 @@
       "incremental-implementation",
       "openapi-spec-generation",
       "performance-optimization",
+      "receiving-code-review",
+      "requesting-code-review",
       "security-and-hardening",
       "spec-driven-development",
       "sql-optimization-patterns",
+      "subagent-driven-development",
       "systematic-debugging",
       "test-driven-development",
       "using-git-worktrees",
@@ -104,6 +108,8 @@
       "gdpr-data-handling",
       "legal-compliance-check",
       "legal-risk-assessment",
+      "receiving-code-review",
+      "requesting-code-review",
       "sast-configuration",
       "screen-reader-testing",
       "secrets-management",
@@ -153,7 +159,8 @@
       "pm-foundation-meeting-synthesize",
       "postmortem-writing",
       "sales-enablement",
-      "verification-before-completion"
+      "verification-before-completion",
+      "writing-skills"
     ]
   }
 }

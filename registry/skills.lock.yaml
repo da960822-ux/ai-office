@@ -770,6 +770,26 @@ installed:
     install_path: skills/rag-implementation
     tree_sha256: b8942839342d4233a604c7b155c1b9d942480f69d52bb472d6a291c901860bbf
     optional: false
+  receiving-code-review:
+    skill_id: receiving-code-review
+    source_id: superpowers
+    repo: obra/superpowers
+    commit_sha: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    license: MIT
+    source_path: skills/receiving-code-review
+    install_path: skills/receiving-code-review
+    tree_sha256: de172be1e6037b69b145eaccf238bf39b7a0b443db115b3d012ae861d2ad030c
+    optional: false
+  requesting-code-review:
+    skill_id: requesting-code-review
+    source_id: superpowers
+    repo: obra/superpowers
+    commit_sha: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    license: MIT
+    source_path: skills/requesting-code-review
+    install_path: skills/requesting-code-review
+    tree_sha256: 22f31e073e1439599315b1467cc47d603cc464b63501932bef9478d12fd5769f
+    optional: false
   sales-enablement:
     skill_id: sales-enablement
     source_id: marketing
@@ -910,6 +930,16 @@ installed:
     install_path: skills/stride-analysis-patterns
     tree_sha256: 4bfc7261efaa271519bc59d6a5a3de1f3def0713a0542ae3f8187edbc617a6d9
     optional: false
+  subagent-driven-development:
+    skill_id: subagent-driven-development
+    source_id: superpowers
+    repo: obra/superpowers
+    commit_sha: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    license: MIT
+    source_path: skills/subagent-driven-development
+    install_path: skills/subagent-driven-development
+    tree_sha256: 637e918e8ad5997dc31609c2f7f8850f22a5a6614333a0aec9dd1e7c905455a0
+    optional: false
   systematic-debugging:
     skill_id: systematic-debugging
     source_id: superpowers
@@ -979,4 +1009,14 @@ installed:
     source_path: skills/writing-plans
     install_path: skills/writing-plans
     tree_sha256: f4ccbb77124c701ad4fa2bada4130a953ac2dc309709345cc2d9bebf406ecbcc
+    optional: false
+  writing-skills:
+    skill_id: writing-skills
+    source_id: superpowers
+    repo: obra/superpowers
+    commit_sha: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    license: MIT
+    source_path: skills/writing-skills
+    install_path: skills/writing-skills
+    tree_sha256: 5fcd438f1c8c1413b910d1bd631851e7527fe90e92bd321a80a64b67667508c2
     optional: false

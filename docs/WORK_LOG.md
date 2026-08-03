@@ -333,6 +333,22 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 검증: 전체 165건 baseline 4 error 그대로, `audit_package` OK, 실제 `employee_skill_context` 호출로 전달 확인.
 
+### 20. Superpowers 공통 5종 완성 (2026-08-03)
+
+§18 정리에서 공통으로 쓰기로 한 Superpowers 5종 중 실제로 풀에 있던 건 3종(`systematic-debugging`, `verification-before-completion`, `using-git-worktrees`)뿐이었다. `requesting-code-review`·`receiving-code-review`는 애초에 설치된 적이 없었고, `writing-skills`는 §18에서 "고아 + 전역 중복"으로 판단해 지웠는데 이는 오판이었다 — 직원 런타임은 내 전역 스킬을 읽지 않는다.
+
+네트워크 없이 `.cache/skill-repos/superpowers-44c9b2d6e889.zip`(이미 받아둔 commit `44c9b2d6e889...`)에서 추출해 풀에 설치하고, lock에 같은 commit SHA로 등록.
+
+- `requesting-code-review`, `receiving-code-review` → application, quality-security
+- `writing-skills` → service-knowledge
+- `subagent-driven-development` → application, operations-planning. **조건부** 지시대로 `activation.allowed_task_kinds`를 구현·설계·시험 5종으로 제한해, 조사·문서·리뷰 작업에서는 선택 자체가 403으로 막힌다.
+
+`test-driven-development`는 이미 바인딩돼 있었다. 정의 99 → 103, 바인딩 합계 132.
+
+검증: `verify_routing` OK, `verify_skills` 0, `audit_package` OK, `pytest apps/api` 168 passed (실패 4건 baseline 동일).
+
+---
+
 ### 19. disabled 마케팅 스킬 물리 삭제 + 스킬 A/B 계측 (2026-08-03)
 
 §18에서 `status: disabled`로 내려둔 17개를 참조 검사 통과 후 정의·풀 폴더에서 삭제(정의 116 → 99). `skill-sources.json`의 모든 소스 저장소는 여전히 살아 있는 스킬을 1개 이상 가지므로 `third_party/licenses` 정리 대상 없음. (`sales-operations`는 마케팅 소스가 아닌 `source: local` 자체 제작이라 제외 — 18이 아니라 17개인 이유.)
