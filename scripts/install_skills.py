@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Install exact public skill folders into each employee's local skills directory.
+"""Install exact public skill folders into the shared pool at <root>/skills.
 Network is used only while this script runs. Repositories are downloaded once, then
-selected skill directories are copied into employee folders. Resolved commit SHA and
-tree hashes are written to registry/skills.lock.json.
+selected skill directories are copied into the pool -- one copy per skill, no matter
+how many employees are bound to it. Resolved commit SHA and tree hashes are written to
+registry/skills.lock.json, keyed by skill id.
 """
 from __future__ import annotations
 import argparse, hashlib, io, json, os, shutil, subprocess, sys, tempfile, urllib.request, zipfile
