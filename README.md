@@ -217,7 +217,7 @@ skills/              부서 공용 스킬 풀 (설치본 1부, 런타임이 직�
 registry/            직원·스킬·모델 binding, lock, 부서 경계, 산출물 기준
 runtimes/            공통 runtime 지침 6종 (PLANNER, BUILDER, REVIEWER, VERIFIER, OPERATOR, SPECIALIST)
 constitution/        운영 원칙 (CORPORATE, KARPATHY, CAVEMAN, TOKEN_ECONOMY, DIAGNOSIS)
-scripts/             런처, 스킬 설치·검증, 라우팅 검사, 패키지 감사
+scripts/             런처, 스킬 설치·검증, 라우팅 검사, 패키지 감사, 스킬 A/B 리포트
 docs/                살아 있는 개발 문서
 reference/           참고 자료 · 명세 원본 · 보관 산출물 · 폐기 문서
 third_party/         외부 스킬 라이선스 사본

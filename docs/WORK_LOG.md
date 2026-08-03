@@ -333,6 +333,27 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 검증: 전체 165건 baseline 4 error 그대로, `audit_package` OK, 실제 `employee_skill_context` 호출로 전달 확인.
 
+### 19. disabled 마케팅 스킬 물리 삭제 + 스킬 A/B 계측 (2026-08-03)
+
+§18에서 `status: disabled`로 내려둔 17개를 참조 검사 통과 후 정의·풀 폴더에서 삭제(정의 116 → 99). `skill-sources.json`의 모든 소스 저장소는 여전히 살아 있는 스킬을 1개 이상 가지므로 `third_party/licenses` 정리 대상 없음. (`sales-operations`는 마케팅 소스가 아닌 `source: local` 자체 제작이라 제외 — 18이 아니라 17개인 이유.)
+
+**A/B 하네스** `scripts/skill_ab_report.py` 신규 — "그 스킬을 골랐더니 실제로 결과가 좋아졌나"를 이미 쌓이는 런 기록으로만 답한다. `task_phases.skill_ids`(선택된 스킬 JSON) + `task_kind`로 같은 작업 종류 안에서 treatment(그 스킬 선택) vs control(비선택)을 나누고, `task_phases.status`·`reviews.verdict`·`retry_attempts`·`model_usage.cost_usd`를 붙인다.
+
+- 성공 판정 문자열은 추측 금지 — `PHASE_SUCCESS_STATUS='completed'`(worker.py의 `UPDATE task_phases SET status='completed'`, main.py:1258의 `NOT IN ('completed','skipped')`), `REVIEW_PASS_VERDICT='pass'`(main.py:1271, task_routes.py:513)로 실제 코드에서 확인해 상수로 고정하고 출처를 주석에 남김.
+- **표본 정직성이 이 스크립트의 핵심**: 한쪽 팔이 `--min-n`(기본 5) 미만이면 INSUFFICIENT로 표시하고 권고를 내지 않는다. delta는 항상 양쪽 n과 함께 출력. 빈 DB는 0으로 종료하고 "기록 없음"이라 말한다 — 0%를 측정값인 양 찍지 않는다.
+- retry·review·cost는 **task 단위** 기록인데 한 task 안에 양쪽 팔의 phase가 섞일 수 있다. 공유 task를 양쪽에 다 세면 상대 팔의 실패가 흘러들어오므로 **양쪽에 걸친 task는 task 단위 지표에서 제외**하고 `shared_tasks_excluded`로 개수를 보고한다(초안에 없던 부분, 리뷰에서 수정).
+- `status: shadow` 스킬(현재 `ui-ux-pro-max`)에 PROMOTE / KEEP-SHADOW / INSUFFICIENT DATA 판정을 붙인다. PROMOTE는 성공률 우위 **그리고** 양쪽 표본 충족일 때만.
+
+현재 `data/ai-office.sqlite3`는 비어 있어(task_phases 0행) 실제 판정은 아직 나오지 않는다. 승격 결정은 런 기록이 쌓인 뒤 이 스크립트 출력으로만 한다.
+
+검증: `pytest apps/api/test_skill_ab_report.py` 5 passed(알려진 정답 데이터셋, 표본 부족 경로, 공유 task 제외, 빈 DB/없는 DB 종료), `python scripts/skill_ab_report.py` → `No run history yet (task_phases is empty).` exit 0.
+
+```bash
+python scripts/skill_ab_report.py --skill ui-ux-pro-max --min-n 5
+```
+
+---
+
 ### 18. 스킬 풀 정리 + 부서별 복사본 → 공용 풀 전환 (2026-08-03)
 
 **실측 먼저**: 스킬 정의 126개 중 8개는 어떤 부서에도 바인딩되지 않은 고아였고, 디스크에는 부서 풀보다 넓은 superset이 복사돼 있었다(`employees/` 24M, growth-marketing 한 부서만 5.5M/558파일). 같은 스킬 텍스트가 직원마다 1부씩, 부서당 3~4부. lock도 `직원:스킬` 키라 같은 트리 해시를 3~4번 저장했다(372 entries).
