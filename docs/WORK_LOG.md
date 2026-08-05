@@ -170,7 +170,7 @@ fixture를 추가·수정한 뒤에는 `evaluate_research_quality`를 직접 호
 
 ### 9. 제품 계층 S1 — Intake → Blueprint → 기획 승인
 
-VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S1. 담당: Kiro 세션 (2026-07-30).
+VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S1. 담당: Kiro 세션 (2026-07-30).
 
 | 파일 | 역할 |
 |---|---|
@@ -215,7 +215,7 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 ### 11. 제품 계층 S3 — 디자인 승인 → 기술설계 계약
 
-근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S3, 09A Gate D/E.
+근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S3, 09A Gate D/E.
 
 | 파일 | 역할 |
 |---|---|
@@ -234,7 +234,7 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 ### 12. 제품 계층 S3.5 — 기술설계 승인 → Product Execution Baseline
 
-근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S3.5, 06_OUTPUT_STANDARD.md.
+근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S3.5, 06_OUTPUT_STANDARD.md.
 
 | 파일 | 역할 |
 |---|---|
@@ -254,7 +254,7 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 ### 13. 제품 계층 S4 — 기술설계 승인 → 내부 MVP 빌드
 
-근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S4, 09A Gate F. 위 "진행 중" 절에 "다른 세션이 S4를 진행 중"이라는 메모가 있었으나, 이 세션 착수 시점에 `apps/api/vibeoffice/build.py`·`test_vibeoffice_build.py`는 존재하지 않았다(새로 작성, 덮어쓴 파일 없음).
+근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S4, 09A Gate F. 위 "진행 중" 절에 "다른 세션이 S4를 진행 중"이라는 메모가 있었으나, 이 세션 착수 시점에 `apps/api/vibeoffice/build.py`·`test_vibeoffice_build.py`는 존재하지 않았다(새로 작성, 덮어쓴 파일 없음).
 
 | 파일 | 역할 |
 |---|---|
@@ -266,7 +266,7 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 **되돌리지 말 것:**
 
-- **명령 실행은 `apps/api/policy.py`의 `validate_command`를 재사용한다.** `main.tasks`/`TaskContract`/Job 큐에는 올라타지 않는다 — S1~S3.5와 같은 자기완결 원칙을 유지했다. 실행 계층 통합은 아직 미착수 목표다(§0 결론 참고 — [VIBEOFFICE_GAP_ANALYSIS.md](VIBEOFFICE_GAP_ANALYSIS.md)).
+- **명령 실행은 `apps/api/policy.py`의 `validate_command`를 재사용한다.** `main.tasks`/`TaskContract`/Job 큐에는 올라타지 않는다 — S1~S3.5와 같은 자기완결 원칙을 유지했다. 실행 계층 통합은 아직 미착수 목표다(§0 결론 참고 — [VIBEOFFICE_GAP_ANALYSIS.md](../reference/legacy/VIBEOFFICE_GAP_ANALYSIS.md)).
 - **스캐폴드에 React/Vite를 설치하지 않는다.** `apps/web`의 실제 빌드는 네트워크·시간이 든다. 정적 골격 + 의존성 없는 Node 스크립트 2개로 "진짜로 실패할 수 있는" 명령을 유지하면서 오프라인·결정론을 지켰다 — 이게 가이드가 말하는 "mock 경계"이고 PROJECT_STATUS.md/BUILD_REPORT.md에 명시했다.
 - **S2/S3/S3.5와 달리 게이트 전에 파일을 쓴다.** Gate F는 실제 명령의 실제 exit code를 판정해야 해서 인메모리 대체가 없다 — `build_scaffold`가 먼저 디스크에 쓰고, `run_smoke_commands`가 실제로 실행한 뒤, `assert_gate_f`가 결과를 본다.
 
@@ -367,7 +367,7 @@ apps/api/test_vibeoffice_handoff.py, test_vibeoffice_contracts.py (해당 회귀
 
 ### 제품 계층 S2 — 기획 승인 → 디자인 패키지 + handoff 계약 (Kiro 세션 점유)
 
-담당: Kiro 세션 (2026-07-30 12:3x 시작). 근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S2, `reference/product-context/05A_DEPARTMENT_HANDOFF_CONTRACTS.md` §3, `schemas/department-handoff.schema.json`, 09A Gate C.
+담당: Kiro 세션 (2026-07-30 12:3x 시작). 근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S2, `reference/product-context/05A_DEPARTMENT_HANDOFF_CONTRACTS.md` §3, `schemas/department-handoff.schema.json`, 09A Gate C.
 
 **점유 파일 — 다른 세션은 건드리지 말 것:**
 
@@ -448,7 +448,7 @@ S4 완료로 `main.py` 동시 편집이 멈춘 것을 확인한 뒤(수정 시�
 
 ## 미완료 — 아직 손대지 않음
 
-우선순위 순. 상세는 [RUNTIME_ROADMAP.md](RUNTIME_ROADMAP.md), [VIBEOFFICE_GAP_ANALYSIS.md](VIBEOFFICE_GAP_ANALYSIS.md).
+우선순위 순. 상세는 [RUNTIME_ROADMAP.md](RUNTIME_ROADMAP.md), [VIBEOFFICE_GAP_ANALYSIS.md](../reference/legacy/VIBEOFFICE_GAP_ANALYSIS.md).
 
 1. ~~**Fixture 30~50개로 확장**~~ → **완료 (31건, §7).** 더 늘릴 때는 §7의 격리 검증 절차를 반드시 따를 것.
 2. **실제 모델 호출 fixture** — 현재 harness는 `main.run_agent`를 mock한다. 실모델·실 Git diff·실 테스트로 도는 별도 CI 경로가 아직 없다. **P2에서 남은 가장 큰 항목이다.**

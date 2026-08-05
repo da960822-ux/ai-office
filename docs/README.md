@@ -9,9 +9,9 @@
 
 | 문서 | 역할 |
 |---|---|
-| [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](VIBEOFFICE_IMPLEMENTATION_GUIDE.md) | **작업 시작 시 1순위**. 원칙, 계층 분리, 부서 매핑, 스키마·API 추가안, 수직 슬라이스 순서, 게이트, 금지사항 |
-| [VIBEOFFICE_GAP_ANALYSIS.md](VIBEOFFICE_GAP_ANALYSIS.md) | 구현됨 / 부분 구현 / 미구현 목록과 근거 파일 |
-| [CONVERSATIONAL_AGENT_TARGET.md](CONVERSATIONAL_AGENT_TARGET.md) | 대화형 지시 + Hermes형 자율 실행 목표. 대화 저장소·의도 분류·자율성 레벨·승인 안전장치 설계안 |
+| [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) | **작업 시작 시 1순위**. 원칙, 계층 분리, 부서 매핑, 스키마·API 추가안, 수직 슬라이스 순서, 게이트, 금지사항 |
+| [VIBEOFFICE_GAP_ANALYSIS.md](../reference/legacy/VIBEOFFICE_GAP_ANALYSIS.md) | 구현됨 / 부분 구현 / 미구현 목록과 근거 파일 |
+| [CONVERSATIONAL_AGENT_TARGET.md](../reference/legacy/CONVERSATIONAL_AGENT_TARGET.md) | 대화형 지시 + Hermes형 자율 실행 목표. 대화 저장소·의도 분류·자율성 레벨·승인 안전장치 설계안 |
 | [../reference/product-context/](../reference/product-context/) | 목표 제품 명세 원본(vibe_coding_office_context_pack_v3). 요약본을 따로 만들지 않는다 |
 | [../reference/product-context/reference-output/](../reference/product-context/reference-output/) | H4 내보내기 정답 예시. 출고 산출물의 목표 형태 |
 | [../reference/product-context/schemas/](../reference/product-context/schemas/) | blueprint · handoff · review-finding JSON Schema |
