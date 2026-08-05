@@ -36,10 +36,10 @@
   "reviewer_id": "GUARD",
   "prohibited_skills": {
     "MOSS": {
-      "skill_ids": ["ui-ux-pro-max"],
+      "skill_ids": ["design-first-ui-prompting"],
       "task_kind": "market_research",
       "error_contains": "Skills are blocked for market_research",
-      "reason": "MOSS genuinely holds ui-ux-pro-max (required binding); the task_kind policy, not a missing binding, must be what blocks it here"
+      "reason": "MOSS genuinely holds design-first-ui-prompting; the task_kind policy, not a missing binding, must be what blocks it here"
     }
   },
   "research": {

@@ -393,16 +393,14 @@ entry: SKILL.md
 license: MIT
 install_policy: auto
 owners: [TRACE, SRE]
-install_targets:
-  - employees/quality-security/TRACE/skills/systematic-debugging
-  - employees/platform-reliability/SRE/skills/systematic-debugging
+install_target: skills/systematic-debugging
 lock_required: [commit_sha, tree_sha256, license]
 execution_mode: instruction_only
 ```
 
-스킬 이름만 Registry에 기록해서는 설치된 것으로 보지 않는다. 직원의 로컬 폴더에 실제 `SKILL.md`가 존재하고 `skills.lock`의 commit·hash와 일치해야 한다.
+스킬 이름만 Registry에 기록해서는 설치된 것으로 보지 않는다. 공용 풀 `skills/<skill-id>/`에 실제 `SKILL.md`가 존재하고 `skills.lock`의 commit·hash와 일치해야 한다.
 
-### 5-4. 직원별 Embedded Skill 설치
+### 5-4. 공용 풀 Skill 설치
 
 기본값은 사용자의 수동 복사가 아니라 manifest 기반 설치다.
 
@@ -411,11 +409,11 @@ execution_mode: instruction_only
 2. SkillInstaller가 source repository와 source_path 확인
 3. 공개 저장소의 commit SHA 해석
 4. 저장소를 1회 다운로드하고 필요한 skill 폴더만 추출
-5. employees/<team>/<EMPLOYEE>/skills/<skill-id>/ 로 복사
+5. skills/<skill-id>/ 로 복사 (스킬당 1부, 부서·직원별 사본 없음)
 6. LICENSE를 third_party/licenses/에 보존
 7. SKILL.md 존재·경로·tree hash 검증
 8. registry/skills.lock에 commit SHA·hash·설치 대상을 기록
-9. EMPLOYEE.md의 로컬 경로 참조를 활성화
+9. 부서 바인딩에 따라 SKILL_INDEX.md의 선택 가능 목록을 갱신
 ```
 
 ```bash
@@ -1569,7 +1567,7 @@ schema처럼 반복되는 고정 prefix는 provider cache가 재사용할 수 �
 모델은 deterministic 도구 → Cheap → Balanced → Deep 순서로 가장 저렴한 적격 단계에서
 시작하고, 명시된 품질·위험 조건이 있을 때만 승격해.
 
-외부 스킬을 자동 다운로드하지 마. 사용자가 employees/<team>/<EMPLOYEE>/skills/<skill-id>/에 직접 넣은
+외부 스킬을 자동 다운로드하지 마. 사용자가 skills/<skill-id>/에 직접 넣은
 스킬을 manifest·hash·라이선스·스크립트·네트워크·파일 권한 기준으로 검사하고,
 기본은 instruction_only로 등록해. 사용자가 승인한 권한만 effective_permissions에 반영하고
 shadow task 통과 후 approved와 skills.lock.yaml에 고정해. 권한을 줄 수 없으면 해당 script만

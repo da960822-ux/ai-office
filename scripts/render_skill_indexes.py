@@ -16,7 +16,9 @@ for employee_id, employee in employees.items():
     # delivers it, so listing it here would only invite a pick that 403s.
     selectable = set(bindings[employee["team"]]["skills"])
     rows = []
-    for path in sorted((base / "skills").glob("*/SKILL.md")):
+    # Skill text lives once in the shared pool at repo root; only _local-role-core stays
+    # inside the employee folder, and it is deliberately not indexed here.
+    for path in sorted((ROOT / "skills").glob("*/SKILL.md")):
         if path.parent.name not in selectable:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")

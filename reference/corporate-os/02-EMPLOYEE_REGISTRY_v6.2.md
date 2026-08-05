@@ -1,6 +1,6 @@
 # AI AUTOMATION OFFICE — 24인 Employee Registry v6.2
 
-> 모든 직원은 실제 로컬 스킬 경로를 가진다. 세부 역할은 각 직원 폴더의 `EMPLOYEE.md`, `ROLE.md`, `SOP.md`, `SKILLS.md`에서 관리한다.
+> 스킬 본문은 공용 풀 `skills/<skill-id>/`에 1부만 두고 부서 바인딩으로 접근을 정한다. 직원 폴더에는 `_local-role-core`만 있다. 세부 역할은 각 직원 폴더의 `EMPLOYEE.md`, `SKILLS.md`에서 관리한다.
 
 ## 24인 배치
 
@@ -24,7 +24,7 @@
 | GUARD | quality-security | REVIEWER | code-review-and-quality, verification-before-completion, security-and-hardening, code-review-excellence | - | `employees/quality-security/GUARD/EMPLOYEE.md` |
 | TRACE | quality-security | VERIFIER | test-driven-development, systematic-debugging, e2e-testing-patterns, verification-before-completion | - | `employees/quality-security/TRACE/EMPLOYEE.md` |
 | SHIELD | quality-security | SPECIALIST | security-and-hardening, auth-implementation-patterns, source-driven-development, doubt-driven-development | - | `employees/quality-security/SHIELD/EMPLOYEE.md` |
-| GROW | growth-marketing | SPECIALIST | product-marketing, launch, customer-research | positioning-statement | `employees/growth-marketing/GROW/EMPLOYEE.md` |
+| GROW | growth-marketing | SPECIALIST | product-marketing, launch, customer-research | — | `employees/growth-marketing/GROW/EMPLOYEE.md` |
 | VOICE | growth-marketing | SPECIALIST | copywriting, humanizer, product-marketing, design-first-ui-prompting | - | `employees/growth-marketing/VOICE/EMPLOYEE.md` |
 | PULSE | growth-marketing | SPECIALIST | analytics, ab-testing, cro, seo-audit | - | `employees/growth-marketing/PULSE/EMPLOYEE.md` |
 | LENS | service-knowledge | REVIEWER | code-review-and-quality, verification-before-completion, impeccable, ui-ux-pro-max | - | `employees/service-knowledge/LENS/EMPLOYEE.md` |

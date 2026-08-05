@@ -3,8 +3,10 @@
     "skills": [
       "dispatching-parallel-agents",
       "executing-plans",
-      "planning-and-task-breakdown",
-      "using-agent-skills"
+      "subagent-driven-development",
+      "systematic-debugging",
+      "using-agent-skills",
+      "writing-plans"
     ]
   },
   "product-experience": {
@@ -14,13 +16,16 @@
       "humanizer",
       "impeccable",
       "pm-define-hypothesis",
+      "pm-define-jtbd-canvas",
       "pm-define-prioritization-framework",
       "pm-define-problem-statement",
       "pm-deliver-prd",
       "pm-deliver-user-stories",
       "pm-develop-solution-brief",
+      "pm-discover-competitive-analysis",
+      "pm-discover-market-sizing",
       "pm-foundation-lean-canvas",
-      "ui-ux-pro-max"
+      "writing-plans"
     ]
   },
   "application": {
@@ -31,8 +36,6 @@
       "browser-testing-with-devtools",
       "code-review-and-quality",
       "code-simplification",
-      "debugging-and-error-recovery",
-      "debugging-strategies",
       "documentation-and-adrs",
       "error-handling-patterns",
       "executing-plans",
@@ -43,14 +46,14 @@
       "incremental-implementation",
       "openapi-spec-generation",
       "performance-optimization",
-      "planning-and-task-breakdown",
+      "receiving-code-review",
+      "requesting-code-review",
       "security-and-hardening",
-      "source-driven-development",
       "spec-driven-development",
       "sql-optimization-patterns",
+      "subagent-driven-development",
       "systematic-debugging",
       "test-driven-development",
-      "ui-ux-pro-max",
       "using-git-worktrees",
       "verification-before-completion",
       "writing-plans"
@@ -74,9 +77,10 @@
     "skills": [
       "ci-cd-and-automation",
       "cost-optimization",
-      "debugging-and-error-recovery",
       "deployment-pipeline-design",
       "distributed-tracing",
+      "finance-driver-based-model",
+      "finance-unit-economics",
       "git-workflow-and-versioning",
       "github-actions-templates",
       "gitops-workflow",
@@ -100,11 +104,12 @@
     "skills": [
       "auth-implementation-patterns",
       "code-review-and-quality",
-      "code-review-excellence",
       "e2e-testing-patterns",
       "gdpr-data-handling",
       "legal-compliance-check",
       "legal-risk-assessment",
+      "receiving-code-review",
+      "requesting-code-review",
       "sast-configuration",
       "screen-reader-testing",
       "secrets-management",
@@ -119,42 +124,21 @@
   "growth-marketing": {
     "skills": [
       "ab-testing",
-      "ads",
       "analytics",
-      "aso",
-      "attribution",
-      "brand-consistency-checker",
       "brand-voice-analyzer",
       "churn-prevention",
-      "co-marketing",
-      "cold-email",
-      "community-marketing",
-      "competitor-profiling",
-      "content-repurposer",
-      "content-strategy",
-      "copy-editing",
       "copywriting",
       "cro",
       "customer-research",
-      "emails",
       "humanizer",
       "launch",
-      "marketing-plan",
-      "pm-define-jtbd-canvas",
       "pm-deliver-launch-checklist",
-      "pm-discover-competitive-analysis",
-      "pm-discover-interview-synthesis",
-      "pm-discover-market-sizing",
       "pm-measure-experiment-design",
       "pm-measure-experiment-results",
-      "pricing",
       "product-marketing",
-      "programmatic-seo",
-      "referrals",
       "sales-enablement",
       "sales-operations",
       "seo-audit",
-      "social",
       "startup-metrics-framework"
     ]
   },
@@ -172,9 +156,11 @@
       "pm-critic",
       "pm-deliver-acceptance-criteria",
       "pm-discover-interview-synthesis",
+      "pm-foundation-meeting-synthesize",
       "postmortem-writing",
       "sales-enablement",
-      "verification-before-completion"
+      "verification-before-completion",
+      "writing-skills"
     ]
   }
 }

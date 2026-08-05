@@ -1,4 +1,0 @@
-interface:
-  display_name: "Sales Operations"
-  short_description: "Design approval-gated sales and CRM operations"
-  default_prompt: "Use $sales-operations to design an evidence-backed sales workflow with explicit approval gates."

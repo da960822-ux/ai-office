@@ -57,10 +57,15 @@ def main() -> None:
                 continue
             if definitions[skill_id].get("install_policy") == "manual_accept_noncommercial":
                 errors.append(f"{team}: noncommercial skill {skill_id} is bound")
+            # disabled/shadow skills stay in the registry for A/B comparison and for a
+            # reference check before physical removal, but a lead must never select them.
+            status = definitions[skill_id].get("status", "active")
+            if status != "active":
+                errors.append(f"{team}: {status} skill {skill_id} is bound")
 
     ui_skill_ids = {
         "ui-ux-pro-max", "impeccable", "design-first-ui-prompting",
-        "gsap-core", "gsap-timeline", "gsap-react", "gsap-performance",
+        "gsap-react", "gsap-performance",
     }
     blocked_ui_kinds = {"market_research", "business_strategy", "document_authoring", "backend_implementation", "quality_review"}
     for skill_id in ui_skill_ids:

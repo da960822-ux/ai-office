@@ -38,3 +38,6 @@ _doccheck.txt
 _verify.log
 full_test_out.txt
 preflight_test_rg.txt
+
+# Claude Code local settings
+.claude/

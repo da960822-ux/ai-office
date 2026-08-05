@@ -1,4 +1,0 @@
-interface:
-  display_name: "Document Artifact Production"
-  short_description: "Create verifiable business document artifact files"
-  default_prompt: "Create the requested document as a real file, validate required sections, and report its path."

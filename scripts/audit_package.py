@@ -11,13 +11,13 @@ for e,d in emps.items():
     for name in ['EMPLOYEE.md','SKILLS.md','SKILL_INDEX.md','PERMISSIONS.yaml','EVALUATION.md','skills/_local-role-core/SKILL.md']:
         if not (base/name).exists(): errors.append(f'{e}: missing {name}')
     txt=(base/'EMPLOYEE.md').read_text(encoding='utf-8')
-    for rel in ['../../../constitution/CORPORATE.md','../../../constitution/KARPATHY.md','../../../constitution/CAVEMAN.md','../../../constitution/TOKEN_ECONOMY.md']:
+    for rel in ['../../../constitution/CORPORATE.md','../../../constitution/KARPATHY.md','../../../constitution/CAVEMAN.md','../../../constitution/TOKEN_ECONOMY.md','../../../constitution/DIAGNOSIS.md']:
         if f'@{rel}' not in txt: errors.append(f'{e}: bad constitution ref {rel}')
         if not (base/rel).resolve().exists(): errors.append(f'{e}: unresolved {rel}')
     index=(base/'SKILL_INDEX.md').read_text(encoding='utf-8')
     for sid in binds[d['team']]['skills']:
         if sid not in defs: errors.append(f'{e}: undefined {sid}')
-        if not (base/'skills'/sid/'SKILL.md').exists(): errors.append(f'{e}: bound skill is not installed {sid}')
+        if not (ROOT/'skills'/sid/'SKILL.md').exists(): errors.append(f'{e}: bound skill is not installed {sid}')
         if f'`{sid}`' not in index: errors.append(f'{e}: bound skill is absent from routing index {sid}')
 for sid,d in defs.items():
     if d['source'] != 'local' and d['source'] not in sources: errors.append(f'{sid}: missing source')

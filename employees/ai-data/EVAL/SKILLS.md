@@ -1,10 +1,10 @@
 # 설치 스킬
 
 ## 필수
-- `llm-evaluation` → `./skills/llm-evaluation/SKILL.md`
-- `doubt-driven-development` → `./skills/doubt-driven-development/SKILL.md`
-- `verification-before-completion` → `./skills/verification-before-completion/SKILL.md`
-- `security-and-hardening` → `./skills/security-and-hardening/SKILL.md`
+- `llm-evaluation` → `../../../skills/llm-evaluation/SKILL.md`
+- `doubt-driven-development` → `../../../skills/doubt-driven-development/SKILL.md`
+- `verification-before-completion` → `../../../skills/verification-before-completion/SKILL.md`
+- `security-and-hardening` → `../../../skills/security-and-hardening/SKILL.md`
 
 ## 조건부
 - 없음

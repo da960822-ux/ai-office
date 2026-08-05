@@ -1,10 +1,7 @@
 # 설치 스킬
 
 ## 필수
-- `code-review-and-quality` → `./skills/code-review-and-quality/SKILL.md`
-- `verification-before-completion` → `./skills/verification-before-completion/SKILL.md`
-- `impeccable` → `./skills/impeccable/SKILL.md`
-- `ui-ux-pro-max` → `./skills/ui-ux-pro-max/SKILL.md`
+- `verification-before-completion` → `../../../skills/verification-before-completion/SKILL.md`
 
 ## 조건부
 - 없음

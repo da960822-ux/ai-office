@@ -137,7 +137,7 @@ npm install
 cd ..\..
 ```
 
-내장 스킬 설치·검증:
+내장 스킬 설치·검증 (설치본은 공용 풀 `skills/`에 1부만 생기고, `--employee`는 어떤 스킬을 받을지만 좁힙니다):
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\install_skills.py --employee ALL
@@ -238,11 +238,12 @@ UI 설정 화면에서 입력하면 OS keyring(`AI-Automation-Office` 서비스)
 ```text
 apps/api/            FastAPI, SQLite 스키마, worker, 에이전트 도구, 문서 렌더러, 조사 모듈
 apps/web/            React + Vite + TypeScript 오피스 UI
-employees/           직원 persona, 권한(PERMISSIONS.yaml), 내장 스킬
+employees/           직원 persona, 권한(PERMISSIONS.yaml), 역할 코어 스킬(_local-role-core)
+skills/              부서 공용 스킬 풀 (설치본 1부, 런타임이 직접 참조)
 registry/            직원·스킬·모델 binding, lock, 부서 경계, 산출물 기준
 runtimes/            공통 runtime 지침 6종 (PLANNER, BUILDER, REVIEWER, VERIFIER, OPERATOR, SPECIALIST)
-constitution/        운영 원칙 (CORPORATE, KARPATHY, CAVEMAN, TOKEN_ECONOMY)
-scripts/             런처, 스킬 설치·검증, 라우팅 검사, 패키지 감사
+constitution/        운영 원칙 (CORPORATE, KARPATHY, CAVEMAN, TOKEN_ECONOMY, DIAGNOSIS)
+scripts/             런처, 스킬 설치·검증, 라우팅 검사, 패키지 감사, 스킬 A/B 리포트
 docs/                살아 있는 개발 문서
 reference/           참고 자료 · 명세 원본 · 보관 산출물 · 폐기 문서
 third_party/         외부 스킬 라이선스 사본

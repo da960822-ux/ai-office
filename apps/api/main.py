@@ -60,6 +60,7 @@ SKILL_DEFINITIONS_PATH = ROOT / "registry" / "skill-definitions.json"
 DEPARTMENT_BOUNDARIES_PATH = ROOT / "registry" / "department-boundaries.json"
 DELIVERABLE_STANDARDS_PATH = ROOT / "registry" / "deliverable-standards.json"
 SKILLS_LOCK_PATH = ROOT / "registry" / "skills.lock.json"
+SKILL_POOL_PATH = ROOT / "skills"
 SETTINGS_PATH = ROOT / ".ai-office" / "settings.json"
 MODEL_ROUTING_PATH = ROOT / "registry" / "model-routing.json"
 KEYRING_SERVICE = "AI-Automation-Office"
@@ -420,12 +421,6 @@ ARTIFACT_KIND_BY_TASK_KIND = {
     "incident_response": "incident_response_report",
     "finops_review": "financial_model_report",
     "financial_planning": "financial_model_report",
-    "paid_acquisition": "go_to_market_plan",
-    "app_store_optimization": "go_to_market_plan",
-    "lifecycle_marketing": "go_to_market_plan",
-    "community_growth": "go_to_market_plan",
-    "partner_marketing": "go_to_market_plan",
-    "seo_growth": "go_to_market_plan",
     "retention_growth": "go_to_market_plan",
     "content_marketing": "go_to_market_plan",
     "brand_strategy": "go_to_market_plan",
@@ -497,8 +492,11 @@ def employee_security(employee_id: str, skill_ids: list[str] | None = None) -> d
         raise HTTPException(500, f"Task profile has unbound skills for {employee_id}: {', '.join(unknown)}")
     checks = []
     for skill_id in required:
-        path = base / "skills" / skill_id / "SKILL.md"
-        locked = f"{employee_id}:{skill_id}" in lock
+        # One shared pool on disk instead of a copy per employee: the same skill text
+        # was installed 3-4 times per department, and every copy had to be hashed and
+        # locked separately. Employee folders keep only _local-role-core.
+        path = SKILL_POOL_PATH / skill_id / "SKILL.md"
+        locked = skill_id in lock
         checks.append({"skill_id": skill_id, "path": str(path.relative_to(ROOT)), "exists": path.exists(), "locked": locked, "valid": path.exists() and locked})
     return {"employee_id": employee_id, "permissions": permissions, "skills": checks, "ready": all(check["valid"] for check in checks)}
 
@@ -560,9 +558,7 @@ TASK_KINDS = {
     "privacy_review", "legal_compliance", "contract_review_draft",
     "ci_cd_design", "cloud_operations", "observability_operations",
     "finops_review", "incident_response", "financial_planning",
-    "launch_management", "paid_acquisition", "app_store_optimization",
-    "lifecycle_marketing", "community_growth", "partner_marketing",
-    "sales_operations", "seo_growth", "retention_growth",
+    "launch_management", "sales_operations", "retention_growth",
     "content_marketing", "brand_strategy", "customer_support",
 }
 

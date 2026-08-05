@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Install exact public skill folders into each employee's local skills directory.
+"""Install exact public skill folders into the shared pool at <root>/skills.
 Network is used only while this script runs. Repositories are downloaded once, then
-selected skill directories are copied into employee folders. Resolved commit SHA and
-tree hashes are written to registry/skills.lock.json.
+selected skill directories are copied into the pool -- one copy per skill, no matter
+how many employees are bound to it. Resolved commit SHA and tree hashes are written to
+registry/skills.lock.json, keyed by skill id.
 """
 from __future__ import annotations
 import argparse, hashlib, io, json, os, shutil, subprocess, sys, tempfile, urllib.request, zipfile
@@ -77,9 +78,10 @@ def main():
     selected=list(emps) if args.employee.upper()=='ALL' else [args.employee.upper()]
     missing=[e for e in selected if e not in emps]
     if missing: raise SystemExit(f'Unknown employee: {missing}')
-    # Skills are bound per department, not per employee -- every teammate gets the whole pool.
-    requested=[(e,s,False) for e in selected for s in binds[emps[e]['team']]['skills']]
-    needed_sources=sorted({defs[s]['source'] for _,s,_ in requested if defs[s]['source'] != 'local'})
+    # Skills are bound per department and installed once into the shared pool at repo root;
+    # --employee only narrows which skill ids are fetched, never where they land.
+    requested=sorted({s for e in selected for s in binds[emps[e]['team']]['skills']})
+    needed_sources=sorted({defs[s]['source'] for s in requested if defs[s]['source'] != 'local'})
     default_cache=ROOT/'.cache'/'skill-repos'
     if os.name == 'nt' and len(str(default_cache)) > 80:
         default_cache=Path(tempfile.gettempdir())/'ai-office-skill-cache'
@@ -112,15 +114,16 @@ def main():
         else:
             print(f'[LICENSE-MISSING] {src["repo"]}: manual review required',file=sys.stderr)
     lock=load('skills.lock.json')
-    for emp,sid,is_optional in requested:
-        meta=defs[sid]; source_id=meta['source']
+    pool=ROOT/'skills'; pool.mkdir(exist_ok=True)
+    for sid in requested:
+        meta=defs[sid]; source_id=meta['source']; is_optional=False
+        dst=pool/sid
         if source_id == 'local':
-            # Proprietary, authored inside one employee's own folder -- copy it to teammates too
-            # now that skills are pooled per department instead of owned by one person.
+            # Proprietary, authored in the workspace: source_path already points at the pool,
+            # so this is a no-op copy that exists only to lock the tree hash.
             src=ROOT/meta['source_path']
-            dst=ROOT/emps[emp]['profile_path'].rsplit('/',1)[0]/'skills'/sid
             if args.dry_run:
-                print(f'[DRY] {emp}: {src} -> {dst}'); continue
+                print(f'[DRY] {src} -> {dst}'); continue
             if not src.exists():
                 print(f'[MISSING-LOCAL] {sid}: {src}',file=sys.stderr); continue
             if src.resolve() != dst.resolve():
@@ -132,18 +135,17 @@ def main():
             entry=dst/meta.get('entry','SKILL.md')
             if not entry.exists():
                 print(f'[INVALID] {sid}: SKILL.md not found after copy',file=sys.stderr); continue
-            lock['installed'][f'{emp}:{sid}']={
-                'employee':emp,'skill_id':sid,'source_id':'local','repo':None,'commit_sha':None,
+            lock['installed'][sid]={
+                'skill_id':sid,'source_id':'local','repo':None,'commit_sha':None,
                 'license':meta.get('license'),'source_path':meta['source_path'],
                 'install_path':str(dst.relative_to(ROOT)),'tree_sha256':tree_hash(dst),'optional':is_optional
             }
-            print('[INSTALLED]',emp,sid)
+            print('[INSTALLED]',sid)
             continue
         if source_id not in repo_roots: continue
         src=repo_roots[source_id]/meta['source_path']
-        dst=ROOT/emps[emp]['profile_path'].rsplit('/',1)[0]/'skills'/sid
         if args.dry_run:
-            print(f'[DRY] {emp}: {src} -> {dst}'); continue
+            print(f'[DRY] {src} -> {dst}'); continue
         if not src.exists():
             print(f'[MISSING-UPSTREAM] {sid}: {src}',file=sys.stderr); continue
         if dst.exists(): shutil.rmtree(dst)
@@ -154,13 +156,13 @@ def main():
         entry=dst/meta.get('entry','SKILL.md')
         if not entry.exists():
             print(f'[INVALID] {sid}: SKILL.md not found after copy',file=sys.stderr); shutil.rmtree(dst); continue
-        lock['installed'][f'{emp}:{sid}']={
-            'employee':emp,'skill_id':sid,'source_id':source_id,'repo':source_locks[source_id]['repo'],
+        lock['installed'][sid]={
+            'skill_id':sid,'source_id':source_id,'repo':source_locks[source_id]['repo'],
             'commit_sha':source_locks[source_id]['commit_sha'],'license':source_locks[source_id]['license'],
             'source_path':meta['source_path'],'install_path':str(dst.relative_to(ROOT)),
             'tree_sha256':tree_hash(dst),'optional':is_optional
         }
-        print('[INSTALLED]',emp,sid)
+        print('[INSTALLED]',sid)
     if not args.dry_run:
         (REG/'skills.lock.json').write_text(json.dumps(lock,ensure_ascii=False,indent=2),encoding='utf-8')
         try:
