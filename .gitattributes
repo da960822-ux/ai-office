@@ -1,0 +1,27 @@
+# Skill files are hashed byte-for-byte by verify_skills.py, which compares a
+# sha256 over raw disk bytes against registry/skills.lock.json. With
+# core.autocrlf=true (the Git for Windows default) and no rule here, checkout
+# rewrote every LF to CRLF and all 102 skills reported HASH-MISMATCH on a fresh
+# Windows clone. Pinning LF keeps the working tree identical to the locked
+# content on every platform.
+* text=auto eol=lf
+
+# Binary — never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.hwpx binary
+*.sqlite3 binary
+*.zip binary
+*.tar.gz binary
+
+# Windows launchers must keep CRLF or cmd.exe misparses them.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
