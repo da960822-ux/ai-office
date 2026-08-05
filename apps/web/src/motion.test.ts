@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deskTargets, directionForSegment, resolveMotion, routeBetween, routeDuration, taskStateKey, taskStateToAction, targetZone, type MotionPoint } from './motion';
+import { deskTargets, directionForSegment, getStateGroup, resolveMotion, routeBetween, routeDuration, taskStateKey, taskStateToAction, targetZone, type MotionPoint } from './motion';
 
 describe('office motion follows backend execution state', () => {
   it('keeps a worker seated at the desk while executing', () => {
@@ -49,6 +49,32 @@ describe('office motion follows backend execution state', () => {
     const point: MotionPoint = {x:50, y:50, zone:'desk'};
     expect(directionForSegment(point, {x:40,y:60,zone:'desk'})).toBe('front-left');
     expect(directionForSegment(point, {x:60,y:40,zone:'desk'})).toBe('back-right');
+  });
+
+  // getStateGroup is the single mapping from a real backend task/job state
+  // (apps/api/main.py JOB_STATES/TASK_STATES) to a display group. UI display
+  // code (App.tsx stateLabel/stateIcon) must never invent 'approval'/'done'/
+  // 'reviewing' as backend states themselves - they are display-only groups
+  // produced here. This guards the UI/API state contract checked by
+  // scripts/verify_docs_consistency.py Check 3.
+  it('groups real backend states into display buckets without renaming them', () => {
+    expect(getStateGroup('awaiting_approval')).toBe('approval');
+    expect(getStateGroup('completed')).toBe('done');
+    expect(getStateGroup('verifying')).toBe('reviewing');
+    expect(getStateGroup('team_review')).toBe('reviewing');
+    expect(getStateGroup('cross_review')).toBe('reviewing');
+  });
+
+  it('groups the remaining backend states used elsewhere in the office UI', () => {
+    expect(getStateGroup('planning')).toBe('planning');
+    expect(getStateGroup('contracting')).toBe('planning');
+    expect(getStateGroup('meeting')).toBe('meeting');
+    expect(getStateGroup('failed')).toBe('blocked');
+    expect(getStateGroup('blocked')).toBe('blocked');
+    expect(getStateGroup('escalated')).toBe('blocked');
+    expect(getStateGroup('executing')).toBe('running');
+    expect(getStateGroup(null)).toBe('idle');
+    expect(getStateGroup(undefined)).toBe('idle');
   });
 
   it('gives every registered office agent a unique default desk target', () => {

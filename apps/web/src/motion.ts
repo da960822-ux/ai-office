@@ -68,8 +68,18 @@ export function targetZone(taskState: string | null | undefined, active: boolean
   return 'desk';
 }
 
-export function taskStateKey(taskState: string | null | undefined, active: boolean): AgentStateKey {
-  if (!active || !taskState || ['draft', 'cancelled'].includes(taskState)) return 'idle';
+/**
+ * Raw API task/job state (apps/api/main.py JOB_STATES/TASK_STATES) -> display
+ * group. This is the single place that maps a real backend state string to
+ * one of the eight AgentStateKey buckets UI labels/icons/CSS classes key off.
+ * Backend state strings are never invented or renamed here, only grouped for
+ * display. Pulled out of `taskStateKey` so App.tsx's label/icon lookups can
+ * consume a display group without re-deriving it from a raw state string
+ * themselves (see docs/WORK_LOG.md for the UI/API state contract bugfix this
+ * function was extracted for).
+ */
+export function getStateGroup(taskState: string | null | undefined): AgentStateKey {
+  if (!taskState) return 'idle';
   if (planningStates.has(taskState)) return 'planning';
   if (taskState === 'meeting') return 'meeting';
   if (reviewStates.has(taskState)) return taskState === 'failed' ? 'blocked' : 'reviewing';
@@ -77,6 +87,11 @@ export function taskStateKey(taskState: string | null | undefined, active: boole
   if (taskState === 'awaiting_approval') return 'approval';
   if (taskState === 'completed') return 'done';
   return 'running';
+}
+
+export function taskStateKey(taskState: string | null | undefined, active: boolean): AgentStateKey {
+  if (!active || !taskState || ['draft', 'cancelled'].includes(taskState)) return 'idle';
+  return getStateGroup(taskState);
 }
 
 export function targetLocation(input: MotionInput): MotionPoint {

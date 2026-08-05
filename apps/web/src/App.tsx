@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { api, type Employee, type JobEvent, type McpConnection, type ModelSettings, type Project, type ProviderModel, type RuntimeVersion, type Task, type UsageSummary, type Workspace } from './api';
 import { personas, type Persona } from './personas';
-import { directionForSegment, resolveMotion, routeBetween, routeDuration, type AgentAction, type AvatarDirection, type MotionPoint } from './motion';
+import { directionForSegment, resolveMotion, routeBetween, routeDuration, type AgentAction, type AgentStateKey, type AvatarDirection, type MotionPoint } from './motion';
 
 const initialAgents = ['NAVI', 'FRAME', 'BUILD', 'FRONT', 'BACK', 'TRACE', 'GUARD'];
 const leadIds = new Set(['NAVI','FRAME','BUILD','LINK','SHIP','GUARD','GROW','LENS']);
@@ -486,8 +486,14 @@ function FloorAgent({employee, active, activity, position, action, motion, selec
 
 const cameraButton:CSSProperties={border:'1px solid #d5efaf',borderRadius:5,background:'#182319dd',color:'#efffe7',padding:'4px 6px',fontSize:8};
 function agentBehavior(state:string, active:boolean){if(!active)return '자리 대기';if(['contracting','planning'].includes(state))return '계획 중';if(state==='meeting')return '회의 중';if(['verifying','failed','team_review','cross_review'].includes(state))return 'QA 검토';if(['awaiting_approval','blocked','escalated'].includes(state))return state==='blocked'?'차단':'CEO 보고';if(state==='completed')return '업무 완료';return '팀 작업 중';}
-function stateLabel(state:string){return state==='planning'?'계획 중':state==='meeting'?'회의 중':state==='reviewing'?'QA 검토':state==='blocked'?'차단':state==='approval'?'CEO 보고':state==='running'?'작업 중':state==='done'?'업무 완료':'대기';}
-function stateIcon(state:string){return state==='planning'?'▤':state==='meeting'?'◌':state==='reviewing'?'⌕':state==='blocked'?'!':state==='approval'||state==='done'?'✓':state==='running'?'◔':'';}
+// `group` here is an AgentStateKey display group from motion.getStateGroup, not
+// a raw backend task/job state string. Backend states are awaiting_approval,
+// completed, verifying/team_review/cross_review, etc. (apps/api/main.py
+// JOB_STATES/TASK_STATES) - grouping them into approval/done/reviewing for
+// display happens once, in motion.ts, so this function never re-derives a
+// display bucket from a raw state string itself.
+function stateLabel(group:AgentStateKey){return group==='planning'?'계획 중':group==='meeting'?'회의 중':group==='reviewing'?'QA 검토':group==='blocked'?'차단':group==='approval'?'CEO 보고':group==='running'?'작업 중':group==='done'?'업무 완료':'대기';}
+function stateIcon(group:AgentStateKey){return group==='planning'?'▤':group==='meeting'?'◌':group==='reviewing'?'⌕':group==='blocked'?'!':group==='approval'||group==='done'?'✓':group==='running'?'◔':'';}
 function agentRole(id:string,lead:boolean){const roles:Record<string,string>={NAVI:'CEO',FRAME:'PM',BUILD:'TECH LEAD',LINK:'AI LEAD',SHIP:'OPS LEAD',GUARD:'QA LEAD',GROW:'GROWTH LEAD',LENS:'REVIEW LEAD',MOSS:'DESIGNER',FRONT:'FRONTEND',BACK:'BACKEND',SIGNAL:'DATA',EVAL:'AI EVAL',SRE:'SRE',TRACE:'QA',SHIELD:'SECURITY',VOICE:'BRAND',PULSE:'ANALYST',DOCS:'DOCS',JOURNEY:'RESEARCH',ROUTE:'PLANNER',CLOCK:'OPS',FLOW:'UX',COST:'FINOPS'};return roles[id] ?? (lead?'TEAM LEAD':'SPECIALIST');}
 function compactText(value:string, limit:number){const text=value.replace(/[#*_`|]+/g,' ').replace(/\s+/g,' ').trim();return text.length>limit?`${text.slice(0,limit-1)}…`:text;}
 function teamStatus(id:string, task:Task|null){const count=task?.assigned_employees.filter(agentId=>teamForAgent(agentId)===id).length??0;if(!count||['completed','cancelled'].includes(task?.state??''))return '대기';if(['meeting','meeting_running'].includes(task?.state??''))return '회의 중';if(['contracting','planning','awaiting_lead_selection','awaiting_worker_selection'].includes(task?.state??''))return `실행 대기 ${count}`;if(['verifying','failed','team_review','cross_review','lead_review_running'].includes(task?.state??''))return '검토 중';if(task?.state==='awaiting_approval')return '승인 대기';if(task?.state==='blocked')return '차단';if(['running','executing'].includes(task?.state??''))return `작업 중 ${count}`;return `배정 ${count}`;}
