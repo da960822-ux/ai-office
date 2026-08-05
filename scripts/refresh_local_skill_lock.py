@@ -1,28 +1,19 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
 import yaml
 
+from skill_pool import POOL_PATH as POOL, tree_hash
+
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "registry"
-POOL = ROOT / "skills"
 
 
 def load(name: str) -> dict:
     return json.loads((REGISTRY / name).read_text(encoding="utf-8"))
-
-
-def tree_hash(path: Path) -> str:
-    digest = hashlib.sha256()
-    for file in sorted(item for item in path.rglob("*") if item.is_file()):
-        digest.update(str(file.relative_to(path)).encode())
-        digest.update(b"\0")
-        digest.update(file.read_bytes())
-    return digest.hexdigest()
 
 
 def main() -> None:
@@ -49,7 +40,7 @@ def main() -> None:
                 "commit_sha": "local",
                 "license": definition["license"],
                 "source_path": definition["source_path"],
-                "install_path": str(path.relative_to(ROOT)),
+                "install_path": path.relative_to(ROOT).as_posix(),
                 "tree_sha256": tree_hash(path),
                 "optional": False,
             }

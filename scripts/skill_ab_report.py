@@ -94,14 +94,15 @@ def build_comparisons(db: sqlite3.Connection, skill_filter: str | None, min_n: i
 
     comparisons = []
     for task_kind, kind_phases in by_kind.items():
+        phase_skill_sets = [(p, set(skill_ids_of(p))) for p in kind_phases]
         skills_in_kind: set[str] = set()
-        for p in kind_phases:
-            skills_in_kind.update(skill_ids_of(p))
+        for _, skills in phase_skill_sets:
+            skills_in_kind.update(skills)
         for skill_id in sorted(skills_in_kind):
             if skill_filter and skill_id != skill_filter:
                 continue
-            treatment_phases = [p for p in kind_phases if skill_id in skill_ids_of(p)]
-            control_phases = [p for p in kind_phases if skill_id not in skill_ids_of(p)]
+            treatment_phases = [p for p, skills in phase_skill_sets if skill_id in skills]
+            control_phases = [p for p, skills in phase_skill_sets if skill_id not in skills]
             treatment_all = {p["task_id"] for p in treatment_phases}
             control_all = {p["task_id"] for p in control_phases}
             shared = treatment_all & control_all

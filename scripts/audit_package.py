@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import json, sys, yaml, py_compile
+from skill_pool import POOL_PATH
 ROOT=Path(__file__).resolve().parents[1]
 def load(n): return json.loads((ROOT/'registry'/n).read_text(encoding='utf-8'))
 emps=load('employees.json'); binds=load('employee-skill-bindings.json'); defs=load('skill-definitions.json'); sources=load('skill-sources.json')
@@ -17,7 +18,7 @@ for e,d in emps.items():
     index=(base/'SKILL_INDEX.md').read_text(encoding='utf-8')
     for sid in binds[d['team']]['skills']:
         if sid not in defs: errors.append(f'{e}: undefined {sid}')
-        if not (ROOT/'skills'/sid/'SKILL.md').exists(): errors.append(f'{e}: bound skill is not installed {sid}')
+        if not (POOL_PATH/sid/'SKILL.md').exists(): errors.append(f'{e}: bound skill is not installed {sid}')
         if f'`{sid}`' not in index: errors.append(f'{e}: bound skill is absent from routing index {sid}')
 for sid,d in defs.items():
     if d['source'] != 'local' and d['source'] not in sources: errors.append(f'{sid}: missing source')

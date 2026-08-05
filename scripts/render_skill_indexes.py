@@ -3,9 +3,29 @@ import json
 import re
 from pathlib import Path
 
+from skill_pool import POOL_PATH
+
 ROOT = Path(__file__).resolve().parents[1]
 employees = json.loads((ROOT / "registry/employees.json").read_text(encoding="utf-8"))
 bindings = json.loads((ROOT / "registry/employee-skill-bindings.json").read_text(encoding="utf-8"))
+
+# Skill text lives once in the shared pool at repo root; only _local-role-core stays
+# inside the employee folder, and it is deliberately not indexed here. Parse each
+# SKILL.md once and reuse the result for every employee instead of re-walking the
+# pool per employee.
+skill_cache = {}
+for path in sorted(POOL_PATH.glob("*/SKILL.md")):
+    text = path.read_text(encoding="utf-8", errors="replace")
+    title = next(
+        (re.sub(r"^#\s*", "", line).strip() for line in text.splitlines() if line.startswith("#")),
+        path.parent.name,
+    )
+    summary = " ".join(
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not line.startswith("#")
+    )[:240].rstrip()
+    skill_cache[path.parent.name] = (title, summary)
 
 for employee_id, employee in employees.items():
     base = ROOT / employee["profile_path"].rsplit("/", 1)[0]
@@ -16,22 +36,11 @@ for employee_id, employee in employees.items():
     # delivers it, so listing it here would only invite a pick that 403s.
     selectable = set(bindings[employee["team"]]["skills"])
     rows = []
-    # Skill text lives once in the shared pool at repo root; only _local-role-core stays
-    # inside the employee folder, and it is deliberately not indexed here.
-    for path in sorted((ROOT / "skills").glob("*/SKILL.md")):
-        if path.parent.name not in selectable:
+    for skill_id in sorted(skill_cache):
+        if skill_id not in selectable:
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        title = next(
-            (re.sub(r"^#\s*", "", line).strip() for line in text.splitlines() if line.startswith("#")),
-            path.parent.name,
-        )
-        summary = " ".join(
-            line.strip()
-            for line in text.splitlines()
-            if line.strip() and not line.startswith("#")
-        )[:240].rstrip()
-        rows.append(f"- `{path.parent.name}`: {title} — {summary}")
+        title, summary = skill_cache[skill_id]
+        rows.append(f"- `{skill_id}`: {title} — {summary}")
     (base / "SKILL_INDEX.md").write_text(
         "# Skill Routing Index\n\n"
         "라우터는 작업 요약만 읽고, 선택된 작업에 해당하는 SKILL.md만 로드한다.\n\n"

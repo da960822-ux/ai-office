@@ -9,7 +9,7 @@
       "license": "MIT",
       "source_path": "skills/ab-testing",
       "install_path": "skills/ab-testing",
-      "tree_sha256": "8bb3ed6a5d1f987ba1460a3a2c6cfc879c3d624ba16fa87890891f0237a4b048",
+      "tree_sha256": "a697a5550a5239730f3dc1adcd69cce8ec877acfbbd8c9fc99fe5b7fe2eb9aeb",
       "optional": false
     },
     "analytics": {
@@ -20,7 +20,7 @@
       "license": "MIT",
       "source_path": "skills/analytics",
       "install_path": "skills/analytics",
-      "tree_sha256": "97d754f94add0e6b6ebb7f71547d89bd3b6a58aa7c320d10ff4f9037995361c0",
+      "tree_sha256": "696579bcdd7f256985be230bb4d31d9cc9d764905bc798eb200c0a35c9ff9c6c",
       "optional": false
     },
     "api-and-interface-design": {
@@ -42,7 +42,7 @@
       "license": "MIT",
       "source_path": "plugins/backend-development/skills/architecture-patterns",
       "install_path": "skills/architecture-patterns",
-      "tree_sha256": "b1f621570595d9bd40a5532368ec5ef80848c84dbcb6e8649d8460ba92dbc69d",
+      "tree_sha256": "059218e5839dafbef733c7de956b8a94e585848a2ae9f1efbddae8d7b4e6cf40",
       "optional": false
     },
     "auth-implementation-patterns": {
@@ -53,7 +53,7 @@
       "license": "MIT",
       "source_path": "plugins/developer-essentials/skills/auth-implementation-patterns",
       "install_path": "skills/auth-implementation-patterns",
-      "tree_sha256": "aa2a3a55531a7fdc839aa3de618a81bcc62c961de150f080c6e8a1c7d2ea2d98",
+      "tree_sha256": "aac36f157de69db3c74e385db6bfc9804279b3bd36f1781c36c2b9f3d6adefdb",
       "optional": false
     },
     "brand-voice-analyzer": {
@@ -64,7 +64,7 @@
       "license": "MIT",
       "source_path": "brand-voice-analyzer",
       "install_path": "skills/brand-voice-analyzer",
-      "tree_sha256": "dfd282d2101d2cd707be297971d9b44db6e7807b7eedc8930312da98bfa5e523",
+      "tree_sha256": "891f8b11f2d92fff57db67c566b08892b01fc67f3aa33fd0ac5a91a443e6e091",
       "optional": false
     },
     "browser-testing-with-devtools": {
@@ -86,7 +86,7 @@
       "license": "MIT",
       "source_path": "skills/churn-prevention",
       "install_path": "skills/churn-prevention",
-      "tree_sha256": "c7c16040236f9bbabb0679c719ea5cce00320160a8c3ea628f278a784d0880f4",
+      "tree_sha256": "33cece05f77895ec3e6484554d3c9e6f693dace51e8a8dda9185cf90a681d305",
       "optional": false
     },
     "ci-cd-and-automation": {
@@ -141,7 +141,7 @@
       "license": "MIT",
       "source_path": "skills/copywriting",
       "install_path": "skills/copywriting",
-      "tree_sha256": "98d64344d902644e9c25980b17288476cb19222333271c1fc426b310619ef12a",
+      "tree_sha256": "4de9755b714b75de34c5aa4e5b66e31be9f26c8913eb366bb380e1671998afdb",
       "optional": false
     },
     "cost-optimization": {
@@ -152,7 +152,7 @@
       "license": "MIT",
       "source_path": "plugins/cloud-infrastructure/skills/cost-optimization",
       "install_path": "skills/cost-optimization",
-      "tree_sha256": "eee5fa11ec47718508211a78605ef061caec334a54c10e0cd59a89a99efab82a",
+      "tree_sha256": "fefd43640a8dac5b741b486a23aaec3b555ce621ea276fe8084fef8ad0f26c51",
       "optional": false
     },
     "cro": {
@@ -163,7 +163,7 @@
       "license": "MIT",
       "source_path": "skills/cro",
       "install_path": "skills/cro",
-      "tree_sha256": "703958c642640e7c4a7e2e49900afea82974856a7fe0a18c7bae5328aa86a28d",
+      "tree_sha256": "c58366fd17a842216841157af25b3a7a88d994b161cd0fbb2849c97c58c56586",
       "optional": false
     },
     "customer-research": {
@@ -174,7 +174,7 @@
       "license": "MIT",
       "source_path": "skills/customer-research",
       "install_path": "skills/customer-research",
-      "tree_sha256": "30f933eb3186480eb2d1b8f35cd0fa70b64a6551ee2a5737875e2cf1c1c6d0c2",
+      "tree_sha256": "51d4f47fc6fb963b5ee2229e516cd5ad16b512a68a5d6ba474cc3bb3b688e932",
       "optional": false
     },
     "customer-support-operations": {
@@ -184,8 +184,8 @@
       "commit_sha": "local",
       "license": "Proprietary",
       "source_path": "skills/customer-support-operations",
-      "install_path": "skills\\customer-support-operations",
-      "tree_sha256": "241992377926e1068490861058fb4ddd9f85327d470b7a574f97e1c3a04015c0",
+      "install_path": "skills/customer-support-operations",
+      "tree_sha256": "fd5b3c4d743ad53a7efbb52f8a21b61de75420d8d48d44fc3309ef01e9ba189f",
       "optional": false
     },
     "deployment-pipeline-design": {
@@ -196,7 +196,7 @@
       "license": "MIT",
       "source_path": "plugins/cicd-automation/skills/deployment-pipeline-design",
       "install_path": "skills/deployment-pipeline-design",
-      "tree_sha256": "c9d22265ced3f92567ec02bb303a31a5ecd497c4add05d199c488422dd2d9e47",
+      "tree_sha256": "4cac781d49835fbba0b0129b0657e78e46724c0e80fe16ef2014fb0c1d2ac0e9",
       "optional": false
     },
     "design-first-ui-prompting": {
@@ -207,7 +207,7 @@
       "license": "MIT",
       "source_path": "agent-skills/ui/design-first-ui-prompting",
       "install_path": "skills/design-first-ui-prompting",
-      "tree_sha256": "0aca0037b76648c79e34a5a1b6f0fe7fb871efa5f287bae3e59325ef4501bafb",
+      "tree_sha256": "ae59ad6c2869e9c92106e25772e19b4eea9cb67a43ef3f9d7af7e1bafbc08b9a",
       "optional": false
     },
     "dispatching-parallel-agents": {
@@ -229,7 +229,7 @@
       "license": "MIT",
       "source_path": "plugins/observability-monitoring/skills/distributed-tracing",
       "install_path": "skills/distributed-tracing",
-      "tree_sha256": "3bddf58ee5f3d21d65b8d703fa8c522765a41691709e8aa4c149bd453c29961c",
+      "tree_sha256": "187c55156d548559064954511cc9bc80a075e782850b7e96ebcd86b282044822",
       "optional": false
     },
     "document-artifact-production": {
@@ -239,8 +239,8 @@
       "commit_sha": "local",
       "license": "Proprietary",
       "source_path": "skills/document-artifact-production",
-      "install_path": "skills\\document-artifact-production",
-      "tree_sha256": "32d4147b5ddca9df53f09383eace43c84fbd21b734b3e2d714fdd5cee67064e1",
+      "install_path": "skills/document-artifact-production",
+      "tree_sha256": "b80d26c1d9938bfe95f342b2ffb4d6bd8e6dd2153e4d0d558e3401b39c4fd49b",
       "optional": false
     },
     "documentation-and-adrs": {
@@ -273,7 +273,7 @@
       "license": "MIT",
       "source_path": "plugins/developer-essentials/skills/e2e-testing-patterns",
       "install_path": "skills/e2e-testing-patterns",
-      "tree_sha256": "1f269321ea503171241afaa24767a038c4abd6aa50ffbe45c0eb6a43a063b395",
+      "tree_sha256": "3ee256062c1722c3a704bd03127f83c3fb814ed4c0c236caf9c716eec1722e9d",
       "optional": false
     },
     "embedding-strategies": {
@@ -284,7 +284,7 @@
       "license": "MIT",
       "source_path": "plugins/llm-application-dev/skills/embedding-strategies",
       "install_path": "skills/embedding-strategies",
-      "tree_sha256": "5d04bfc25b6b700e3e5d6e2eb27b15cddf408595bbd71d10c13368abd5f91f4c",
+      "tree_sha256": "463e4464cb395ff37e8caec68b01922a476dd9a61b57fae89dac27e11c7943e1",
       "optional": false
     },
     "error-handling-patterns": {
@@ -295,7 +295,7 @@
       "license": "MIT",
       "source_path": "plugins/developer-essentials/skills/error-handling-patterns",
       "install_path": "skills/error-handling-patterns",
-      "tree_sha256": "1a9ba19409b1c41370acbcca5374f693e6674ebf9cde3949164e2ef05af941bf",
+      "tree_sha256": "4569da2e7be1e9f22f566a3ecf3e1793441b1fa6e9e603fe506e45400cd25ca9",
       "optional": false
     },
     "executing-plans": {
@@ -350,7 +350,7 @@
       "license": "MIT",
       "source_path": "plugins/hr-legal-compliance/skills/gdpr-data-handling",
       "install_path": "skills/gdpr-data-handling",
-      "tree_sha256": "4c97bfd556f91cfc9b9133fe0073865cb9f4b08d3477e515610955d6342f5d83",
+      "tree_sha256": "54476d30f5d86f6f42125b9f3fa2e675b1ce4c6729163deaa9b92e47274761a0",
       "optional": false
     },
     "git-workflow-and-versioning": {
@@ -383,7 +383,7 @@
       "license": "MIT",
       "source_path": "plugins/kubernetes-operations/skills/gitops-workflow",
       "install_path": "skills/gitops-workflow",
-      "tree_sha256": "b3aa72ef46dcb456552116dce74d5b1ba2062c7ebd3354bee88385aa020e2eff",
+      "tree_sha256": "a4a75dbb6d2dd9fa2040791e93c5e799c087630fdee7981e5f0904d41325857a",
       "optional": false
     },
     "gsap-performance": {
@@ -416,7 +416,7 @@
       "license": "MIT",
       "source_path": "plugins/kubernetes-operations/skills/helm-chart-scaffolding",
       "install_path": "skills/helm-chart-scaffolding",
-      "tree_sha256": "a0cf7836265fba5d068f9906f4077ad802c2a89f82a3cf1ffff97b042ae1d4fb",
+      "tree_sha256": "108dd7698020f7b49f05528e7203bc88a44c420107f20376753bdc5a355c9615",
       "optional": false
     },
     "humanizer": {
@@ -438,7 +438,7 @@
       "license": "MIT",
       "source_path": "plugins/llm-application-dev/skills/hybrid-search-implementation",
       "install_path": "skills/hybrid-search-implementation",
-      "tree_sha256": "201a6b92d939373ca00baba3ff5f8476de8965e2f79d4b8686ee60c0b53ed116",
+      "tree_sha256": "ff97b5fc4b00c6f5bb48528d28dbf5190012fa5aed0bfa5c0c66cb5550168b71",
       "optional": false
     },
     "impeccable": {
@@ -449,7 +449,7 @@
       "license": "Apache-2.0",
       "source_path": ".agents/skills/impeccable",
       "install_path": "skills/impeccable",
-      "tree_sha256": "cea2d7344b8162ebe54d4d1d834749fade9867515ccd1f584261fce1b842d2d6",
+      "tree_sha256": "c86233bec3fdcf5cac943309c1df7ef6c2bae63b44837bd485452d5900b5a554",
       "optional": false
     },
     "incident-runbook-templates": {
@@ -460,7 +460,7 @@
       "license": "MIT",
       "source_path": "plugins/incident-response/skills/incident-runbook-templates",
       "install_path": "skills/incident-runbook-templates",
-      "tree_sha256": "ec3e6cc82e71ed1c38a7e190bc50aa759ba889f601981b150601e3c889f5f63a",
+      "tree_sha256": "e478c82fba85e819c196c54baf57000fc9bb8fc38a445cbcf03603bb45e07e7d",
       "optional": false
     },
     "incremental-implementation": {
@@ -482,7 +482,7 @@
       "license": "MIT",
       "source_path": "plugins/kubernetes-operations/skills/k8s-manifest-generator",
       "install_path": "skills/k8s-manifest-generator",
-      "tree_sha256": "28c55f3b3067f7b53be9f78144998e7416c1901d55314166ae054cd57ab6bf42",
+      "tree_sha256": "464591e447cf820945f1d360be81ceedfb05f5969f773b32c9e0c17c2b85216b",
       "optional": false
     },
     "launch": {
@@ -493,7 +493,7 @@
       "license": "MIT",
       "source_path": "skills/launch",
       "install_path": "skills/launch",
-      "tree_sha256": "d94797eef417feb2c635875876723bf951db9a670c28bc3ff56c210a07d2b7c5",
+      "tree_sha256": "5b18bce75c34c1a7898418b448a039b63e2be01ed66b39a4a5492d9d545b57e0",
       "optional": false
     },
     "legal-compliance-check": {
@@ -537,7 +537,7 @@
       "license": "MIT",
       "source_path": "plugins/llm-application-dev/skills/llm-evaluation",
       "install_path": "skills/llm-evaluation",
-      "tree_sha256": "d242e6b2b4e4e608a08c658d8a27726401c7a0850698de6bf405331ab9f52db9",
+      "tree_sha256": "c58440687cb114e10a53e55a309a7d7008a807d15dc2e3a62ce5cb9c31b1f757",
       "optional": false
     },
     "multi-cloud-architecture": {
@@ -548,7 +548,7 @@
       "license": "MIT",
       "source_path": "plugins/cloud-infrastructure/skills/multi-cloud-architecture",
       "install_path": "skills/multi-cloud-architecture",
-      "tree_sha256": "5539ced7d69d9823d9805de7a13edad81b2b9a20d79ab7023f7f85c9edb9b889",
+      "tree_sha256": "e4756a07f1fa0eb094808c9bb2e55348c46536a35eea635fde5658909e52b20f",
       "optional": false
     },
     "observability-and-instrumentation": {
@@ -570,7 +570,7 @@
       "license": "MIT",
       "source_path": "plugins/incident-response/skills/on-call-handoff-patterns",
       "install_path": "skills/on-call-handoff-patterns",
-      "tree_sha256": "65fbd330c11dbddeef6a92ef11a1c0899339a0ad4d8f075c765aa2cb8925adc5",
+      "tree_sha256": "7e8a980b42f2c720117a36da10d3af431a8b5bba52de75e67616be72c381fe92",
       "optional": false
     },
     "onboarding": {
@@ -581,7 +581,7 @@
       "license": "MIT",
       "source_path": "skills/onboarding",
       "install_path": "skills/onboarding",
-      "tree_sha256": "dab3220a5b8554753284f882763d78a71f3a282f3e3661f415e45cfdfc368463",
+      "tree_sha256": "34f5e9df522fb847d603724337495bfb30f7688ba7b4eb3bc7d8501c52ddd9b6",
       "optional": false
     },
     "openapi-spec-generation": {
@@ -592,7 +592,7 @@
       "license": "MIT",
       "source_path": "plugins/documentation-generation/skills/openapi-spec-generation",
       "install_path": "skills/openapi-spec-generation",
-      "tree_sha256": "9d7b365128c1afd35ff8bb367b1e9289bf75c2bcc15b5d794a00c2383b996387",
+      "tree_sha256": "9600700c675e9b7a21b219b746b4e69b5ce9d2448c2821a2344f1456a53e004c",
       "optional": false
     },
     "performance-optimization": {
@@ -614,7 +614,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/utility-pm-critic",
       "install_path": "skills/pm-critic",
-      "tree_sha256": "c6301610b405c09097c6aff3b73bcc3f8821638f02e3b3457a56d3a650b55030",
+      "tree_sha256": "fb97c5a9822e447369b4c37622a414cc825f3a207c4198c2a2bfdadf9c575b2a",
       "optional": false
     },
     "pm-define-hypothesis": {
@@ -625,7 +625,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/define-hypothesis",
       "install_path": "skills/pm-define-hypothesis",
-      "tree_sha256": "26f0db759eb1cf715b306bdf8b3620bf7858a9eb76a040a16d0b7c98de5ff103",
+      "tree_sha256": "cb9a8abf3913fef97e3a93039af86c99340580e141ac93e4ef67b99f5f4a36f9",
       "optional": false
     },
     "pm-define-jtbd-canvas": {
@@ -636,7 +636,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/define-jtbd-canvas",
       "install_path": "skills/pm-define-jtbd-canvas",
-      "tree_sha256": "db8e2bbcfce49e1a9ad9ba24e54a2ad1f4e4e0a7bca0ac7c7d4d90dc502e5d33",
+      "tree_sha256": "e4e58ac50e404927115993515f147101bcbb96f057521514ba4feceb5a3c4790",
       "optional": false
     },
     "pm-define-prioritization-framework": {
@@ -647,7 +647,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/define-prioritization-framework",
       "install_path": "skills/pm-define-prioritization-framework",
-      "tree_sha256": "a57ea01b6d469db838a1344b056ea8a5b2555db1a2dec737388d4a3e9ba15da0",
+      "tree_sha256": "0a72402d52bb191d4244b2252793ca7c22c41f5e4a63651b77bfbc96ba8c0999",
       "optional": false
     },
     "pm-define-problem-statement": {
@@ -658,7 +658,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/define-problem-statement",
       "install_path": "skills/pm-define-problem-statement",
-      "tree_sha256": "4a372be90cc2fb70df7781ebf4fe50bc8c0de7302cee4761ccceb665346d2f97",
+      "tree_sha256": "5bb9aaa552e7a0a9f019ddf605d1869bff05fa5a80b86605f1f72853b1936b09",
       "optional": false
     },
     "pm-deliver-acceptance-criteria": {
@@ -669,7 +669,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/deliver-acceptance-criteria",
       "install_path": "skills/pm-deliver-acceptance-criteria",
-      "tree_sha256": "6ce70dc5b1f893935a4b4db0332a249aa102d30ffe9a2a56acba391536869cd8",
+      "tree_sha256": "efa93adf0328cae5996abd38aa96cd4de20ff7421c8f29b471aab042d51abf86",
       "optional": false
     },
     "pm-deliver-launch-checklist": {
@@ -680,7 +680,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/deliver-launch-checklist",
       "install_path": "skills/pm-deliver-launch-checklist",
-      "tree_sha256": "92f4fb63e232e0501bf2cda8a1f25436abc6ebe02c6a970002176719510057ab",
+      "tree_sha256": "9da6491ae2758003783ae210b45530b0cd01efde03d05f60b7d2f3e6124ab6ca",
       "optional": false
     },
     "pm-deliver-prd": {
@@ -691,7 +691,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/deliver-prd",
       "install_path": "skills/pm-deliver-prd",
-      "tree_sha256": "e22ac23392a7fff864cc86885b8ee4557d9109f499dc8c6c8e5a3f80bfdcfc64",
+      "tree_sha256": "969a7a3a21aeddaaa64e8985432de8226360dffb2a21f0dd8417fc67295ca9ac",
       "optional": false
     },
     "pm-deliver-user-stories": {
@@ -702,7 +702,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/deliver-user-stories",
       "install_path": "skills/pm-deliver-user-stories",
-      "tree_sha256": "9d382f8a6a53d78e8c9877fcc83636593a20ef11c06636d7fb145e8ec0172a00",
+      "tree_sha256": "9223e505fbf578f603947e5c9935e45b9b27e25bb26f1a3968aa72f715fd02aa",
       "optional": false
     },
     "pm-develop-solution-brief": {
@@ -713,7 +713,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/develop-solution-brief",
       "install_path": "skills/pm-develop-solution-brief",
-      "tree_sha256": "268f17ac860af3545592529cbe70cb0abff228807a2e356a218e835616afba1b",
+      "tree_sha256": "8df629ad56f9e68f11c84ec6c90ffcafe211eca591fac4d31c63984586feebf6",
       "optional": false
     },
     "pm-discover-competitive-analysis": {
@@ -724,7 +724,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/discover-competitive-analysis",
       "install_path": "skills/pm-discover-competitive-analysis",
-      "tree_sha256": "2017448807192f8aff0683da02e21725142deebfa58352038e9ff916573030dc",
+      "tree_sha256": "78e0a24eb4f66ea144ae50b0c70361f9b6c14b2982be37e15b65ccddf708f228",
       "optional": false
     },
     "pm-discover-interview-synthesis": {
@@ -735,7 +735,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/discover-interview-synthesis",
       "install_path": "skills/pm-discover-interview-synthesis",
-      "tree_sha256": "a88daa4a1eb0d2d6badba401d69fe612f1bcd897cae0ab9d773c240c5a0cb9b5",
+      "tree_sha256": "8cceddd06bc0cc1600339689cec4b97661085163995f68671f36bef2a6768e95",
       "optional": false
     },
     "pm-discover-market-sizing": {
@@ -746,7 +746,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/discover-market-sizing",
       "install_path": "skills/pm-discover-market-sizing",
-      "tree_sha256": "9950057f33fecb6afac071475e40fab7470de13545769e78157d87e820aa4bf1",
+      "tree_sha256": "e46e3562f1a56dbb9c79075dc6472d750bfd82de9ffaad931350bf36ebf2afc8",
       "optional": false
     },
     "pm-foundation-lean-canvas": {
@@ -757,7 +757,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/foundation-lean-canvas",
       "install_path": "skills/pm-foundation-lean-canvas",
-      "tree_sha256": "0b2354aaa059defa2007fdbe14c6ea15a0bb02ae276f48910f3b93e0047a82ae",
+      "tree_sha256": "8ee49f3e49083a563b9020412db36ed3b63c69858653263fffd591959e267093",
       "optional": false
     },
     "pm-foundation-meeting-synthesize": {
@@ -768,7 +768,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/foundation-meeting-synthesize",
       "install_path": "skills/pm-foundation-meeting-synthesize",
-      "tree_sha256": "bee3643eee76741312274f0503edf9e1a2b6f04a064de917adde83a73eae83f4",
+      "tree_sha256": "580688e1b8a71b6b8d159c63c98dfef7f23f1d90df4c44bc72d65ba873c1f0c7",
       "optional": false
     },
     "pm-measure-experiment-design": {
@@ -779,7 +779,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/measure-experiment-design",
       "install_path": "skills/pm-measure-experiment-design",
-      "tree_sha256": "ca8aeece92545501b40207824abca6f5b2c5d015bd038254e6fbd599d7f9804a",
+      "tree_sha256": "2604814c072dac717809b4eab01f0e20bb677a4ed3b6241a447e2dcb331145af",
       "optional": false
     },
     "pm-measure-experiment-results": {
@@ -790,7 +790,7 @@
       "license": "Apache-2.0",
       "source_path": "skills/measure-experiment-results",
       "install_path": "skills/pm-measure-experiment-results",
-      "tree_sha256": "d11dde32c61bf9973067760fc61cde80c608453cd3c0e773a4a2a0e30b568021",
+      "tree_sha256": "8acea684fc3fb642859deeaf0f84ec3f1e6b163be0746b8a1762a96fc3f643dd",
       "optional": false
     },
     "postmortem-writing": {
@@ -801,7 +801,7 @@
       "license": "MIT",
       "source_path": "plugins/incident-response/skills/postmortem-writing",
       "install_path": "skills/postmortem-writing",
-      "tree_sha256": "4872ed2e4e522bd44df05294c2a957e059ce6de9fea81bda73fa42c9626f8675",
+      "tree_sha256": "d1384af98112f43e6b9bed3346148f449e58dd99108583a7198a218b7a87c5db",
       "optional": false
     },
     "product-marketing": {
@@ -812,7 +812,7 @@
       "license": "MIT",
       "source_path": "skills/product-marketing",
       "install_path": "skills/product-marketing",
-      "tree_sha256": "7234435fb001bb36e7c8fd4bb74aae08f9f25708080e45d80cec5bd1159df264",
+      "tree_sha256": "b714fe308babf2273fb61eccf28dae595dce30c2fd622716da5d3612630fe9a7",
       "optional": false
     },
     "prometheus-configuration": {
@@ -823,7 +823,7 @@
       "license": "MIT",
       "source_path": "plugins/observability-monitoring/skills/prometheus-configuration",
       "install_path": "skills/prometheus-configuration",
-      "tree_sha256": "2f08cbe20f072c926001360ba8a7f4e268f9c75d60ffe2fefdd68ae9bf552740",
+      "tree_sha256": "b901995971aa3e34e9f18186bd175490000fabcc3ec1184d345e03714f90e47d",
       "optional": false
     },
     "prompt-engineering-patterns": {
@@ -834,7 +834,7 @@
       "license": "MIT",
       "source_path": "plugins/llm-application-dev/skills/prompt-engineering-patterns",
       "install_path": "skills/prompt-engineering-patterns",
-      "tree_sha256": "40d78e2b444e9e909d220f240fe06b9adca1711fc8aff008a9c2844512da4774",
+      "tree_sha256": "ad2da937f06e172299dbef0c5a653f5ecdd2fd854c843785e5a6e8e501aa4eb5",
       "optional": false
     },
     "rag-implementation": {
@@ -845,7 +845,7 @@
       "license": "MIT",
       "source_path": "plugins/llm-application-dev/skills/rag-implementation",
       "install_path": "skills/rag-implementation",
-      "tree_sha256": "b8942839342d4233a604c7b155c1b9d942480f69d52bb472d6a291c901860bbf",
+      "tree_sha256": "25c3c817bbe631fe52623ffbbd7ce5227a8fcb0c376806f99e42577841fc72d7",
       "optional": false
     },
     "receiving-code-review": {
@@ -878,7 +878,7 @@
       "license": "MIT",
       "source_path": "skills/sales-enablement",
       "install_path": "skills/sales-enablement",
-      "tree_sha256": "6e6bc28cb4a768b3eb5532fbbb880c63aaf282e6f5a4a1fcf25517a6ce5b5bfb",
+      "tree_sha256": "f04058efcfe59848ae81ef3cdb80070b92080731c08b5a61d96561fc6a2ce2a9",
       "optional": false
     },
     "sales-operations": {
@@ -888,8 +888,8 @@
       "commit_sha": "local",
       "license": "Proprietary",
       "source_path": "skills/sales-operations",
-      "install_path": "skills\\sales-operations",
-      "tree_sha256": "34a5d69c899cc010811675e7cc82713bd4ae8b0aa5f9d9e19e91dc419418a020",
+      "install_path": "skills/sales-operations",
+      "tree_sha256": "6c8b06638a79460537561fd4e6799c3728e0792a2d0626a2950f3b61d6d61302",
       "optional": false
     },
     "sast-configuration": {
@@ -944,7 +944,7 @@
       "license": "MIT",
       "source_path": "plugins/security-scanning/skills/security-requirement-extraction",
       "install_path": "skills/security-requirement-extraction",
-      "tree_sha256": "71776a90e4ce4b06d9a261a8eaec7aa547104414062756cab6b60afb8c68742c",
+      "tree_sha256": "bd82f71319c48ec8b03db5025e9764c0f28d8a9843ec5a05c38bc25ec660b501",
       "optional": false
     },
     "seo-audit": {
@@ -955,7 +955,7 @@
       "license": "MIT",
       "source_path": "skills/seo-audit",
       "install_path": "skills/seo-audit",
-      "tree_sha256": "e8b31a2fb141184b2d2dc670358e40766ca07f3dacec487f06d388dca819a877",
+      "tree_sha256": "4e72a56e1a1b59427466f8486bc1d733681fbe707f88dafb95037a3b4e5dcece",
       "optional": false
     },
     "shipping-and-launch": {
@@ -977,7 +977,7 @@
       "license": "MIT",
       "source_path": "plugins/observability-monitoring/skills/slo-implementation",
       "install_path": "skills/slo-implementation",
-      "tree_sha256": "15194f8820a4e8b7b8a29289639afb7a837f59619b9bb70fb0915c6c8a8811c8",
+      "tree_sha256": "7d9a072dcd549919f779fa445d2d4bbfb973337d9b4a8ea0f5f6aca9e93226ba",
       "optional": false
     },
     "spec-driven-development": {
@@ -999,7 +999,7 @@
       "license": "MIT",
       "source_path": "plugins/developer-essentials/skills/sql-optimization-patterns",
       "install_path": "skills/sql-optimization-patterns",
-      "tree_sha256": "87f15f206266287acf24686ec2b5c0610dba1a5ab779f301617846a0ddd7c498",
+      "tree_sha256": "b86082214d8f03d4befc64018c5fc57a21ebde5c632f9e4694ea77da6e9c15b0",
       "optional": false
     },
     "startup-metrics-framework": {
@@ -1021,7 +1021,7 @@
       "license": "MIT",
       "source_path": "plugins/security-scanning/skills/stride-analysis-patterns",
       "install_path": "skills/stride-analysis-patterns",
-      "tree_sha256": "4bfc7261efaa271519bc59d6a5a3de1f3def0713a0542ae3f8187edbc617a6d9",
+      "tree_sha256": "5407f61eaff92f8c0b55acd87e5d1761c3e5aae6952efb587a136393dce7e33a",
       "optional": false
     },
     "subagent-driven-development": {
@@ -1032,7 +1032,7 @@
       "license": "MIT",
       "source_path": "skills/subagent-driven-development",
       "install_path": "skills/subagent-driven-development",
-      "tree_sha256": "637e918e8ad5997dc31609c2f7f8850f22a5a6614333a0aec9dd1e7c905455a0",
+      "tree_sha256": "4274ee37779c91b156e738bbec7fd02bdc282330336c9cf76c6ea4a4a7e18c5d",
       "optional": false
     },
     "systematic-debugging": {
@@ -1054,7 +1054,7 @@
       "license": "MIT",
       "source_path": "plugins/cloud-infrastructure/skills/terraform-module-library",
       "install_path": "skills/terraform-module-library",
-      "tree_sha256": "af51a905af9b4d61b868bd8de62bcc3fde7e4f3cd101cba1656cf188b23cd44a",
+      "tree_sha256": "795fde798d403edb8035b7f37cdc391b004d151b93af3bccee1cae79bbd34232",
       "optional": false
     },
     "test-driven-development": {
@@ -1120,7 +1120,7 @@
       "license": "MIT",
       "source_path": "skills/writing-skills",
       "install_path": "skills/writing-skills",
-      "tree_sha256": "5fcd438f1c8c1413b910d1bd631851e7527fe90e92bd321a80a64b67667508c2",
+      "tree_sha256": "3da1f3ff885a41a2536447cce8691d144ea7945dc56ea809b4277750d3e378b4",
       "optional": false
     }
   }

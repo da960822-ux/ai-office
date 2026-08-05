@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, hashlib, json
+import argparse, json
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]; REG=ROOT/'registry'; POOL=ROOT/'skills'
+from skill_pool import POOL_PATH as POOL, tree_hash
+ROOT=Path(__file__).resolve().parents[1]; REG=ROOT/'registry'
 def load(n): return json.loads((REG/n).read_text(encoding='utf-8'))
-def tree_hash(path):
-    h=hashlib.sha256()
-    for f in sorted(x for x in path.rglob('*') if x.is_file()):
-        h.update(str(f.relative_to(path)).encode()); h.update(b'\0'); h.update(f.read_bytes())
-    return h.hexdigest()
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--employee',default='ALL'); ap.add_argument('--include-optional',action='store_true'); a=ap.parse_args()
     emps=load('employees.json'); binds=load('employee-skill-bindings.json'); lock=load('skills.lock.json')['installed']

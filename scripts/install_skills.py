@@ -6,17 +6,13 @@ how many employees are bound to it. Resolved commit SHA and tree hashes are writ
 registry/skills.lock.json, keyed by skill id.
 """
 from __future__ import annotations
-import argparse, hashlib, io, json, os, shutil, subprocess, sys, tempfile, urllib.request, zipfile
+import argparse, io, json, os, shutil, subprocess, sys, tempfile, urllib.request, zipfile
 from pathlib import Path
+from skill_pool import POOL_PATH, tree_hash
 ROOT=Path(__file__).resolve().parents[1]
 REG=ROOT/'registry'
 
 def load(name): return json.loads((REG/name).read_text(encoding='utf-8'))
-def tree_hash(path):
-    h=hashlib.sha256()
-    for f in sorted(x for x in path.rglob('*') if x.is_file()):
-        h.update(str(f.relative_to(path)).encode()); h.update(b'\0'); h.update(f.read_bytes())
-    return h.hexdigest()
 def api_json(url):
     req=urllib.request.Request(url,headers={'User-Agent':'Corporate-OS-v6.2-skill-installer','Accept':'application/vnd.github+json'})
     with urllib.request.urlopen(req,timeout=30) as r: return json.load(r)
@@ -114,7 +110,7 @@ def main():
         else:
             print(f'[LICENSE-MISSING] {src["repo"]}: manual review required',file=sys.stderr)
     lock=load('skills.lock.json')
-    pool=ROOT/'skills'; pool.mkdir(exist_ok=True)
+    pool=POOL_PATH; pool.mkdir(exist_ok=True)
     for sid in requested:
         meta=defs[sid]; source_id=meta['source']; is_optional=False
         dst=pool/sid
@@ -126,19 +122,13 @@ def main():
                 print(f'[DRY] {src} -> {dst}'); continue
             if not src.exists():
                 print(f'[MISSING-LOCAL] {sid}: {src}',file=sys.stderr); continue
-            if src.resolve() != dst.resolve():
-                if dst.exists(): shutil.rmtree(dst)
-                if meta.get('single_file'):
-                    dst.mkdir(parents=True); shutil.copy2(src,dst/'SKILL.md')
-                else:
-                    shutil.copytree(src,dst)
             entry=dst/meta.get('entry','SKILL.md')
             if not entry.exists():
                 print(f'[INVALID] {sid}: SKILL.md not found after copy',file=sys.stderr); continue
             lock['installed'][sid]={
                 'skill_id':sid,'source_id':'local','repo':None,'commit_sha':None,
                 'license':meta.get('license'),'source_path':meta['source_path'],
-                'install_path':str(dst.relative_to(ROOT)),'tree_sha256':tree_hash(dst),'optional':is_optional
+                'install_path':dst.relative_to(ROOT).as_posix(),'tree_sha256':tree_hash(dst),'optional':is_optional
             }
             print('[INSTALLED]',sid)
             continue
@@ -159,7 +149,7 @@ def main():
         lock['installed'][sid]={
             'skill_id':sid,'source_id':source_id,'repo':source_locks[source_id]['repo'],
             'commit_sha':source_locks[source_id]['commit_sha'],'license':source_locks[source_id]['license'],
-            'source_path':meta['source_path'],'install_path':str(dst.relative_to(ROOT)),
+            'source_path':meta['source_path'],'install_path':dst.relative_to(ROOT).as_posix(),
             'tree_sha256':tree_hash(dst),'optional':is_optional
         }
         print('[INSTALLED]',sid)
