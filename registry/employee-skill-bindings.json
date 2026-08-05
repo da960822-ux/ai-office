@@ -1,304 +1,180 @@
 {
-  "NAVI": {
-    "required": [
-      "using-agent-skills",
-      "planning-and-task-breakdown",
-      "executing-plans"
-    ],
-    "optional": []
-  },
-  "ROUTE": {
-    "required": [
-      "planning-and-task-breakdown",
+  "operations-planning": {
+    "skills": [
       "dispatching-parallel-agents",
-      "git-workflow-and-versioning"
-    ],
-    "optional": ["using-git-worktrees"]
-  },
-  "CLOCK": {
-    "required": [
-      "observability-and-instrumentation",
-      "debugging-and-error-recovery"
-    ],
-    "optional": []
-  },
-  "FRAME": {
-    "required": [
+      "executing-plans",
       "planning-and-task-breakdown",
-      "writing-plans"
-    ],
-    "optional": [
-      "pm-deliver-prd",
-      "pm-develop-solution-brief",
-      "pm-foundation-lean-canvas",
-      "pm-foundation-meeting-synthesize",
-      "pm-deliver-user-stories",
-      "pm-define-problem-statement",
+      "using-agent-skills"
+    ]
+  },
+  "product-experience": {
+    "skills": [
+      "customer-research",
+      "design-first-ui-prompting",
+      "humanizer",
+      "impeccable",
       "pm-define-hypothesis",
       "pm-define-prioritization-framework",
-      "spec-driven-development"
+      "pm-define-problem-statement",
+      "pm-deliver-prd",
+      "pm-deliver-user-stories",
+      "pm-develop-solution-brief",
+      "pm-foundation-lean-canvas",
+      "ui-ux-pro-max"
     ]
   },
-  "FLOW": {
-    "required": [
-      "source-driven-development",
-      "customer-research"
-    ],
-    "optional": [
-      "pm-deliver-user-stories"
-    ]
-  },
-  "MOSS": {
-    "required": [
-      "ui-ux-pro-max",
-      "design-first-ui-prompting"
-    ],
-    "optional": [
-      "impeccable",
-      "humanizer"
-    ]
-  },
-  "BUILD": {
-    "required": [
-      "incremental-implementation",
-      "code-simplification",
-      "code-review-and-quality",
-      "git-workflow-and-versioning"
-    ],
-    "optional": [
-      "documentation-and-adrs",
-      "spec-driven-development",
-      "architecture-patterns",
-      "performance-optimization"
-    ]
-  },
-  "FRONT": {
-    "required": [
-      "frontend-ui-engineering",
-      "browser-testing-with-devtools"
-    ],
-    "optional": [
-      "ui-ux-pro-max",
-      "gsap-react",
-      "gsap-performance",
-      "performance-optimization"
-    ]
-  },
-  "BACK": {
-    "required": [
+  "application": {
+    "skills": [
       "api-and-interface-design",
-      "auth-implementation-patterns",
-      "sql-optimization-patterns",
-      "security-and-hardening"
-    ],
-    "optional": [
       "architecture-patterns",
+      "auth-implementation-patterns",
+      "browser-testing-with-devtools",
+      "code-review-and-quality",
+      "code-simplification",
+      "debugging-and-error-recovery",
+      "debugging-strategies",
+      "documentation-and-adrs",
+      "error-handling-patterns",
+      "executing-plans",
+      "frontend-ui-engineering",
+      "git-workflow-and-versioning",
+      "gsap-performance",
+      "gsap-react",
+      "incremental-implementation",
       "openapi-spec-generation",
-      "distributed-tracing"
+      "performance-optimization",
+      "planning-and-task-breakdown",
+      "security-and-hardening",
+      "source-driven-development",
+      "spec-driven-development",
+      "sql-optimization-patterns",
+      "systematic-debugging",
+      "test-driven-development",
+      "ui-ux-pro-max",
+      "using-git-worktrees",
+      "verification-before-completion",
+      "writing-plans"
     ]
   },
-  "LINK": {
-    "required": [
-      "prompt-engineering-patterns",
-      "llm-evaluation",
-      "rag-implementation"
-    ],
-    "optional": ["context-engineering"]
-  },
-  "SIGNAL": {
-    "required": [
+  "ai-data": {
+    "skills": [
+      "context-engineering",
+      "doubt-driven-development",
       "embedding-strategies",
       "hybrid-search-implementation",
-      "rag-implementation",
-      "sql-optimization-patterns"
-    ],
-    "optional": ["context-engineering"]
-  },
-  "EVAL": {
-    "required": [
       "llm-evaluation",
-      "doubt-driven-development",
-      "verification-before-completion",
-      "security-and-hardening"
-    ],
-    "optional": []
-  },
-  "SHIP": {
-    "required": [
-      "ci-cd-and-automation",
-      "shipping-and-launch",
-      "git-workflow-and-versioning",
+      "prompt-engineering-patterns",
+      "rag-implementation",
+      "security-and-hardening",
+      "sql-optimization-patterns",
       "verification-before-completion"
-    ],
-    "optional": [
-      "deployment-pipeline-design",
-      "github-actions-templates",
-      "secrets-management",
-      "terraform-module-library",
-      "multi-cloud-architecture",
-      "k8s-manifest-generator",
-      "helm-chart-scaffolding",
-      "gitops-workflow",
-      "pm-deliver-launch-checklist"
     ]
   },
-  "SRE": {
-    "required": [
-      "observability-and-instrumentation",
-      "systematic-debugging",
-      "ci-cd-and-automation"
-    ],
-    "optional": [
+  "platform-reliability": {
+    "skills": [
+      "ci-cd-and-automation",
+      "cost-optimization",
       "debugging-and-error-recovery",
+      "deployment-pipeline-design",
       "distributed-tracing",
-      "prometheus-configuration",
-      "slo-implementation",
+      "git-workflow-and-versioning",
+      "github-actions-templates",
+      "gitops-workflow",
+      "helm-chart-scaffolding",
       "incident-runbook-templates",
+      "k8s-manifest-generator",
+      "multi-cloud-architecture",
+      "observability-and-instrumentation",
       "on-call-handoff-patterns",
       "postmortem-writing",
-      "gitops-workflow"
-    ]
-  },
-  "COST": {
-    "required": [
-      "observability-and-instrumentation"
-    ],
-    "optional": [
-      "cost-optimization",
-      "finance-unit-economics",
-      "finance-driver-based-model"
-    ]
-  },
-  "GUARD": {
-    "required": [
-      "code-review-and-quality",
-      "verification-before-completion",
-      "security-and-hardening"
-    ],
-    "optional": [
-      "code-review-excellence",
-      "sast-configuration",
-      "security-requirement-extraction",
-      "stride-analysis-patterns",
-      "legal-compliance-check",
-      "legal-risk-assessment"
-    ]
-  },
-  "TRACE": {
-    "required": [
-      "test-driven-development",
+      "prometheus-configuration",
+      "secrets-management",
+      "shipping-and-launch",
+      "slo-implementation",
       "systematic-debugging",
-      "e2e-testing-patterns",
+      "terraform-module-library",
       "verification-before-completion"
-    ],
-    "optional": ["screen-reader-testing"]
+    ]
   },
-  "SHIELD": {
-    "required": [
-      "security-and-hardening",
+  "quality-security": {
+    "skills": [
       "auth-implementation-patterns",
-      "doubt-driven-development"
-    ],
-    "optional": [
+      "code-review-and-quality",
+      "code-review-excellence",
+      "e2e-testing-patterns",
       "gdpr-data-handling",
+      "legal-compliance-check",
+      "legal-risk-assessment",
       "sast-configuration",
+      "screen-reader-testing",
+      "secrets-management",
+      "security-and-hardening",
       "security-requirement-extraction",
       "stride-analysis-patterns",
-      "secrets-management"
+      "systematic-debugging",
+      "test-driven-development",
+      "verification-before-completion"
     ]
   },
-  "GROW": {
-    "required": [
-      "product-marketing",
-      "customer-research"
-    ],
-    "optional": [
-      "launch",
-      "pm-discover-market-sizing",
-      "pm-discover-competitive-analysis",
-      "competitor-profiling",
-      "marketing-plan",
-      "pricing",
-      "pm-discover-interview-synthesis",
-      "pm-define-jtbd-canvas",
-      "community-marketing",
+  "growth-marketing": {
+    "skills": [
+      "ab-testing",
+      "ads",
+      "analytics",
+      "aso",
+      "attribution",
+      "brand-consistency-checker",
+      "brand-voice-analyzer",
+      "churn-prevention",
       "co-marketing",
-      "sales-enablement",
-      "sales-operations",
-      "pm-deliver-launch-checklist"
-    ]
-  },
-  "VOICE": {
-    "required": [
-      "copywriting",
-      "humanizer",
-      "product-marketing"
-    ],
-    "optional": [
+      "cold-email",
+      "community-marketing",
+      "competitor-profiling",
+      "content-repurposer",
       "content-strategy",
       "copy-editing",
-      "emails",
-      "cold-email",
-      "social",
-      "brand-voice-analyzer",
-      "brand-consistency-checker",
-      "content-repurposer"
-    ]
-  },
-  "PULSE": {
-    "required": [
-      "analytics"
-    ],
-    "optional": [
-      "ab-testing",
-      "cro",
-      "seo-audit",
-      "attribution",
-      "ads",
-      "aso",
-      "programmatic-seo",
-      "churn-prevention",
-      "referrals",
-      "startup-metrics-framework",
-      "pm-measure-experiment-design",
-      "pm-measure-experiment-results"
-    ]
-  },
-  "LENS": {
-    "required": [
-      "code-review-and-quality",
-      "verification-before-completion"
-    ],
-    "optional": [
-      "pm-critic",
-      "pm-deliver-acceptance-criteria",
-      "legal-contract-review",
-      "churn-prevention"
-    ]
-  },
-  "JOURNEY": {
-    "required": [
+      "copywriting",
       "cro",
       "customer-research",
-      "onboarding"
-    ],
-    "optional": [
-      "churn-prevention",
+      "emails",
+      "humanizer",
+      "launch",
+      "marketing-plan",
+      "pm-define-jtbd-canvas",
+      "pm-deliver-launch-checklist",
+      "pm-discover-competitive-analysis",
       "pm-discover-interview-synthesis",
-      "customer-support-operations"
+      "pm-discover-market-sizing",
+      "pm-measure-experiment-design",
+      "pm-measure-experiment-results",
+      "pricing",
+      "product-marketing",
+      "programmatic-seo",
+      "referrals",
+      "sales-enablement",
+      "sales-operations",
+      "seo-audit",
+      "social",
+      "startup-metrics-framework"
     ]
   },
-  "DOCS": {
-    "required": [
-      "document-artifact-production"
-    ],
-    "optional": [
+  "service-knowledge": {
+    "skills": [
+      "churn-prevention",
+      "customer-research",
+      "customer-support-operations",
+      "document-artifact-production",
       "documentation-and-adrs",
-      "openapi-spec-generation",
-      "legal-contract-review",
       "incident-runbook-templates",
+      "legal-contract-review",
+      "onboarding",
+      "openapi-spec-generation",
+      "pm-critic",
+      "pm-deliver-acceptance-criteria",
+      "pm-discover-interview-synthesis",
       "postmortem-writing",
-      "sales-enablement"
+      "sales-enablement",
+      "verification-before-completion"
     ]
   }
 }

@@ -73,8 +73,7 @@ def agent_brief(task_id: str) -> dict:
         try:
             response = main.model_client().responses.create(model=main.model_assignment("NAVI")["model"], instructions=instructions, input=input_text)
         except Exception as error:
-            now = main.utc_now()
-            db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, main.model_assignment("NAVI")["model"], 0, 0, 0, str(error), now))
+            main.record_usage(db, task_id, main.model_assignment("NAVI")["model"], error=str(error))
             raise HTTPException(502, "Model call failed; see local model_usage log") from error
         usage = getattr(response, "usage", None)
         input_tokens = getattr(usage, "input_tokens", 0) if usage else 0
@@ -82,7 +81,7 @@ def agent_brief(task_id: str) -> dict:
         text = response.output_text
         now = main.utc_now()
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, "NAVI", "brief", text, now))
-        db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, main.model_assignment("NAVI")["model"], input_tokens, output_tokens, 0, None, now))
+        main.record_usage(db, task_id, main.model_assignment("NAVI")["model"], input_tokens, output_tokens)
         db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "agent_brief", task["state"], task["state"], "NAVI", "CEO briefing generated", json.dumps(["NAVI"]), now))
         return {"employee_id": "NAVI", "content": text, "model": main.model_assignment("NAVI")["model"], "input_tokens": input_tokens, "output_tokens": output_tokens}
 
@@ -246,7 +245,7 @@ def plan(task_id: str) -> dict:
             items = [(leader, f"{leader} team scope, delegation, and acceptance plan") for leader in roster]
             selection_reason, selection_usage = f"Model selection failed; used deterministic fallback: {error}", None
             if main.model_key():
-                db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, main.model_assignment("NAVI")["model"], 0, 0, 0, str(error), main.utc_now()))
+                main.record_usage(db, task_id, main.model_assignment("NAVI")["model"], error=str(error))
         main.require_skill_ready(roster, task["request"])
         now = main.utc_now()
         execution_plan = selection_usage.get("plan") if selection_usage and selection_usage.get("plan") else main.fallback_execution_plan(roster, items)
@@ -261,7 +260,7 @@ def plan(task_id: str) -> dict:
         db.execute("UPDATE tasks SET state = 'planning', updated_at = ? WHERE id = ?", (now, task_id))
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, "NAVI", "dispatch", selection_reason, now))
         if selection_usage:
-            db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, selection_usage["model"], selection_usage["input_tokens"], selection_usage["output_tokens"], 0, None, now))
+            main.record_usage(db, task_id, selection_usage["model"], selection_usage["input_tokens"], selection_usage["output_tokens"])
         db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "plan", task["state"], "planning", "NAVI", selection_reason, json.dumps(roster), now))
         return main.task_payload(db, task_id)
 
@@ -477,12 +476,12 @@ def run_meeting(task_id: str, meeting_id: str) -> dict:
                 content = response.output_text.strip()
                 usage = getattr(response, "usage", None)
                 db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, employee_id, "meeting", content, main.utc_now()))
-                db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, meeting_model, getattr(usage, "input_tokens", 0) if usage else 0, getattr(usage, "output_tokens", 0) if usage else 0, 0, None, main.utc_now()))
+                main.record_usage(db, task_id, meeting_model, getattr(usage, "input_tokens", 0) if usage else 0, getattr(usage, "output_tokens", 0) if usage else 0)
                 transcript.append(f"{employee_id}: {content}")
         except HTTPException:
             raise
         except Exception as error:
-            db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (task_id, settings["lead_model"], 0, 0, 0, str(error), main.utc_now()))
+            main.record_usage(db, task_id, settings["lead_model"], error=str(error))
             raise HTTPException(502, "Meeting model run failed; see local model_usage log") from error
         now = main.utc_now()
         db.execute("UPDATE meetings SET status = ?, decisions = ? WHERE id = ?", ("concluded", json.dumps(["Transcript recorded. Review evidence before execution."], ensure_ascii=False), meeting_id))

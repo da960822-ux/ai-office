@@ -173,7 +173,12 @@ class WorkflowAcceptanceTests(unittest.TestCase):
         self.assertEqual(task_error.exception.status_code, 403)
         context = main.employee_skill_context("GROW", "시장 조사와 경쟁사 검증", selected_skill_ids=[])
         self.assertEqual(context["profile_skill_ids"], [])
-        self.assertEqual(context["required_skills"], [])
+        # Selecting nothing still delivers the role core - this system's own operating
+        # manual - and nothing else. No task skill, least of all a UI one, may leak in.
+        self.assertEqual(
+            [skill["id"] for skill in context["required_skills"]],
+            [main.ROLE_CORE_SKILL_ID],
+        )
 
     def test_additional_user_instruction_is_durable_and_consumed_once(self):
         task_id, _ = self.create_task("기존 계획을 유지하면서 가격 검증도 추가한다")

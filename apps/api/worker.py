@@ -10,6 +10,7 @@ import os
 import sqlite3
 import subprocess
 import time
+import traceback
 from datetime import timedelta
 from multiprocessing import Process
 from threading import Event, Thread
@@ -236,6 +237,38 @@ def recover_orphaned_jobs() -> None:
             )
             main.emit_job_event(db, row["task_id"], "job.interrupted", "worker 재시작으로 현재 모델 호출을 중단했습니다. 재시도해야 합니다.", job_id=row["id"])
 
+def schedule_lead_selection() -> None:
+    """Auto-approve NAVI's proposed leads so awaiting_lead_selection doesn't need a human click.
+    Mirrors task_routes.select_leads, minus the CEO's ability to drop a proposed lead."""
+    with main.database() as db:
+        rows = db.execute("SELECT id FROM tasks WHERE state = 'awaiting_lead_selection'").fetchall()
+        for row in rows:
+            task = main.task_payload(db, row["id"])
+            if any(job["state"] in {"queued", "running", "pause_requested"} for job in task["jobs"]):
+                continue
+            selected = [employee for employee in task["assigned_employees"] if employee in main.LEAD_IDS and employee != "NAVI"]
+            if not selected:
+                db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("blocked", main.utc_now(), task["id"]))
+                main.emit_job_event(db, task["id"], "delegation.blocked", "제안된 팀장 후보가 없습니다.")
+                continue
+            now = main.utc_now()
+            meeting_id = f"MEET-{task['id'].split('-')[-1]}-LEADS"
+            participants = ["NAVI", *selected]
+            db.execute("DELETE FROM task_assignments WHERE task_id = ?", (task["id"],))
+            db.executemany("INSERT INTO task_assignments VALUES (?, ?)", [(task["id"], employee) for employee in selected])
+            db.execute(
+                "INSERT OR REPLACE INTO meetings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (meeting_id, task["id"], "lead_dispatch", "NAVI-led: selected department leads decide scope, risks, worker delegation", json.dumps(participants), json.dumps(["scope", "risk", "worker roles", "acceptance"]), json.dumps([]), "active", now),
+            )
+            db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", ("meeting_running", now, task["id"]))
+            meeting_job = main.enqueue_job(db, task["id"], "meeting", {"meeting_id": meeting_id, "participants": participants})
+            db.execute(
+                "INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (task["id"], "lead_selection", task["state"], "meeting_running", "NAVI", "제안된 팀장 후보 전원 자동 승인; 자율 회의 시작", json.dumps(participants), now),
+            )
+            main.emit_job_event(db, task["id"], "meeting.queued", "팀장 후보를 자동 승인해 회의 Job을 시작했습니다.", job_id=meeting_job["id"], agent_id="NAVI", payload={"participants": participants})
+
+
 def schedule_autonomous_tasks() -> None:
     """After user approves lead candidates, remaining delegation/execution is autonomous."""
     with main.database() as db:
@@ -317,7 +350,8 @@ def claim_job() -> dict | None:
 def set_job(job: dict, state: str, summary: str, error: str | None = None) -> None:
     with main.database() as db:
         now = main.utc_now()
-        db.execute("UPDATE jobs SET state = ?, error = ?, heartbeat_at = ?, updated_at = ? WHERE id = ?", (state, error, now, now, job["id"]))
+        error_class = main.classify_error(error) if state == "failed" else None
+        db.execute("UPDATE jobs SET state = ?, error = ?, error_class = ?, heartbeat_at = ?, updated_at = ? WHERE id = ?", (state, error, error_class, now, now, job["id"]))
         db.execute("DELETE FROM job_leases WHERE job_id = ?", (job["id"],))
         main.emit_job_event(db, job["task_id"], f"job.{state}", summary, job_id=job["id"])
 
@@ -381,7 +415,7 @@ def process_plan(job: dict) -> None:
         db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (next_state, main.utc_now(), job["task_id"]))
         db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (job["task_id"], task.get("lead_id") or "NAVI", "dispatch", reason, main.utc_now()))
         if usage:
-            db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (job["task_id"], usage["model"], usage["input_tokens"], usage["output_tokens"], 0, None, main.utc_now()))
+            main.record_usage(db, job["task_id"], usage["model"], usage["input_tokens"], usage["output_tokens"])
         record_step(db, job, 2, "route", "succeeded", reason)
         main.emit_job_event(db, job["task_id"], "agent.completed", "팀장 후보와 업무 분해 생성", job_id=job["id"], agent_id=task.get("lead_id") or "NAVI", payload={"leads": roster})
 
@@ -421,7 +455,7 @@ def process_meeting(job: dict) -> None:
         current_plan = task.get("execution_plan", {}).get("plan") if task.get("execution_plan") else {}
         lead_phase = next((phase for phase in current_plan.get("phases", []) if phase.get("lead_id") == employee), None)
         phase_task_kind = (lead_phase or {}).get("task_kind") or (
-            main.default_task_kind(main.registry()[employee]["team"]) if employee != "NAVI" else "general"
+            main.default_task_kind(main.registry()[employee]["team"], employee) if employee != "NAVI" else "general"
         )
         skill_context = main.employee_skill_context(
             employee,
@@ -431,7 +465,6 @@ def process_meeting(job: dict) -> None:
         ) if selected_skill_ids else {"required_skills": []}
         if available:
             boundary = main.department_policy(employee)
-            bindings = json.loads(main.SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))
             instructions = (
                 f"You are {employee}, {role['title']}. Discuss the actual task and delegate only necessary workers. "
                 f"Your department owns: {boundary.get('owns', [])}. "
@@ -453,7 +486,7 @@ def process_meeting(job: dict) -> None:
             "prior": transcript,
             "selected_skill_instructions": skill_context["required_skills"],
             "available_workers": [
-                {"id": worker_id, "title": title, "skills": bindings[worker_id]["required"] + bindings[worker_id]["optional"]}
+                {"id": worker_id, "title": title, "skills": main.employee_skill_pool(worker_id)}
                 for worker_id, title in available
             ] if available else [],
         }, ensure_ascii=False))
@@ -468,7 +501,7 @@ def process_meeting(job: dict) -> None:
                     worker_id = assignment.get("worker_id")
                     description = str(assignment.get("description") or "").strip()
                     if worker_id in allowed and description:
-                        bound = set(bindings[worker_id]["required"] + bindings[worker_id]["optional"])
+                        bound = set(main.employee_skill_pool(worker_id))
                         skill_ids = [skill for skill in assignment.get("skill_ids", []) if skill in bound][:3]
                         try:
                             skill_ids = main.validate_selected_skills(
@@ -508,7 +541,7 @@ def process_meeting(job: dict) -> None:
         with main.database() as db:
             db.execute("UPDATE agent_runs SET state = 'succeeded', finished_at = ?, summary = ? WHERE id = ?", (main.utc_now(), content[:2000], run_id))
             db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (job["task_id"], employee, "meeting", content, main.utc_now()))
-            db.execute("INSERT INTO model_usage (task_id, model, input_tokens, output_tokens, cost_usd, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (job["task_id"], model, getattr(usage, "input_tokens", 0) if usage else 0, getattr(usage, "output_tokens", 0) if usage else 0, 0, None, main.utc_now()))
+            main.record_usage(db, job["task_id"], model, getattr(usage, "input_tokens", 0) if usage else 0, getattr(usage, "output_tokens", 0) if usage else 0)
             record_step(db, job, index, "meeting_speaker", "succeeded", content)
             main.emit_job_event(db, job["task_id"], "meeting.message", content, job_id=job["id"], agent_id=employee, payload={"zone": "meeting", "action": "meeting"})
         transcript.append(f"{employee}: {content}")
@@ -553,7 +586,7 @@ def process_meeting(job: dict) -> None:
                 {
                     "phase_id": f"meeting-lead-{index}",
                     "worker_id": lead,
-                    "task_kind": main.default_task_kind(main.registry()[lead]["team"]),
+                    "task_kind": main.default_task_kind(main.registry()[lead]["team"], lead),
                     "description": f"{lead} 팀장 직접 재검토 범위",
                     "skill_ids": [],
                     "deliverable": "검증 가능한 부서 초안",
@@ -852,7 +885,7 @@ def process_synthesize(job: dict) -> None:
     final_scope = next((item for item in task.get("agent_scopes", []) if item["employee_id"] == lead), None)
     final_skill_ids = final_scope.get("skill_ids", []) if final_scope else []
     final_phase = next((phase for phase in task.get("phases", []) if phase["owner_id"] == lead), None)
-    final_task_kind = (final_phase or {}).get("task_kind") or main.default_task_kind(main.registry()[lead]["team"])
+    final_task_kind = (final_phase or {}).get("task_kind") or main.default_task_kind(main.registry()[lead]["team"], lead)
     final_skill_context = main.employee_skill_context(
         lead,
         task["request"],
@@ -1117,6 +1150,17 @@ def worker_loop() -> None:
             time.sleep(0.5)
 
 
+EVENT_CLEANUP_INTERVAL_SECONDS = 6 * 3600
+
+
+def cleanup_old_job_events() -> None:
+    with main.database() as db:
+        deleted = main.purge_old_job_events(db)
+        if deleted:
+            db.commit()  # VACUUM cannot run inside the implicit transaction the DELETE opened
+            db.execute("VACUUM")
+
+
 def main_loop() -> None:
     main.init_db()
     recover_orphaned_jobs()
@@ -1127,11 +1171,23 @@ def main_loop() -> None:
     ]
     for thread in workers:
         thread.start()
+    last_cleanup = 0.0
     while True:
-        heartbeat()
-        reconcile_failed_jobs()
-        schedule_autonomous_tasks()
-        schedule_ready_phase_jobs()
+        try:
+            heartbeat()
+            reconcile_failed_jobs()
+            schedule_lead_selection()
+            schedule_autonomous_tasks()
+            schedule_ready_phase_jobs()
+            if time.monotonic() - last_cleanup >= EVENT_CLEANUP_INTERVAL_SECONDS:
+                cleanup_old_job_events()
+                last_cleanup = time.monotonic()
+        except Exception:
+            # ponytail: dispatcher loop must outlive one bad tick (e.g. check_budget
+            # raising HTTPException via enqueue_job, or VACUUM hitting a lock).
+            # Per-job failures already isolate in process(); this is the same
+            # guarantee one level up so the whole worker can't die on a scheduling tick.
+            traceback.print_exc()
         time.sleep(0.5)
 
 

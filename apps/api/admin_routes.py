@@ -143,7 +143,7 @@ def agent_capabilities(employee_id: str) -> dict:
         raise HTTPException(404, "Employee not found")
     employee = main.registry()[employee_id]
     security = main.employee_security(employee_id)
-    return {"employee": {"id": employee_id} | employee | {"agent_role": main.agent_role(employee_id), "model_assignment": main.model_assignment(employee_id)}, "permissions": security["permissions"], "skills": security["skills"], "optional_skills": json.loads(main.SKILL_BINDINGS_PATH.read_text(encoding="utf-8"))[employee_id]["optional"]}
+    return {"employee": {"id": employee_id} | employee | {"agent_role": main.agent_role(employee_id), "model_assignment": main.model_assignment(employee_id)}, "permissions": security["permissions"], "skills": security["skills"], "team_skills": main.employee_skill_pool(employee_id)}
 
 
 @router.get("/api/teams/{team_id}/capabilities")

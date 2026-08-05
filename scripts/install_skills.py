@@ -77,10 +77,8 @@ def main():
     selected=list(emps) if args.employee.upper()=='ALL' else [args.employee.upper()]
     missing=[e for e in selected if e not in emps]
     if missing: raise SystemExit(f'Unknown employee: {missing}')
-    requested=[]
-    for e in selected:
-        requested += [(e,s,False) for s in binds[e]['required']]
-        if args.include_optional: requested += [(e,s,True) for s in binds[e]['optional']]
+    # Skills are bound per department, not per employee -- every teammate gets the whole pool.
+    requested=[(e,s,False) for e in selected for s in binds[emps[e]['team']]['skills']]
     needed_sources=sorted({defs[s]['source'] for _,s,_ in requested if defs[s]['source'] != 'local'})
     default_cache=ROOT/'.cache'/'skill-repos'
     if os.name == 'nt' and len(str(default_cache)) > 80:
@@ -117,6 +115,29 @@ def main():
     for emp,sid,is_optional in requested:
         meta=defs[sid]; source_id=meta['source']
         if source_id == 'local':
+            # Proprietary, authored inside one employee's own folder -- copy it to teammates too
+            # now that skills are pooled per department instead of owned by one person.
+            src=ROOT/meta['source_path']
+            dst=ROOT/emps[emp]['profile_path'].rsplit('/',1)[0]/'skills'/sid
+            if args.dry_run:
+                print(f'[DRY] {emp}: {src} -> {dst}'); continue
+            if not src.exists():
+                print(f'[MISSING-LOCAL] {sid}: {src}',file=sys.stderr); continue
+            if src.resolve() != dst.resolve():
+                if dst.exists(): shutil.rmtree(dst)
+                if meta.get('single_file'):
+                    dst.mkdir(parents=True); shutil.copy2(src,dst/'SKILL.md')
+                else:
+                    shutil.copytree(src,dst)
+            entry=dst/meta.get('entry','SKILL.md')
+            if not entry.exists():
+                print(f'[INVALID] {sid}: SKILL.md not found after copy',file=sys.stderr); continue
+            lock['installed'][f'{emp}:{sid}']={
+                'employee':emp,'skill_id':sid,'source_id':'local','repo':None,'commit_sha':None,
+                'license':meta.get('license'),'source_path':meta['source_path'],
+                'install_path':str(dst.relative_to(ROOT)),'tree_sha256':tree_hash(dst),'optional':is_optional
+            }
+            print('[INSTALLED]',emp,sid)
             continue
         if source_id not in repo_roots: continue
         src=repo_roots[source_id]/meta['source_path']
