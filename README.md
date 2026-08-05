@@ -1,5 +1,11 @@
 # AI Office — Corporate OS v6.2
 
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-async%20worker-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-Vite%20%2B%20TS-61DAFB?logo=react&logoColor=black)
+![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)
+
 전문 스킬을 가진 24명의 AI 직원이 **팀 단위로 실제 로컬 프로젝트를 조사·수정·검증**하는 로컬 실행 시스템입니다. 역할극 채팅이 아니라, 모델 호출·도구 호출·파일 변경·명령 실행·증거 수집이 모두 SQLite에 기록되고 UI에 그대로 투영됩니다.
 
 - **단일 사용자·로컬 전용**: 브라우저는 모델을 직접 호출하지 않습니다. FastAPI가 Job을 큐에 넣고 별도 worker 프로세스가 실행합니다.
@@ -7,6 +13,26 @@
 - **권한은 계약으로 제한**: 파일 경로·명령·MCP 도구는 TaskContract의 allow/ask/deny 규칙 안에서만 동작합니다.
 
 이 프로젝트가 **하지 않는 것**: 멀티테넌트 SaaS, 자동 배포, 승인 없는 외부 전송·게시, 스킬 자동 다운로드, 무제한 자율 실행.
+
+## 왜 만들었나 — 풀어야 했던 엔지니어링 문제
+
+LLM 멀티 에이전트 데모 대부분은 "채팅창에 역할극"에서 멈춥니다. 이 프로젝트는 그 다음 단계, 즉 **에이전트가 실제로 파일을 건드리는 순간부터 생기는 문제**를 다룹니다.
+
+| 문제 | 이 저장소의 해법 |
+|---|---|
+| 에이전트가 "다했다"고 말해도 실제로는 안 됐을 때 | Task는 실제 파일 hash·검증 명령 종료 코드·독립 리뷰 통과 3가지가 모두 있어야 `completed`로 전이 (`apps/api/main.py`) |
+| worker 프로세스가 죽으면 Job이 영원히 `running`으로 남는 문제 | SQLite 원자적 lease + heartbeat. lease 만료된 Job은 재시작 시 자동으로 `interrupted`, 재시도는 이미 성공한 `agent_run`을 건너뜀 |
+| 에이전트에게 파일 접근·명령 실행 권한을 얼마나 줄지 | TaskContract가 요청 단위로 `allowed_paths`/`allowed_commands`/`permission_rules`를 발급. `ask` 등급은 HTTP 428로 멈추고 사용자 승인을 기다림 |
+| 24명·8부서 규모에서 "누가 이 일을 할지" 정적 매핑이 깨지는 문제 | 하드코딩된 라우팅 표 없음. 매 요청마다 모델이 `department-boundaries.json` + 가용 인력·스킬을 함께 보고 동적으로 배정 |
+| API와 worker가 다른 버전으로 떠 있을 때 생기는 조용한 실패 | `/api/runtime/version`에서 build id·schema version을 대조해 불일치 시 UI 실행 버튼을 하드 차단 |
+
+규모: FastAPI + worker 약 7.8k LOC(Python), React/Vite/TS UI 약 1.2k LOC, 자동 테스트 31건(`apps/api/test_*.py`) + 정적 정합성 검사 스크립트 3종.
+
+## 스택
+
+**Backend** Python 3.12 · FastAPI · SQLite(WAL) · OpenRouter API · ripgrep(코드 검색) · Pyright(선택)
+**Frontend** React · Vite · TypeScript · Server-Sent Events
+**인프라** 단일 프로세스가 아닌 다중 worker 프로세스, Git worktree 기반 작업 격리, OS keyring 기반 시크릿 저장
 
 ## 목차
 
@@ -256,9 +282,9 @@ npm.cmd run build
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 실행 구성, task/job 분리, 영속성, 권한 |
 | [docs/RUNTIME_HARDENING.md](docs/RUNTIME_HARDENING.md) | 현재 런타임 동작 사실 |
 | [docs/RUNTIME_ROADMAP.md](docs/RUNTIME_ROADMAP.md) | P0/P1 완료 항목, P2 수용 harness 계획 |
-| [docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md](docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) | 제품 파이프라인 구현 지침 (신규 작업 1순위) |
-| [docs/VIBEOFFICE_GAP_ANALYSIS.md](docs/VIBEOFFICE_GAP_ANALYSIS.md) | 구현됨 / 부분 / 미구현 목록 |
-| [docs/CONVERSATIONAL_AGENT_TARGET.md](docs/CONVERSATIONAL_AGENT_TARGET.md) | 대화형 지시 + 자율 실행 목표와 설계안 |
+| [reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md](reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) | 제품 파이프라인 구현 지침 (신규 작업 1순위) |
+| [reference/legacy/VIBEOFFICE_GAP_ANALYSIS.md](reference/legacy/VIBEOFFICE_GAP_ANALYSIS.md) | 구현됨 / 부분 / 미구현 목록 |
+| [reference/legacy/CONVERSATIONAL_AGENT_TARGET.md](reference/legacy/CONVERSATIONAL_AGENT_TARGET.md) | 대화형 지시 + 자율 실행 목표와 설계안 |
 | [reference/README.md](reference/README.md) | 참고 자료·보관 산출물 규칙 |
 | [reference/corporate-os/](reference/corporate-os/) | Corporate OS v6.2 원본 명세 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 변경 원칙과 필수 검증 |
@@ -270,10 +296,10 @@ npm.cmd run build
 다음 목표는 초보 사용자의 아이디어를 **기획 → 디자인 → 기술설계 → 개발 → QA → 출고** 순서로 처리해 Codex·Claude Code가 이어받을 수 있는 H4 등급 프로젝트 폴더를 만드는 제품 파이프라인입니다.
 
 - 목표 명세: [reference/product-context/](reference/product-context/)
-- 현재 격차: [docs/VIBEOFFICE_GAP_ANALYSIS.md](docs/VIBEOFFICE_GAP_ANALYSIS.md) — 실행 계층은 충족, 제품 계층(Blueprint·산출물 버전·handoff 계약·준비도·Export)은 미구현
-- 구현 순서와 게이트: [docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md](docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md)
+- 현재 격차: [reference/legacy/VIBEOFFICE_GAP_ANALYSIS.md](reference/legacy/VIBEOFFICE_GAP_ANALYSIS.md) — 실행 계층은 충족, 제품 계층(Blueprint·산출물 버전·handoff 계약·준비도·Export)은 미구현
+- 구현 순서와 게이트: [reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md](reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md)
 
-또 하나의 목표는 **대화형 지시 + 자율 실행**입니다. 지금은 팀장·실행자를 사용자가 직접 고르고 단계별 버튼으로 진행하지만, 목표는 기존 AI 채팅처럼 한 창에서 말하면 오피스가 접수·계획·실행·검증·보고까지 스스로 진행하고 사람은 대화로만 개입하는 것입니다. 파괴적·외부 전송·비용·배포 행동의 명시 승인은 자율성 레벨과 무관하게 유지합니다. 설계안: [docs/CONVERSATIONAL_AGENT_TARGET.md](docs/CONVERSATIONAL_AGENT_TARGET.md)
+또 하나의 목표는 **대화형 지시 + 자율 실행**입니다. 지금은 팀장·실행자를 사용자가 직접 고르고 단계별 버튼으로 진행하지만, 목표는 기존 AI 채팅처럼 한 창에서 말하면 오피스가 접수·계획·실행·검증·보고까지 스스로 진행하고 사람은 대화로만 개입하는 것입니다. 파괴적·외부 전송·비용·배포 행동의 명시 승인은 자율성 레벨과 무관하게 유지합니다. 설계안: [reference/legacy/CONVERSATIONAL_AGENT_TARGET.md](reference/legacy/CONVERSATIONAL_AGENT_TARGET.md)
 
 런타임 쪽 남은 경계: 바이너리 `.hwp` 직접 작성 불가(표준 `.hwpx`로 생성·검증), Python 외 언어의 의미 진단은 해당 LSP 설치 시에만 지원.
 
