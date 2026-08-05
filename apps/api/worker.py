@@ -167,15 +167,6 @@ def queue_ready_agent_jobs(db: sqlite3.Connection, task: dict) -> list[dict]:
         )
     return jobs
 
-def team_worker_candidates(lead_ids: list[str], include_lead: bool = False) -> list[tuple[str, str]]:
-    people = main.registry()
-    teams = {people[lead]["team"] for lead in lead_ids if lead in people}
-    candidates = [(employee_id, f"{people[employee_id]['title']} · 팀장 제안 실행자") for employee_id in people if people[employee_id]["team"] in teams and employee_id not in main.LEAD_IDS]
-    if include_lead:
-        candidates = [(lead, "팀장 직접 실행 · 별도 팀장 리뷰 필수") for lead in lead_ids] + candidates
-    return candidates
-
-
 def worker_candidates_for_lead(lead_id: str, request: str = "") -> list[tuple[str, str]]:
     people = main.registry()
     if lead_id not in people:

@@ -617,17 +617,6 @@ def workspace_files(workspace: Path, limit: int = 160) -> list[str]:
     return result
 
 
-def safe_workspace_file(workspace: Path, relative_path: str, allowed_paths: list[str]) -> Path:
-    candidate = (workspace / relative_path).resolve()
-    if not candidate.is_relative_to(workspace):
-        raise HTTPException(403, "Agent file path escapes workspace")
-    normalized = str(candidate.relative_to(workspace)).replace("\\", "/")
-    permitted = any(item == "." or normalized == item.strip("/") or normalized.startswith(item.strip("/") + "/") for item in allowed_paths)
-    if not permitted:
-        raise HTTPException(403, "Agent file path is outside TaskContract allowed_paths")
-    return candidate
-
-
 def validate_task_workspace(workspace: sqlite3.Row) -> tuple[Path, bool, str]:
     path = Path(workspace["path"]).resolve()
     root = Path(workspace["source_root"] if workspace["strategy"] == "in_place" else ROOT / "data" / "workspaces").resolve()
@@ -1409,19 +1398,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# VibeOffice product layer (docs/VIBEOFFICE_IMPLEMENTATION_GUIDE.md section 3:
-# new code lives in its own module, main.py only mounts it). The import is local
-# to this statement because apps.api.vibeoffice imports main lazily inside
-# function bodies - a module-scope import here would close that cycle.
-from apps.api.vibeoffice.routes import router as vibeoffice_router  # noqa: E402
-
-# ponytail: default off pending Phase 2 usage data (docs/WORK_LOG.md). Flip
-# AI_OFFICE_ENABLE_VIBEOFFICE=1 to restore; delete this guard, not the module,
-# once a keep/cut decision is made.
-if os.environ.get("AI_OFFICE_ENABLE_VIBEOFFICE") == "1":
-    app.include_router(vibeoffice_router)
-
 
 @app.on_event("startup")
 def startup() -> None:

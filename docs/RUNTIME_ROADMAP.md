@@ -73,7 +73,7 @@ Release gates:
 
 | 슬라이스 | 내용 | 근거 데이터(이미 존재) | 신규 작업 | 우선순위 |
 |---|---|---|---|---|
-| R1. 직원 프로필 카드 | 역할·기본 모델·보유 스킬·실행 권한을 한 카드에 표시 | `registry/employees.yaml`, `registry/model-routing.json`, `employees/*/PERMISSIONS.yaml` | 세 파일을 조인하는 `GET /api/registry/employees/{id}/profile` 1개 + UI 카드 컴포넌트 | 높음 (표시만, 로직 변경 없음) |
+| R1. 직원 프로필 카드 | 역할·기본 모델·보유 스킬·실행 권한을 한 카드에 표시 | `registry/employees.json`, `registry/model-routing.json`, `employees/*/PERMISSIONS.yaml` | 세 파일을 조인하는 `GET /api/registry/employees/{id}/profile` 1개 + UI 카드 컴포넌트 | 높음 (표시만, 로직 변경 없음) |
 | R2. 작업판 4단계 보드 | `TASK_STATES`를 할 일·진행 중·검토 중·완료·반송 4버킷으로 그루핑해 칸반으로 표시 | `apps/api/main.py` `TASK_STATES`/`STATE_LABELS` | 상태→버킷 매핑 테이블 1개(코드) + UI 보드 뷰. 상태 머신 자체는 변경 없음 | 높음 |
 | R3. 기본 담당자 단일 필드 | 작업 1건에 기본 담당자 1명, 검토자는 필요할 때만 별도 지정 | `leads`(1~4명), `final_owner`(통합 책임) | `tasks.assignee_id` 필드 추가(nullable, 기본값 = `final_owner` 또는 단일 lead일 때 자동 채움). 기존 다중 리드 배정과 병행 — 대체하지 않음 | 중간 (스키마 마이그레이션 필요) |
 | R4. 승인 경계 카탈로그 | 파일 삭제·외부 발송·배포·API 키/권한 변경·운영 데이터 수정 5개 범주를 사용자에게 고정 목록으로 보여줌 | `apps/api/policy.py` `BLOCKED_TOKENS`, `permission_rules` | 신규 파일 *registry/approval-boundaries.json*(범주→기본 `deny`/`ask` 패턴 매핑) + 설정 화면에 읽기 전용 카탈로그 표시. 실제 차단 로직은 기존 `permission_effect`/`BLOCKED_TOKENS` 재사용, 범주는 표시·문서화 목적 | 중간 |
