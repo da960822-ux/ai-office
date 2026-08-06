@@ -39,6 +39,9 @@ def main() -> None:
             errors.append(f"{department}: owns is empty")
         if not policy.get("must_handoff"):
             errors.append(f"{department}: must_handoff is empty")
+        stage = policy.get("stage")
+        if not isinstance(stage, int) or isinstance(stage, bool) or not (0 <= stage <= 3):
+            errors.append(f"{department}: stage must be an integer 0-3")
 
     missing = sorted(set(employees) - set(memberships))
     if missing:

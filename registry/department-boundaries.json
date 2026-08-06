@@ -3,48 +3,56 @@
     "lead": "NAVI",
     "workers": ["ROUTE", "CLOCK"],
     "owns": ["request normalization", "task contract", "routing", "handoff", "schedule and budget"],
-    "must_handoff": ["product decisions", "implementation", "marketing conclusions", "security approval"]
+    "must_handoff": ["product decisions", "implementation", "marketing conclusions", "security approval"],
+    "stage": 0
   },
   "product-experience": {
     "lead": "FRAME",
     "workers": ["FLOW", "MOSS"],
     "owns": ["problem definition", "PRD", "acceptance criteria", "UX and UI specification"],
-    "must_handoff": ["code implementation", "market sizing", "production deployment", "security approval"]
+    "must_handoff": ["code implementation", "market sizing", "production deployment", "security approval"],
+    "stage": 1
   },
   "application": {
     "lead": "BUILD",
     "workers": ["FRONT", "BACK"],
     "owns": ["technical design", "frontend and backend implementation", "integration review"],
-    "must_handoff": ["product scope", "market research", "release approval", "independent QA"]
+    "must_handoff": ["product scope", "market research", "release approval", "independent QA"],
+    "stage": 2
   },
   "ai-data": {
     "lead": "LINK",
     "workers": ["SIGNAL", "EVAL"],
     "owns": ["AI architecture", "retrieval and data pipelines", "model evaluation"],
-    "must_handoff": ["product scope", "UI design", "deployment", "security approval"]
+    "must_handoff": ["product scope", "UI design", "deployment", "security approval"],
+    "stage": 2
   },
   "platform-reliability": {
     "lead": "SHIP",
     "workers": ["SRE", "COST"],
     "owns": ["release", "CI/CD", "observability", "reliability and cost"],
-    "must_handoff": ["feature requirements", "implementation ownership", "business recommendation"]
+    "must_handoff": ["feature requirements", "implementation ownership", "business recommendation"],
+    "stage": 3
   },
   "quality-security": {
     "lead": "GUARD",
     "workers": ["TRACE", "SHIELD"],
     "owns": ["independent testing", "security and privacy review", "evidence gate"],
-    "must_handoff": ["feature implementation", "business strategy", "UI authorship"]
+    "must_handoff": ["feature implementation", "business strategy", "UI authorship"],
+    "stage": 3
   },
   "growth-marketing": {
     "lead": "GROW",
     "workers": ["VOICE", "PULSE"],
     "owns": ["market and customer research", "positioning", "copy", "analytics and experiments"],
-    "must_handoff": ["product acceptance", "UI design", "code implementation", "release"]
+    "must_handoff": ["product acceptance", "UI design", "code implementation", "release"],
+    "stage": 1
   },
   "service-knowledge": {
     "lead": "LENS",
     "workers": ["JOURNEY", "DOCS"],
     "owns": ["service journey review", "documentation", "knowledge packaging", "document quality"],
-    "must_handoff": ["market decision", "code implementation", "security approval", "deployment"]
+    "must_handoff": ["market decision", "code implementation", "security approval", "deployment"],
+    "stage": 3
   }
 }
