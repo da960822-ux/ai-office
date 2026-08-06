@@ -12,6 +12,7 @@ import urllib.error
 import urllib.parse
 import re
 import time
+import random
 import ipaddress
 import socket
 import fnmatch
@@ -32,7 +33,7 @@ import keyring
 import httpx
 
 from apps.api import pricing
-from openai import OpenAI
+from openai import OpenAI, APIConnectionError
 from apps.api.agent_tools import AgentToolError, WorkspaceAgentTools, fetch_public_source, tool_definitions
 from apps.api.policy import validate_path, validate_command
 from apps.api.runtime_context import (
@@ -335,15 +336,39 @@ class JobControlSignal(RuntimeError):
     """A user paused or cancelled a Job while its provider call was pending."""
 
 
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+MODEL_CALL_MAX_RETRIES = int(os.getenv("AI_OFFICE_MODEL_CALL_MAX_RETRIES", "3"))
+
+
+def _is_retryable_model_error(error: BaseException) -> bool:
+    """429/5xx and connection drops are transient -- worth a bounded retry. Anything else (bad request, auth) is not."""
+    if getattr(error, "status_code", None) in RETRYABLE_STATUS_CODES:
+        return True
+    return isinstance(error, APIConnectionError)
+
+
+def _call_model_with_backoff(client: OpenAI, **kwargs):
+    attempt = 0
+    while True:
+        try:
+            return client.responses.create(**kwargs)
+        except BaseException as error:
+            if attempt >= MODEL_CALL_MAX_RETRIES or not _is_retryable_model_error(error):
+                raise
+            delay = min(2**attempt, 20) + random.uniform(0, 1)
+            attempt += 1
+            time.sleep(delay)
+
+
 def cancellable_model_response(client: OpenAI, task_id: str, job_id: str | None, **kwargs):
     """Wait without a generation deadline, but abandon late output on pause/cancel."""
     if not job_id:
-        return client.responses.create(**kwargs)
+        return _call_model_with_backoff(client, **kwargs)
     result: Queue[tuple[bool, object]] = Queue(maxsize=1)
 
     def invoke() -> None:
         try:
-            result.put((True, client.responses.create(**kwargs)))
+            result.put((True, _call_model_with_backoff(client, **kwargs)))
         except BaseException as error:
             result.put((False, error))
 
@@ -903,6 +928,8 @@ def init_db() -> None:
         );
         """)
         ensure_session_schema(db)
+        ensure_column(db, "worker_heartbeats", "error_streak", "INTEGER NOT NULL DEFAULT 0")
+        ensure_column(db, "worker_heartbeats", "last_error", "TEXT")
         ensure_column(db, "jobs", "error_class", "TEXT")
         ensure_column(db, "tasks", "route", "TEXT NOT NULL DEFAULT 'navi'")
         ensure_column(db, "tasks", "lead_id", "TEXT")
@@ -1069,6 +1096,66 @@ def planned_roster(request: str) -> tuple[list[str], list[tuple[str, str]]]:
     return ["FRAME"], [("FRAME", "요청을 재검토하고 최소 실행 범위와 인계 지점을 확정")]
 
 
+PERMISSION_TIER = {
+    "P0_READ": "read", "P1_PROPOSE": "read",
+    "P2_ANALYTICS_DOC_WRITE": "write_content", "P2_ARCH_WRITE": "write_content",
+    "P2_CONTENT_WRITE": "write_content", "P2_DESIGN_SPEC_WRITE": "write_content",
+    "P2_DOC_WRITE": "write_content", "P2_MARKETING_DOC_WRITE": "write_content",
+    "P2_SPEC_WRITE": "write_content", "P2_STATE_WRITE": "write_content", "P2_WRITE_SCOPED": "write_content",
+    "P3_DOC_CHECK": "verify", "P3_TEST_LOCAL": "verify", "P3_SECURITY_SCAN": "verify",
+    "P4_EVIDENCE_WRITE": "evidence", "P4_GIT_SAFE": "git_safe", "P5_STAGING_WITH_APPROVAL": "staging",
+    # No matching agent tool exists yet for these -- kept in PERMISSIONS.yaml for documentation,
+    # deliberately no-op here. See docs/superpowers/specs/2026-08-06-permission-tool-gate-design.md.
+    "P3_PROCESS_CONTROL": None, "P4_EVIDENCE_READ": None, "P4_REVIEW": None,
+}
+
+TIER_TOOLS = {
+    "read": {
+        "list_files", "read_file", "search_files", "find_symbols", "find_references",
+        "git_status", "git_diff", "discover_tests", "language_diagnostics", "read_required_skill",
+    },
+    "write_content": {"create_file", "replace_exact_text", "apply_unified_patch"},
+    "verify": {"run_verification"},
+    "evidence": {"record_research_claim"},
+    "git_safe": {"git_commit"},
+    "staging": {"git_push"},
+}
+
+GATED_TOOL_NAMES = {name for names in TIER_TOOLS.values() for name in names}
+
+
+def permission_tool_scope(permission_codes: list[str]) -> set[str]:
+    """Tool names a PERMISSIONS.yaml permissions list unlocks. Unknown/unmapped codes grant nothing."""
+    scope: set[str] = set()
+    for code in permission_codes:
+        tier = PERMISSION_TIER.get(code)
+        if tier:
+            scope |= TIER_TOOLS[tier]
+    return scope
+
+
+def apply_stage_ordering(phases: list[dict], boundaries: dict) -> None:
+    """Force each phase to depend on every lower-stage phase already in this plan.
+
+    The planner LLM proposes phases and depends_on freely; it isn't reliable about
+    respecting department order (plan -> build -> review). Stage is a coarse ordering
+    read from department-boundaries.json ("stage" 0-3). Mutates depends_on in place --
+    the union with whatever depends_on the LLM already declared is intentional so
+    same-stage hints survive. Same-stage phases are left mutually independent so the
+    existing worktree-parallel scheduler (queue_ready_agent_jobs) can run them
+    concurrently; only cross-stage ordering is enforced here.
+    """
+    stage_by_department = {department: policy.get("stage", 1) for department, policy in boundaries.items()}
+    for phase in phases:
+        phase_stage = stage_by_department.get(phase["department"], 1)
+        upstream_ids = {
+            other["id"] for other in phases
+            if other is not phase and stage_by_department.get(other["department"], 1) < phase_stage
+        }
+        if upstream_ids:
+            phase["depends_on"] = sorted(set(phase["depends_on"]) | upstream_ids)
+
+
 def select_roster_with_model(request: str, task_id: str = "", job_id: str | None = None) -> tuple[list[str], list[tuple[str, str]], str, dict | None]:
     fallback_roster, fallback_items = planned_roster(request)
     if not model_key():
@@ -1145,6 +1232,7 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
         previous_ids = {item["id"] for item in phases[:index]}
         phase["depends_on"] = [item for item in phase["depends_on"] if item in previous_ids]
         seen_phase_ids.add(phase["id"])
+    apply_stage_ordering(phases, boundaries)
     agents = list(dict.fromkeys(phase["lead_id"] for phase in phases))
     final_owner = payload.get("final_owner")
     artifact_kind = payload.get("artifact_kind")
@@ -1493,6 +1581,11 @@ def run_agent(task_id: str, payload: AgentRunInput) -> dict:
                     "git_status", "git_diff", "git_commit", "git_push",
                 }
             ]
+        permission_scope = permission_tool_scope(skill_context["permissions"].get("permissions", []))
+        tools = [
+            tool for tool in tools
+            if tool["name"] not in GATED_TOOL_NAMES or tool["name"] in permission_scope
+        ]
         mcp_tool_map: dict[str, tuple[sqlite3.Row, str, str | None]] = {}
         for connection in ([] if payload.employee_id == "NAVI" else db.execute("SELECT * FROM mcp_connections WHERE status IN ('configured', 'connected')")):
             try:

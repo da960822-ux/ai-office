@@ -83,3 +83,13 @@
 | operations-planning | CLOCK | general | P0_READ, P2_STATE_WRITE, P3_PROCESS_CONTROL | 정상 |
 
 **결론**: 24명 중 **23명은 그대로 게이트 켜도 안전**. 유일한 불일치는 **SHIP**(`platform-reliability` lead, `release_operations`) — git_safe/staging 권한은 있는데 write_content 권한이 전혀 없다. 같은 부서의 SRE/COST가 이미 `P2_STATE_WRITE`를 갖고 있으므로, 게이트 구현 전에 SHIP의 `PERMISSIONS.yaml`에도 같은 코드를 추가하는 게 가장 자연스러운 수정이다(새 코드 발명 없이 기존 부서 관례 따름). **이 YAML 수정은 코드가 아니라 실제 직원 권한 내용을 바꾸는 것이라 사용자 확인 후 진행한다.**
+
+## 구현 완료 (2026-08-06)
+
+사용자 승인 후 진행:
+
+1. `employees/platform-reliability/SHIP/PERMISSIONS.yaml`에 `P2_STATE_WRITE` 추가(SRE/COST와 동일 코드).
+2. `apps/api/main.py`: `PERMISSION_TIER`(18개 코드 → 6개 tier + 3개 미매핑), `TIER_TOOLS`(tier → tool 이름 집합), `GATED_TOOL_NAMES`, `permission_tool_scope()` 추가. `run_agent`의 tool 조립부(`main.py:1584` 부근, 기존 `allow_workspace_context` 필터 직후)에 `permission_scope` 교집합 필터 삽입 — `GATED_TOOL_NAMES`에 속한 tool만 permission 검사 대상, 그 외(웹 도구 등)는 기존 필터 그대로 통과.
+3. `apps/api/test_permission_tool_gate.py` 신규 8개 테스트: tier 매핑 단위 테스트 6개 + **회귀 가드 2개** — `test_every_employee_with_git_capability_can_also_write`(SHIP류 갭 재발 시 CI에서 바로 잡힘), `test_all_permission_codes_are_known`(YAML에 새 미매핑 코드 추가되면 실패).
+
+전체 85개 테스트 통과(기존 77 + 신규 8), `verify_routing.py` OK.

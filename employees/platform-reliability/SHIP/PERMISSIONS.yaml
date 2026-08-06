@@ -2,6 +2,7 @@ employee: SHIP
 runtime: OPERATOR
 permissions:
 - P0_READ
+- P2_STATE_WRITE
 - P3_TEST_LOCAL
 - P4_GIT_SAFE
 - P5_STAGING_WITH_APPROVAL
