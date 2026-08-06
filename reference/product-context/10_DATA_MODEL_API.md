@@ -10,7 +10,7 @@
 type Project = {
   id: string;
   name: string;
-  status: "draft" | "active" | "ready_for_export" | "archived";
+  status: "draft" | "active" | "ready_for_export" | "archived"; // 거친 rollup. 05_AGENT_ORCHESTRATION.md의 세부 task/exception state(약 17종)는 이 필드에 담지 않고 별도로 추적한다.
   mode: "quick" | "guided" | "existing" | "review";
   skillLevel: "beginner" | "intermediate";
   teamSize?: number;

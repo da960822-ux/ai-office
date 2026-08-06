@@ -26,7 +26,7 @@ LLM 멀티 에이전트 데모 대부분은 "채팅창에 역할극"에서 멈�
 | 24명·8부서 규모에서 "누가 이 일을 할지" 정적 매핑이 깨지는 문제 | 하드코딩된 라우팅 표 없음. 매 요청마다 모델이 `department-boundaries.json` + 가용 인력·스킬을 함께 보고 동적으로 배정 |
 | API와 worker가 다른 버전으로 떠 있을 때 생기는 조용한 실패 | `/api/runtime/version`에서 build id·schema version을 대조해 불일치 시 UI 실행 버튼을 하드 차단 |
 
-규모: FastAPI + worker 약 7.8k LOC(Python), React/Vite/TS UI 약 1.2k LOC, 자동 테스트 70건(`apps/api/test_*.py`) + 정적 정합성 검사 스크립트 3종.
+규모: `apps/api` + `scripts` 약 9,549 LOC(Python, `wc -l` 실측), React/Vite/TS UI 약 1.2k LOC, 자동 테스트 88건(`apps/api/test_*.py`, `unittest discover` 실측) + 정적 정합성 검사 스크립트 3종.
 
 ## 스택
 

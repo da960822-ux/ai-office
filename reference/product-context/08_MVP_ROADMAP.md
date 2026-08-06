@@ -27,12 +27,9 @@ Idea
 
 필수:
 
-- Product Brief
-- MVP Scope
-- Requirements
-- Roadmap
-- Decisions
-- Blueprint JSON
+- PRD.md의 필수 섹션(06_OUTPUT_STANDARD.md 참고, 별도 문서로 중복 생성 금지): Product Brief, MVP Scope, Requirements, Decisions
+- Roadmap (본 문서의 Phase 구성)
+- Blueprint JSON (`project-blueprint.json`, 06_OUTPUT_STANDARD.md Planning Package 참고)
 
 완료:
 

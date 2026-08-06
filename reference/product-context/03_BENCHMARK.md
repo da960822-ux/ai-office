@@ -1,5 +1,17 @@
 # 03. Benchmark and Product Lessons
 
+## 실제 포지셔닝 (2026-08-06 기준 검증된 것만)
+
+아래 경쟁사 절들은 참고용 아이디어 목록이다. 이름을 댄 경쟁사와의 정량 비교는 이 저장소 어디에도 없다 — **Replit Agent/Genspark 대비 정량 비교는 아직 실측하지 않았다.**
+
+지금 이 코드베이스에서 실제로 동작하는 것으로 확인된 차별화 지점은 "24인 조직 메타포"가 아니라 **실행 신뢰성**(long-running agent execution reliability)이다:
+
+- Job lease/heartbeat로 worker 크래시 후 자동 복구 (`apps/api/worker.py`, `recover_orphaned_jobs`)
+- 모델·도구 호출 사이 안전 지점에서 실행 중 pause/cancel (`apps/api/main.py`, `safe_point`)
+- 예산 상한 강제, 초과 시 HTTP 402 (`apps/api/main.py`, `check_budget`)
+- 부서 순서 파이프라인 게이트: phase가 기획→개발→리뷰 stage 순서로 강제 실행되고 같은 stage는 병렬화 (`apps/api/main.py`, `apply_stage_ordering`, 2026-08-06 추가)
+- 권한-도구 게이트: 역할별 도구 접근이 선언만이 아니라 실제로 강제됨 (`apps/api/main.py`, `permission_tool_scope`, 2026-08-06 추가)
+
 ## Manifest
 
 ### 가져올 것
