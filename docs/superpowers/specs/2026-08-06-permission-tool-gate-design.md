@@ -48,3 +48,38 @@
 ## 리스크
 
 기존 24개 PERMISSIONS.yaml이 "선언만 되고 아무 효과 없던" 상태였기 때문에, 실제로 집행을 켜면 일부 직원이 지금까지 (의도치 않게) 쓰던 tool을 못 쓰게 될 수 있다. 구현 단계에서 24개 파일 각각의 `permissions` 목록이 해당 직원의 실제 업무(task_kind)에 필요한 tier를 다 포함하는지 먼저 대조해야 한다 — 빠졌으면 YAML 수정이 선행돼야 하고, 이건 코드 변경보다 리스크가 크다(잘못하면 특정 직원이 조용히 막혀서 job이 전부 실패).
+
+## 사전 대조 결과 (2026-08-06, 구현 전 완료)
+
+24개 `PERMISSIONS.yaml`을 실측하고 `EMPLOYEE_TASK_KIND`(`main.py:591-599`)의 실제 업무와 대조했다. 중요한 선행 확인: **부서 산출물(`departments/{employee_id}.md`)은 tool 호출이 아니라 모델의 최종 텍스트 응답(`summary = response.output_text`)을 하네스가 직접 저장한다(`main.py:1896-1919`, `persist_deliverable`).** 즉 `write_content` tier(`create_file`/`replace_exact_text`/`apply_unified_patch`) 부재는 "산출물을 못 씀"이 아니라 "이미 있는 프로젝트 워크스페이스 파일을 직접 편집 못 함"만 의미한다. 기획/마케팅/문서 계열처럼 자기 draft만 내는 역할은 이 tier가 없어도 정상 동작한다.
+
+**대조표** (팀 | 직원 | task_kind | 보유 tier | 판정):
+
+| 팀 | 직원 | task_kind | 보유 코드 | 판정 |
+|---|---|---|---|---|
+| application | BUILD(lead) | architecture_design | P0_READ, P1_PROPOSE, P2_ARCH_WRITE, P4_REVIEW | 정상 |
+| application | FRONT | frontend_implementation | P0_READ, P2_WRITE_SCOPED, P3_TEST_LOCAL | 정상 |
+| application | BACK | backend_implementation | P0_READ, P2_WRITE_SCOPED, P3_TEST_LOCAL, P5_STAGING_WITH_APPROVAL | 정상 |
+| ai-data | LINK(lead) | architecture_design | P0_READ, P1_PROPOSE, P2_ARCH_WRITE, P4_REVIEW | 정상 |
+| ai-data | SIGNAL | ai_data_implementation | P0_READ, P2_WRITE_SCOPED, P3_TEST_LOCAL | 정상 |
+| ai-data | EVAL | test_engineering | P0_READ, P3_TEST_LOCAL, P4_EVIDENCE_WRITE | 정상(테스트/증거만, 편집 불필요) |
+| quality-security | GUARD(lead) | quality_review | P0_READ, P4_REVIEW, P4_EVIDENCE_READ, P2_STATE_WRITE | 정상 |
+| quality-security | TRACE | test_engineering | P0_READ, P3_TEST_LOCAL, P4_EVIDENCE_WRITE | 정상 |
+| quality-security | SHIELD | security_review | P0_READ, P1_PROPOSE, P3_SECURITY_SCAN, P4_REVIEW | 정상 |
+| **platform-reliability** | **SHIP(lead)** | **release_operations** | P0_READ, P3_TEST_LOCAL, **P4_GIT_SAFE, P5_STAGING_WITH_APPROVAL** | **⚠ 불일치** — write_content tier(P2_*)가 전혀 없음. commit/push는 되는데 편집 도구가 없어 커밋할 대상을 만들 수 없다. |
+| platform-reliability | SRE | observability_operations | P0_READ, P2_STATE_WRITE, P3_PROCESS_CONTROL | 정상 |
+| platform-reliability | COST | finops_review | P0_READ, P1_PROPOSE, P2_STATE_WRITE | 정상 |
+| product-experience | FRAME(lead) | product_planning | P0_READ, P1_PROPOSE, P2_SPEC_WRITE | 정상 |
+| product-experience | FLOW | ui_design | P0_READ, P1_PROPOSE, P2_SPEC_WRITE | 정상 |
+| product-experience | MOSS | ui_design | P0_READ, P1_PROPOSE, P2_DESIGN_SPEC_WRITE | 정상 |
+| growth-marketing | GROW(lead) | market_research | P0_READ, P1_PROPOSE, P2_MARKETING_DOC_WRITE | 정상 |
+| growth-marketing | VOICE | content_marketing | P0_READ, P1_PROPOSE, P2_CONTENT_WRITE | 정상 |
+| growth-marketing | PULSE | experiment_analysis | P0_READ, P1_PROPOSE, P2_ANALYTICS_DOC_WRITE | 정상 |
+| service-knowledge | LENS(lead) | customer_support | P0_READ, P3_TEST_LOCAL, P4_REVIEW | 정상(리뷰 중심, draft는 tool 무관 저장) |
+| service-knowledge | JOURNEY | customer_discovery | P0_READ, P1_PROPOSE, P3_TEST_LOCAL | 정상 |
+| service-knowledge | DOCS | document_authoring | P0_READ, P2_DOC_WRITE, P3_DOC_CHECK | 정상 |
+| operations-planning | NAVI(lead) | general | P0_READ, P1_PROPOSE, P2_STATE_WRITE | 정상(어차피 `main.py:1531`에서 write류 하드코드 제외, YAML의 P2는 무해하게 무시됨) |
+| operations-planning | ROUTE | general | P0_READ, P1_PROPOSE, P2_STATE_WRITE | 정상 |
+| operations-planning | CLOCK | general | P0_READ, P2_STATE_WRITE, P3_PROCESS_CONTROL | 정상 |
+
+**결론**: 24명 중 **23명은 그대로 게이트 켜도 안전**. 유일한 불일치는 **SHIP**(`platform-reliability` lead, `release_operations`) — git_safe/staging 권한은 있는데 write_content 권한이 전혀 없다. 같은 부서의 SRE/COST가 이미 `P2_STATE_WRITE`를 갖고 있으므로, 게이트 구현 전에 SHIP의 `PERMISSIONS.yaml`에도 같은 코드를 추가하는 게 가장 자연스러운 수정이다(새 코드 발명 없이 기존 부서 관례 따름). **이 YAML 수정은 코드가 아니라 실제 직원 권한 내용을 바꾸는 것이라 사용자 확인 후 진행한다.**
