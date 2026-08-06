@@ -335,6 +335,25 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 검증: 전체 165건 baseline 4 error 그대로, `audit_package` OK, 실제 `employee_skill_context` 호출로 전달 확인.
 
+### 18. PM 리뷰 오탐 로그 — 다시 검토하지 말 것 (2026-08-06)
+
+**이 절의 목적**: `/utility-pm-critic`류 검토를 반복할 때마다 같은 항목을 "문제 있음"으로 다시 지적하고, 코드 확인 후 다시 "문제 없음"으로 뒤집는 왕복이 여러 번 발생했다. 토큰 낭비다. 아래 항목은 **실측으로 이미 결론 났다** — 재조사하지 말고 이 표만 인용할 것.
+
+| 최초 주장(틀림) | 실측 결과 | 근거 |
+|---|---|---|
+| `data/ai-office.sqlite3`가 저장소에 커밋돼 위생 문제다 | `data/`가 `.gitignore:15`에 이미 있고 `git ls-files data/`가 빈 목록. 커밋된 적 없음 | `.gitignore:15`, `git ls-files data/` |
+| 05B "재작업 2회 제한"이 코드에 없다 | `worker.py:1053-1063`에 `retry_limit`(기본 2, `task_contract.retry_limit`) 기준 이미 구현, 초과 시 `blocked` 전환 | `worker.py:1053`, `api_models.py:59` |
+| README 테스트 배지(70개)가 WORK_LOG 기록(165건)과 안 맞는다 | `python -m unittest discover` 실측 **정확히 70건**(당시 기준, 이후 department-pipeline-gate 테스트 7건 추가로 77건). WORK_LOG 165는 vibeoffice 삭제(§ "진행 중" 리팩토링 항목, 커밋 `5515caf`) 이전 다른 시점 수치 — 서로 다른 시점을 비교한 것이지 불일치가 아니다 | 직접 실행, 본 절 상단 §"발견한 기존 결함" 인근 165→65 표 |
+| 24명×8부서 조직이 과설계다, 3~5명으로 줄여야 한다 | `PERMISSIONS.yaml` 24개 해시 전부 다름(실제 분화됨), `model-routing.json`의 직원별 모델 배정이 `main.py:266`에서 실집행됨(선언 아님). 문제는 규모가 아니라 PERMISSIONS.yaml과 department-boundaries의 `must_handoff`가 **집행 코드 없이 프롬프트 문자열로만 주입**된다는 것(`main.py:1525`, `main.py:1513`/`worker.py:462`) — 이건 실제 결함이라 남겨둠, 아래 "실제 결함(해결 중)" 참고 | `for f in employees/*/*/PERMISSIONS.yaml; do md5sum "$f"; done` 24개 전부 다른 해시, `main.py:266 model_routing()` |
+| `PERMISSIONS.yaml`의 `permissions` 코드가 6종(P0_READ/P1_PROPOSE/P2_WRITE_CODE 등 단순 구조)이다 | 실제로는 18종, 그중 `P2_*`가 9개 변형(ARCH/CONTENT/DESIGN_SPEC/DOC/MARKETING_DOC/ANALYTICS_DOC/SPEC/STATE/WRITE_SCOPED)으로 세분화돼 있으나 도구 레벨에서는 전부 동일한 쓰기 도구를 씀 — 내용 기반 세분화는 taxonomy 없이는 불가능 | `grep -h -A20 "^permissions:" employees/*/*/PERMISSIONS.yaml \| grep "^- " \| sort -u`, `docs/superpowers/specs/2026-08-06-permission-tool-gate-design.md` |
+
+**실제 결함으로 남아있는 것(오탐 아님, 재조사 불필요, 바로 작업 대상)**:
+- `PERMISSIONS.yaml`의 `permissions` 목록이 `main.py:1525`에서 프롬프트 문자열로만 쓰이고 tool 차단 코드가 없음 — 설계는 `2026-08-06-permission-tool-gate-design.md`에 있음, 구현 전.
+- `department-boundaries.json`의 `must_handoff`도 `main.py:1513`/`worker.py:462`에서 프롬프트 삽입뿐 — stage 순서(`apply_stage_ordering`, §"부서 파이프라인 게이트")는 이미 집행되지만 산출물 타입 검증은 별개로 아직 없음(taxonomy 부재로 의도적 범위 제외, 두 스펙 문서 모두에 명시).
+- `network`/`scripts`/`write_scope`/`external_skill_default_mode` 4개 필드는 24개 파일 전부 값이 같은데, 이건 오탐이 아니라 **이미 다른 코드 경로로 전역 집행 중이라 갈릴 이유가 없는 것**(`agent_tools.py:120` private IP 차단, `WorkspaceAgentTools`의 `allowed_paths` 검사) — 새로 손댈 필요 없음, 확인만 하고 넘어갈 것.
+
+**절차 규칙(다음 세션·다음 리뷰 대상)**: PM 검토에서 위 표의 항목이 다시 "문제"로 올라오면, 코드를 다시 훑지 말고 이 절을 인용해 종결할 것. 새로운 근거로 위 결론이 틀렸다고 밝혀지면 그때만 표를 갱신한다.
+
 ---
 
 ## 진행 중
