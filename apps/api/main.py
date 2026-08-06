@@ -1434,6 +1434,24 @@ def task_requires_user_approval(db: sqlite3.Connection, task_id: str) -> bool:
 
 def fallback_execution_plan(roster: list[str], items: list[tuple[str, str]]) -> dict:
     leads = [employee for employee in roster if employee in LEAD_IDS and employee != "NAVI"] or ["FRAME"]
+    phases = [
+        {
+            "id": f"fallback-{index}",
+            "department": registry()[lead]["team"],
+            "lead_id": lead,
+            "task_kind": default_task_kind(registry()[lead]["team"], lead),
+            "objective": next((description for owner, description in items if owner == lead), "요청을 재검토한다."),
+            "output": "검증 가능한 부서 산출물",
+            "handoff_to": leads[0],
+            "depends_on": [],
+            "skill_ids": [],
+        }
+        for index, lead in enumerate(leads, 1)
+    ]
+    # Deterministic fallback (model call failed) can still span multiple departments --
+    # it needs the same stage ordering as the LLM-planned path, or it becomes the one
+    # way to bypass the pipeline gate.
+    apply_stage_ordering(phases, json.loads(DEPARTMENT_BOUNDARIES_PATH.read_text(encoding="utf-8")))
     return {
         "summary": "판단 모델 실패로 최소 재검토 계획을 사용합니다.",
         "artifact_kind": "business_document",
@@ -1442,20 +1460,7 @@ def fallback_execution_plan(roster: list[str], items: list[tuple[str, str]]) -> 
         "requires_web_research": False,
         "evidence_strategy": "요청에 필요한 근거를 실행자가 식별하고 출처와 검증 결과를 남긴다.",
         "reason": "모델 응답이 유효하지 않아 확장 작업 전 재검토가 필요하다.",
-        "phases": [
-            {
-                "id": f"fallback-{index}",
-                "department": registry()[lead]["team"],
-                "lead_id": lead,
-                "task_kind": default_task_kind(registry()[lead]["team"], lead),
-                "objective": next((description for owner, description in items if owner == lead), "요청을 재검토한다."),
-                "output": "검증 가능한 부서 산출물",
-                "handoff_to": leads[0],
-                "depends_on": [],
-                "skill_ids": [],
-            }
-            for index, lead in enumerate(leads, 1)
-        ],
+        "phases": phases,
     }
 
 

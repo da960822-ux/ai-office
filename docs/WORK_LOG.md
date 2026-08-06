@@ -354,6 +354,10 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 **절차 규칙(다음 세션·다음 리뷰 대상)**: PM 검토에서 위 표의 항목이 다시 "문제"로 올라오면, 코드를 다시 훑지 말고 이 절을 인용해 종결할 것. 새로운 근거로 위 결론이 틀렸다고 밝혀지면 그때만 표를 갱신한다.
 
+**추가 발견 — "부서 파이프라인 게이트가 실제로 적용돼 있냐"는 질문에 실측으로 답한 기록(2026-08-06)**: 로컬 `data/ai-office.sqlite3`(8개 task, 2026-07-29 생성)를 까봤더니 `task_plans`/`task_agent_scopes`/`task_phases` 전부 0행이다 — 이 8개 task는 `store_execution_plan`이 단 한 번도 호출된 적 없는, phase 시스템 이전(또는 그 경로를 안 탄) 데이터다. `agent_runs`엔 30건이 있어 얼핏 "직원 가동 이력"처럼 보이지만, 이건 phase/stage 게이트와 무관한 별도 경로의 흔적이다. **이 데이터로 "특정 인원만 일하고 병목이 생긴다"를 결론 내린 것은 근거가 약하다 — 현재 phase 파이프라인의 동작을 반영하지 않는다.** 실측 재확인 없이 이 8-task 데이터를 병목 증거로 재인용하지 말 것.
+
+같은 질문을 받고 코드로 직접 배선을 추적해 확인한 것: `select_roster_with_model`(`main.py`) → `apply_stage_ordering` 적용 → 반환된 `plan`이 `task_routes.py:251`(`execution_plan = selection_usage.get("plan")`)과 `worker.py:398`을 통해 `store_execution_plan`으로 들어간다 — 정상 경로는 배선이 맞다. **단, `fallback_execution_plan`(모델 호출 실패 시 결정론적 대체 경로, `task_routes.py:243`)은 스스로 다부서 phase를 만들면서 `apply_stage_ordering`을 거치지 않아 게이트를 우회하는 유일한 구멍이었다 — 발견 즉시 고침(`main.py`, `fallback_execution_plan`에 동일 함수 호출 추가), 회귀 테스트 추가(`test_department_pipeline.py::test_deterministic_fallback_plan_also_gets_stage_ordering`), 86개 전체 통과 확인.
+
 ---
 
 ## 진행 중
