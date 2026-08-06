@@ -24,6 +24,11 @@ WORKER_CONCURRENCY = max(1, min(int(os.getenv("AI_OFFICE_WORKER_CONCURRENCY", "4
 WORKER_MODE = os.getenv("AI_OFFICE_WORKER_MODE", "process").strip().lower()
 
 
+def record_parse_failure(db: sqlite3.Connection, task_id: str, stage: str, raw: str, *, job_id: str | None = None) -> None:
+    """Make a silent model-output parse fallback visible in job_events instead of indistinguishable from normal output."""
+    main.emit_job_event(db, task_id, "parse.failure", f"{stage} 파싱 실패", job_id=job_id, payload={"stage": stage, "raw_excerpt": raw[:2000]})
+
+
 def workspace_supports_parallel_worktrees(path: str) -> bool:
     """Only parallelize when every agent can receive an isolated clean worktree."""
     try:
@@ -72,15 +77,19 @@ def review_and_integrate_worktree(job: dict, employee_id: str, agent_workspace: 
         input=json.dumps({"employee_id": employee_id, "commit": pending["commit"], "diff": pending.get("diff", "")}, ensure_ascii=False),
     )
     raw = response.output_text.strip()
+    parse_failed = False
     try:
         decision = json.loads(raw[raw.find("{"):raw.rfind("}") + 1])
         verdict = decision.get("verdict", "changes_requested")
         findings = str(decision.get("findings", raw))
     except Exception:
         verdict, findings = "changes_requested", raw
+        parse_failed = True
     if verdict not in {"pass", "changes_requested", "blocked"}:
         verdict = "changes_requested"
     with main.database() as db:
+        if parse_failed:
+            record_parse_failure(db, job["task_id"], "integration_review_verdict", raw, job_id=job["id"])
         number = db.execute("SELECT COUNT(*) FROM integration_reviews WHERE task_id = ?", (job["task_id"],)).fetchone()[0] + 1
         review_id = f"IREV-{job['task_id'].split('-')[-1]}-{number:03d}"
         db.execute(
@@ -184,6 +193,7 @@ def heartbeat() -> None:
 def maintain_job_lease(job: dict, stop: Event) -> None:
     """Keep a long model/tool call observable without imposing a generation deadline."""
     last_event = 0.0
+    lock_retry_count = 0
     while not stop.wait(2):
         try:
             with main.database() as db:
@@ -198,8 +208,13 @@ def maintain_job_lease(job: dict, stop: Event) -> None:
                 if time.monotonic() - last_event >= 15:
                     main.emit_job_event(db, job["task_id"], "job.heartbeat", "현재 모델·도구 호출이 응답 중입니다.", job_id=job["id"], payload={"step": row["step"], "state": row["state"]})
                     last_event = time.monotonic()
+            lock_retry_count = 0
         except sqlite3.OperationalError:
-            # A short SQLite writer overlap is not a dead worker. Retry next tick.
+            # ponytail: cap at 5 consecutive lock retries (~10s); a session holding the
+            # write lock longer than that needs investigation, not an unbounded retry loop.
+            lock_retry_count += 1
+            if lock_retry_count >= 5:
+                raise
             continue
 
 
@@ -512,6 +527,8 @@ def process_meeting(job: dict) -> None:
                         })
             except Exception:
                 content = raw
+                with main.database() as db:
+                    record_parse_failure(db, job["task_id"], "meeting_worker_assignment", raw, job_id=job["id"])
             if not any(item["worker_id"] in {candidate[0] for candidate in available} for item in worker_proposals):
                 worker_proposals.append({
                     "worker_id": employee,
@@ -993,6 +1010,7 @@ def process_review(job: dict) -> None:
     raw = response.output_text.strip()
     if not safe_point(job):
         return
+    parse_failed = False
     try:
         review = json.loads(raw[raw.find("{"):raw.rfind("}") + 1])
         verdict = review.get("verdict", "changes_requested")
@@ -1000,10 +1018,13 @@ def process_review(job: dict) -> None:
         final_report = review.get("final_report", findings)
     except Exception:
         verdict, findings, final_report = "changes_requested", raw, raw
+        parse_failed = True
     if verdict not in {"pass", "changes_requested", "blocked"}:
         verdict = "changes_requested"
     final_report = str(final_report).strip() or str(findings)
     with main.database() as db:
+        if parse_failed:
+            record_parse_failure(db, job["task_id"], "lead_review_verdict", raw, job_id=job["id"])
         final_status = {"pass": "COMPLETE", "changes_requested": "RETURNED", "blocked": "BLOCKED"}[verdict]
         run_results = list(db.execute("SELECT command, status, exit_code FROM runs WHERE task_id = ? ORDER BY created_at", (job["task_id"],)))
         changed_files = [item["path"] for item in task["deliverables"] if item["status"] != "completion_report"]
@@ -1163,6 +1184,7 @@ def main_loop() -> None:
     for thread in workers:
         thread.start()
     last_cleanup = 0.0
+    consecutive_failures = 0
     while True:
         try:
             heartbeat()
@@ -1173,12 +1195,24 @@ def main_loop() -> None:
             if time.monotonic() - last_cleanup >= EVENT_CLEANUP_INTERVAL_SECONDS:
                 cleanup_old_job_events()
                 last_cleanup = time.monotonic()
-        except Exception:
+            if consecutive_failures:
+                with main.database() as db:
+                    db.execute("UPDATE worker_heartbeats SET error_streak = 0, last_error = NULL WHERE worker_id = ?", (WORKER_ID,))
+                consecutive_failures = 0
+        except Exception as error:
             # ponytail: dispatcher loop must outlive one bad tick (e.g. check_budget
             # raising HTTPException via enqueue_job, or VACUUM hitting a lock).
             # Per-job failures already isolate in process(); this is the same
             # guarantee one level up so the whole worker can't die on a scheduling tick.
+            # The streak is persisted (not just printed) so a stuck dispatcher is
+            # visible to the UI/admin panel, not only to whoever is tailing stderr.
+            consecutive_failures += 1
             traceback.print_exc()
+            with main.database() as db:
+                db.execute(
+                    "UPDATE worker_heartbeats SET error_streak = ?, last_error = ? WHERE worker_id = ?",
+                    (consecutive_failures, f"{type(error).__name__}: {error}"[:500], WORKER_ID),
+                )
         time.sleep(0.5)
 
 
