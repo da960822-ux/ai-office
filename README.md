@@ -4,9 +4,9 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-async%20worker-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-Vite%20%2B%20TS-61DAFB?logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-70%20passing-brightgreen)
 
-전문 스킬을 가진 24명의 AI 직원이 **팀 단위로 실제 로컬 프로젝트를 조사·수정·검증**하는 로컬 실행 시스템입니다. 역할극 채팅이 아니라, 모델 호출·도구 호출·파일 변경·명령 실행·증거 수집이 모두 SQLite에 기록되고 UI에 그대로 투영됩니다.
+전문 스킬을 가진 24명의 AI 직원이 **팀 단위로 실제 로컬 프로젝트를 조사·수정·검증**하는 로컬 실행 시스템입니다. 역할극 채팅이 아니라, 모델 호출·도구 호출·파일 변경·명령 실행·증거 수집이 모두 SQLite에 기록되며, 상태 요약은 UI에 표시됩니다.
 
 - **단일 사용자·로컬 전용**: 브라우저는 모델을 직접 호출하지 않습니다. FastAPI가 Job을 큐에 넣고 별도 worker 프로세스가 실행합니다.
 - **증거 없으면 완료 없음**: 실제 파일, hash, 검증 명령 결과, 독립 리뷰 통과가 없으면 작업은 `completed`가 되지 않습니다.
@@ -26,7 +26,7 @@ LLM 멀티 에이전트 데모 대부분은 "채팅창에 역할극"에서 멈�
 | 24명·8부서 규모에서 "누가 이 일을 할지" 정적 매핑이 깨지는 문제 | 하드코딩된 라우팅 표 없음. 매 요청마다 모델이 `department-boundaries.json` + 가용 인력·스킬을 함께 보고 동적으로 배정 |
 | API와 worker가 다른 버전으로 떠 있을 때 생기는 조용한 실패 | `/api/runtime/version`에서 build id·schema version을 대조해 불일치 시 UI 실행 버튼을 하드 차단 |
 
-규모: FastAPI + worker 약 7.8k LOC(Python), React/Vite/TS UI 약 1.2k LOC, 자동 테스트 31건(`apps/api/test_*.py`) + 정적 정합성 검사 스크립트 3종.
+규모: FastAPI + worker 약 7.8k LOC(Python), React/Vite/TS UI 약 1.2k LOC, 자동 테스트 70건(`apps/api/test_*.py`) + 정적 정합성 검사 스크립트 3종.
 
 ## 스택
 
@@ -63,7 +63,7 @@ LLM 멀티 에이전트 데모 대부분은 "채팅창에 역할극"에서 멈�
 → 팀장이 자기 부서 실행자만 배정, 업무별 스킬 최대 3개 동적 선택
 → 실행자가 파일·검색·명령·MCP 도구로 작업 (부서별 격리 워크스페이스 또는 Git worktree)
 → 부서 초안을 실제 파일로 저장 → 최종 책임자가 FINAL.md로 통합
-→ 담당 팀장 외 독립 리뷰어(GUARD, GUARD 소유 시 LENS)가 실제 파일 검수
+→ NAVI(z-ai/glm-5.2)가 증거를 검토해 완료 여부를 판정 (병렬 Git worktree 병합 전 diff 검수는 GUARD, GUARD 소유 시 LENS가 별도로 수행)
 → changes_requested면 지적 사항을 넣어 자동 재통합
 → 실제 파일 + 통과한 리뷰 + 증거가 모두 있을 때만 완료
 ```
@@ -267,7 +267,7 @@ npm.cmd run build
 
 검사 내용:
 
-- `apps/api/test_*.py` — Job 워크플로, 수용 기준, E2E, 런타임 내구성, 생애주기 권한, 에이전트 도구 (31개)
+- `apps/api/test_*.py` — Job 워크플로, 수용 기준, E2E, 런타임 내구성, 생애주기 권한, 에이전트 도구 (70개)
 - `scripts/verify_routing.py` — 24명·8부서·정적 프로필 0개·산출물 기준 정합성
 - `scripts/verify_skills.py` — 필수 스킬 존재와 lock hash 일치
 - `scripts/audit_package.py` — 직원 필수 파일, constitution 참조, 스킬 정의·설치·라우팅 인덱스, YAML 파싱, Markdown 코드 펜스, 스크립트 컴파일

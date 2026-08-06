@@ -36,6 +36,7 @@ Move AI Office from role-labelled prompt orchestration to evidence-backed execut
 - Material research claims persist claim text, verified source URL, publisher, date, retrieved source span, confidence, and contradictions. Research cannot finish without claim-to-source evidence.
 - Rendered deliverables are reopened and validated: DOCX, PDF, XLSX, PPTX, HWPX. HWPX uses local pinned `kordoc`; output is parsed after generation.
 - Retry API selects an unused failure-class playbook strategy when the caller does not provide one. Repeated/exhausted strategies escalate rather than replaying identical prompts.
+- Real per-call cost tracking: `record_usage` in `apps/api/main.py` computes `model_usage.cost_usd` from actual input/output tokens via `usd_cost` in `apps/api/pricing.py`, which prices against the cached OpenRouter model list. `cost_usd` is no longer always 0.
 
 ## Remaining platform boundaries
 
@@ -78,12 +79,11 @@ Release gates:
 | R3. 기본 담당자 단일 필드 | 작업 1건에 기본 담당자 1명, 검토자는 필요할 때만 별도 지정 | `leads`(1~4명), `final_owner`(통합 책임) | `tasks.assignee_id` 필드 추가(nullable, 기본값 = `final_owner` 또는 단일 lead일 때 자동 채움). 기존 다중 리드 배정과 병행 — 대체하지 않음 | 중간 (스키마 마이그레이션 필요) |
 | R4. 승인 경계 카탈로그 | 파일 삭제·외부 발송·배포·API 키/권한 변경·운영 데이터 수정 5개 범주를 사용자에게 고정 목록으로 보여줌 | `apps/api/policy.py` `BLOCKED_TOKENS`, `permission_rules` | 신규 파일 *registry/approval-boundaries.json*(범주→기본 `deny`/`ask` 패턴 매핑) + 설정 화면에 읽기 전용 카탈로그 표시. 실제 차단 로직은 기존 `permission_effect`/`BLOCKED_TOKENS` 재사용, 범주는 표시·문서화 목적 | 중간 |
 | R5. 예상 비용 | 모델 호출 전 입력 토큰 추정치 × 모델 단가로 예상 비용 표시 | `model_routing()`(모델 이름) | 신규 파일 *registry/model-pricing.json*(모델별 $/1M input·output) + 호출 전 추정 함수. OpenRouter 단가는 주기적으로 수동 갱신 필요(자동 동기화는 범위 밖) | 낮음 (단가 유지보수 비용 있음) |
-| R6. 실제 비용 | `model_usage.cost_usd`가 항상 0인 것을 실제 토큰×단가로 채움 | `model_usage(input_tokens, output_tokens)` | R5의 단가 테이블을 재사용해 `worker.py`의 두 `INSERT INTO model_usage` 지점에서 `cost_usd` 계산. 스키마 변경 없음, 계산 로직만 추가 | 낮음 (R5에 의존) |
 | R7. 로컬 vs API 실행 표시 | 각 모델 호출이 로컬 실행인지 API 실행인지 구분 | 없음. 현재 100% OpenRouter API | `model_usage.execution_location` 컬럼 추가, 지금은 전부 `"api"`로 채움. 로컬 실행 자체는 R8에 의존 | 낮음 (지금은 표시만, 값은 항상 api) |
 | R8. 로컬 Claude Code·Codex 연결 | 직원 실행기를 OpenRouter API 대신 로컬 CLI로 전환 | `skills/doubt-driven-development/SKILL.md`(사람이 수동 실행하는 2차 검토 CLI 호출만 존재) | `registry/model-routing.json`에 `provider`(`openrouter`/`local_cli`) 필드 추가, `apps/api/worker.py` 모델 호출 지점에 provider 분기, 로컬 CLI 프로세스 실행·타임아웃·에러 처리 신설. 인증·샌드박스·비동기 실행 문제로 별도 설계 문서가 필요한 규모 | 낮음 (설계 선행 필요, 후순위) |
 | R9. 호출형 에이전트(대화에 항상 끼어들지 않음) | NAVI/담당자가 부를 때만 실행 | Job 큐 자체가 이미 요청 기반(끼어들지 않음)이지만 대화 계층이 없어 "호출"이라는 사용자 경험이 없음 | [CONVERSATIONAL_AGENT_TARGET.md](../reference/legacy/CONVERSATIONAL_AGENT_TARGET.md) C1~C5 슬라이스에 종속. 별도 신규 작업 없음 | C1~C5 완료 후 |
 
-권장 순서: R1·R2(표시 전용, 로직 변경 없음) → R4(문서화 성격) → R3(스키마 변경 1개) → R5·R6(단가 테이블) → R7 → R9(대화 계층 선행) → R8(설계 문서 먼저).
+권장 순서: R1·R2(표시 전용, 로직 변경 없음) → R4(문서화 성격) → R3(스키마 변경 1개) → R5(단가 표시) → R7 → R9(대화 계층 선행) → R8(설계 문서 먼저). R6(실제 비용)은 이미 구현되어 P1에 반영됨.
 
 ## Verification
 

@@ -168,18 +168,20 @@ fixture를 추가·수정한 뒤에는 `evaluate_research_quality`를 직접 호
 
 ---
 
+**항목 9~13 아카이브 안내(2026-08-05):** 아래 S1~S4 절이 다루는 `apps/api/vibeoffice/` 패키지와 그 테스트는 커밋 `5515caf`에서 전부 삭제됐다(라우터가 상시 OFF 게이트 뒤에 있었고 실행 경로에서 한 번도 호출되지 않았기 때문 — 근거는 [RUNTIME_ROADMAP.md](RUNTIME_ROADMAP.md)). 아래 표의 경로는 삭제 시점의 역사적 기록이라 백틱을 뺐다 — 지금 저장소에 존재하지 않는다. 되돌리지 말 것.
+
 ### 9. 제품 계층 S1 — Intake → Blueprint → 기획 승인
 
 VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S1. 담당: Kiro 세션 (2026-07-30).
 
 | 파일 | 역할 |
 |---|---|
-| `apps/api/vibeoffice/schema.py` | `vo_projects`·`vo_blueprints` 멱등 생성, `ProjectState` enum(전체 상태 머신), `S1_STATES`/`S1_TRANSITIONS`, `vibeoffice_database()` |
-| `apps/api/vibeoffice/models.py` | pydantic v2 blueprint 모델(`extra="forbid"`) + **스키마 파일을 읽어 해석하는 최소 JSON Schema 검증기** |
-| `apps/api/vibeoffice/intake.py` | 결정론적 규칙 추정 10키, 시작 카드 5장, `MAX_QUESTIONS=3`, 3선택지 질문, `apply_answers` |
-| `apps/api/vibeoffice/blueprint.py` | blueprint 조립·Gate B·DB+파일 동시 저장·sha256·승인·`approved_blueprint_for_handoff` |
-| `apps/api/vibeoffice/routes.py` | `/api/vibe/*` 라우터 8개 엔드포인트 (404/409/422 매핑) |
-| `apps/api/test_vibeoffice_intake.py` | 테스트 18건 |
+| apps/api/vibeoffice/schema.py | `vo_projects`·`vo_blueprints` 멱등 생성, `ProjectState` enum(전체 상태 머신), `S1_STATES`/`S1_TRANSITIONS`, `vibeoffice_database()` |
+| apps/api/vibeoffice/models.py | pydantic v2 blueprint 모델(`extra="forbid"`) + **스키마 파일을 읽어 해석하는 최소 JSON Schema 검증기** |
+| apps/api/vibeoffice/intake.py | 결정론적 규칙 추정 10키, 시작 카드 5장, `MAX_QUESTIONS=3`, 3선택지 질문, `apply_answers` |
+| apps/api/vibeoffice/blueprint.py | blueprint 조립·Gate B·DB+파일 동시 저장·sha256·승인·`approved_blueprint_for_handoff` |
+| apps/api/vibeoffice/routes.py | `/api/vibe/*` 라우터 8개 엔드포인트 (404/409/422 매핑) |
+| apps/api/test_vibeoffice_intake.py | 테스트 18건 |
 
 `apps/api/main.py`는 **라우터 mount 한 줄만** 건드렸다 (`app.add_middleware(...)` 직후, 조사 품질 게이트가 있는 1265행과 무관한 위치). import를 그 자리에 둔 이유는 주석에 남겼다 — `vibeoffice` 패키지가 `main`을 함수 본문에서 지연 import하므로, 파일 상단 import 블록에 넣으면 순환 참조가 닫힌다.
 
@@ -208,10 +210,10 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 | 파일 | 변경 |
 |---|---|
-| `apps/api/vibeoffice/design.py` | `approve_design()` 추가 (기존 함수는 무변경) |
-| `apps/api/vibeoffice/routes.py` | `POST /projects/{id}/artifacts/design/approve` 추가 |
+| apps/api/vibeoffice/design.py | `approve_design()` 추가 (기존 함수는 무변경) |
+| apps/api/vibeoffice/routes.py | `POST /projects/{id}/artifacts/design/approve` 추가 |
 
-검증: `apps/api/test_vibeoffice_contracts.py`의 `test_design_approve_*` 2건 (아래 §11에 포함).
+검증: apps/api/test_vibeoffice_contracts.py의 `test_design_approve_*` 2건 (아래 §11에 포함).
 
 ### 11. 제품 계층 S3 — 디자인 승인 → 기술설계 계약
 
@@ -219,11 +221,11 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 | 파일 | 역할 |
 |---|---|
-| `apps/api/vibeoffice/architecture.py` | 신규. `ApiEndpoint`/`DataEntity`/`TechnicalTask` 결정론적 생성(화면 kind별 고정 필드셋 재사용 → API/Data 필드 일치가 구성상 보장), `assert_gate_d`(생성기와 독립적으로 재검증), `run_architecture` |
-| `apps/api/vibeoffice/schema.py` | `S3_TRANSITIONS` 추가 (`DESIGN_APPROVED→ARCHITECTURE→ARCHITECTURE_REVIEW`, Gate D 반송 경로) |
-| `apps/api/vibeoffice/artifacts.py` | `ARTIFACT_API_CONTRACT`/`ARTIFACT_DATA_MODEL`/`ARTIFACT_TECHNICAL_TASKS` 등록 (기존 `record_artifact` 등은 타입 무관 제네릭이라 로직 변경 없음) |
-| `apps/api/vibeoffice/routes.py` | `POST /projects/{id}/departments/architecture/run` |
-| `apps/api/test_vibeoffice_contracts.py` | 신규, 18건 |
+| apps/api/vibeoffice/architecture.py | 신규. `ApiEndpoint`/`DataEntity`/`TechnicalTask` 결정론적 생성(화면 kind별 고정 필드셋 재사용 → API/Data 필드 일치가 구성상 보장), `assert_gate_d`(생성기와 독립적으로 재검증), `run_architecture` |
+| apps/api/vibeoffice/schema.py | `S3_TRANSITIONS` 추가 (`DESIGN_APPROVED→ARCHITECTURE→ARCHITECTURE_REVIEW`, Gate D 반송 경로) |
+| apps/api/vibeoffice/artifacts.py | `ARTIFACT_API_CONTRACT`/`ARTIFACT_DATA_MODEL`/`ARTIFACT_TECHNICAL_TASKS` 등록 (기존 `record_artifact` 등은 타입 무관 제네릭이라 로직 변경 없음) |
+| apps/api/vibeoffice/routes.py | `POST /projects/{id}/departments/architecture/run` |
+| apps/api/test_vibeoffice_contracts.py | 신규, 18건 |
 
 **되돌리지 말 것:**
 
@@ -238,11 +240,11 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 | 파일 | 역할 |
 |---|---|
-| `apps/api/vibeoffice/execution_baseline.py` | 신규. `Requirement`/`KeyResult`/`Decision`/`RiskEntry`/`TraceabilityRow` 결정론적 파생, `assert_gate_pe`, `run_execution_baseline` |
-| `apps/api/vibeoffice/schema.py` | `S35_TRANSITIONS` 추가 |
-| `apps/api/vibeoffice/artifacts.py` | `ARTIFACT_PRD`/`ARTIFACT_DECISION_REGISTER`/`ARTIFACT_RISK_REGISTER`/`ARTIFACT_TRACEABILITY`/`ARTIFACT_TRACEABILITY_MAP` 등록 |
-| `apps/api/vibeoffice/routes.py` | `POST /projects/{id}/departments/execution-baseline/run` |
-| `apps/api/test_vibeoffice_execution_baseline.py` | 신규, 15건 |
+| apps/api/vibeoffice/execution_baseline.py | 신규. `Requirement`/`KeyResult`/`Decision`/`RiskEntry`/`TraceabilityRow` 결정론적 파생, `assert_gate_pe`, `run_execution_baseline` |
+| apps/api/vibeoffice/schema.py | `S35_TRANSITIONS` 추가 |
+| apps/api/vibeoffice/artifacts.py | `ARTIFACT_PRD`/`ARTIFACT_DECISION_REGISTER`/`ARTIFACT_RISK_REGISTER`/`ARTIFACT_TRACEABILITY`/`ARTIFACT_TRACEABILITY_MAP` 등록 |
+| apps/api/vibeoffice/routes.py | `POST /projects/{id}/departments/execution-baseline/run` |
+| apps/api/test_vibeoffice_execution_baseline.py | 신규, 15건 |
 
 **되돌리지 말 것:**
 
@@ -254,15 +256,15 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 ### 13. 제품 계층 S4 — 기술설계 승인 → 내부 MVP 빌드
 
-근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S4, 09A Gate F. 위 "진행 중" 절에 "다른 세션이 S4를 진행 중"이라는 메모가 있었으나, 이 세션 착수 시점에 `apps/api/vibeoffice/build.py`·`test_vibeoffice_build.py`는 존재하지 않았다(새로 작성, 덮어쓴 파일 없음).
+근거: [VIBEOFFICE_IMPLEMENTATION_GUIDE.md](../reference/legacy/VIBEOFFICE_IMPLEMENTATION_GUIDE.md) §7 S4, 09A Gate F. 위 "진행 중" 절에 "다른 세션이 S4를 진행 중"이라는 메모가 있었으나, 이 세션 착수 시점에 apps/api/vibeoffice/build.py·`test_vibeoffice_build.py`는 존재하지 않았다(새로 작성, 덮어쓴 파일 없음).
 
 | 파일 | 역할 |
 |---|---|
-| `apps/api/vibeoffice/build.py` | 신규. 정적 HTML+vanilla JS 스캐폴드(프레임워크 설치 없음 — mock 경계), 실제 `node scripts/build.js`/`node scripts/test.js` 서브프로세스 실행, `assert_gate_f`, `run_build` |
-| `apps/api/vibeoffice/artifacts.py` | `_write_doc`/`record_artifact`에 선택적 `directory` 인자 추가(기본값 `docs/`로 하위호환), `ARTIFACT_PROJECT_STATUS`(workspace root)/`ARTIFACT_BUILD_REPORT`(docs/)/`ARTIFACT_CURRENT_STATE`(.vibeoffice/) 등록 |
-| `apps/api/vibeoffice/schema.py` | `S4_TRANSITIONS` 추가 (`ARCHITECTURE_REVIEW→BUILD→BUILD_VERIFICATION`, 가이드 §5에 이미 있던 상태를 처음 실제로 씀) |
-| `apps/api/vibeoffice/routes.py` | `POST /projects/{id}/departments/build/run` |
-| `apps/api/test_vibeoffice_build.py` | 신규, 10건. `shutil.which("node") is None`이면 skip |
+| apps/api/vibeoffice/build.py | 신규. 정적 HTML+vanilla JS 스캐폴드(프레임워크 설치 없음 — mock 경계), 실제 `node scripts/build.js`/`node scripts/test.js` 서브프로세스 실행, `assert_gate_f`, `run_build` |
+| apps/api/vibeoffice/artifacts.py | `_write_doc`/`record_artifact`에 선택적 `directory` 인자 추가(기본값 `docs/`로 하위호환), `ARTIFACT_PROJECT_STATUS`(workspace root)/`ARTIFACT_BUILD_REPORT`(docs/)/`ARTIFACT_CURRENT_STATE`(.vibeoffice/) 등록 |
+| apps/api/vibeoffice/schema.py | `S4_TRANSITIONS` 추가 (`ARCHITECTURE_REVIEW→BUILD→BUILD_VERIFICATION`, 가이드 §5에 이미 있던 상태를 처음 실제로 씀) |
+| apps/api/vibeoffice/routes.py | `POST /projects/{id}/departments/build/run` |
+| apps/api/test_vibeoffice_build.py | 신규, 10건. `shutil.which("node") is None`이면 skip |
 
 **되돌리지 말 것:**
 
@@ -333,69 +335,6 @@ VibeOffice 제품 파이프라인의 첫 수직 슬라이스. 근거: [VIBEOFFIC
 
 검증: 전체 165건 baseline 4 error 그대로, `audit_package` OK, 실제 `employee_skill_context` 호출로 전달 확인.
 
-### 20. Superpowers 공통 5종 완성 (2026-08-03)
-
-§18 정리에서 공통으로 쓰기로 한 Superpowers 5종 중 실제로 풀에 있던 건 3종(`systematic-debugging`, `verification-before-completion`, `using-git-worktrees`)뿐이었다. `requesting-code-review`·`receiving-code-review`는 애초에 설치된 적이 없었고, `writing-skills`는 §18에서 "고아 + 전역 중복"으로 판단해 지웠는데 이는 오판이었다 — 직원 런타임은 내 전역 스킬을 읽지 않는다.
-
-네트워크 없이 `.cache/skill-repos/superpowers-44c9b2d6e889.zip`(이미 받아둔 commit `44c9b2d6e889...`)에서 추출해 풀에 설치하고, lock에 같은 commit SHA로 등록.
-
-- `requesting-code-review`, `receiving-code-review` → application, quality-security
-- `writing-skills` → service-knowledge
-- `subagent-driven-development` → application, operations-planning. **조건부** 지시대로 `activation.allowed_task_kinds`를 구현·설계·시험 5종으로 제한해, 조사·문서·리뷰 작업에서는 선택 자체가 403으로 막힌다.
-
-`test-driven-development`는 이미 바인딩돼 있었다. 정의 99 → 103, 바인딩 합계 132.
-
-검증: `verify_routing` OK, `verify_skills` 0, `audit_package` OK, `pytest apps/api` 168 passed (실패 4건 baseline 동일).
-
----
-
-### 19. disabled 마케팅 스킬 물리 삭제 + 스킬 A/B 계측 (2026-08-03)
-
-§18에서 `status: disabled`로 내려둔 17개를 참조 검사 통과 후 정의·풀 폴더에서 삭제(정의 116 → 99). `skill-sources.json`의 모든 소스 저장소는 여전히 살아 있는 스킬을 1개 이상 가지므로 `third_party/licenses` 정리 대상 없음. (`sales-operations`는 마케팅 소스가 아닌 `source: local` 자체 제작이라 제외 — 18이 아니라 17개인 이유.)
-
-**A/B 하네스** `scripts/skill_ab_report.py` 신규 — "그 스킬을 골랐더니 실제로 결과가 좋아졌나"를 이미 쌓이는 런 기록으로만 답한다. `task_phases.skill_ids`(선택된 스킬 JSON) + `task_kind`로 같은 작업 종류 안에서 treatment(그 스킬 선택) vs control(비선택)을 나누고, `task_phases.status`·`reviews.verdict`·`retry_attempts`·`model_usage.cost_usd`를 붙인다.
-
-- 성공 판정 문자열은 추측 금지 — `PHASE_SUCCESS_STATUS='completed'`(worker.py의 `UPDATE task_phases SET status='completed'`, main.py:1258의 `NOT IN ('completed','skipped')`), `REVIEW_PASS_VERDICT='pass'`(main.py:1271, task_routes.py:513)로 실제 코드에서 확인해 상수로 고정하고 출처를 주석에 남김.
-- **표본 정직성이 이 스크립트의 핵심**: 한쪽 팔이 `--min-n`(기본 5) 미만이면 INSUFFICIENT로 표시하고 권고를 내지 않는다. delta는 항상 양쪽 n과 함께 출력. 빈 DB는 0으로 종료하고 "기록 없음"이라 말한다 — 0%를 측정값인 양 찍지 않는다.
-- retry·review·cost는 **task 단위** 기록인데 한 task 안에 양쪽 팔의 phase가 섞일 수 있다. 공유 task를 양쪽에 다 세면 상대 팔의 실패가 흘러들어오므로 **양쪽에 걸친 task는 task 단위 지표에서 제외**하고 `shared_tasks_excluded`로 개수를 보고한다(초안에 없던 부분, 리뷰에서 수정).
-- `status: shadow` 스킬(현재 `ui-ux-pro-max`)에 PROMOTE / KEEP-SHADOW / INSUFFICIENT DATA 판정을 붙인다. PROMOTE는 성공률 우위 **그리고** 양쪽 표본 충족일 때만.
-
-현재 `data/ai-office.sqlite3`는 비어 있어(task_phases 0행) 실제 판정은 아직 나오지 않는다. 승격 결정은 런 기록이 쌓인 뒤 이 스크립트 출력으로만 한다.
-
-검증: `pytest apps/api/test_skill_ab_report.py` 5 passed(알려진 정답 데이터셋, 표본 부족 경로, 공유 task 제외, 빈 DB/없는 DB 종료), `python scripts/skill_ab_report.py` → `No run history yet (task_phases is empty).` exit 0.
-
-```bash
-python scripts/skill_ab_report.py --skill ui-ux-pro-max --min-n 5
-```
-
----
-
-### 18. 스킬 풀 정리 + 부서별 복사본 → 공용 풀 전환 (2026-08-03)
-
-**실측 먼저**: 스킬 정의 126개 중 8개는 어떤 부서에도 바인딩되지 않은 고아였고, 디스크에는 부서 풀보다 넓은 superset이 복사돼 있었다(`employees/` 24M, growth-marketing 한 부서만 5.5M/558파일). 같은 스킬 텍스트가 직원마다 1부씩, 부서당 3~4부. lock도 `직원:스킬` 키라 같은 트리 해시를 3~4번 저장했다(372 entries).
-
-**중복 통합** — 기능이 겹치는 스킬을 하나로: 디버깅 3종 → `systematic-debugging`, 계획 3종 → `writing-plans`+`executing-plans`, 리뷰 2종 → `code-review-and-quality`, 스펙 2종 → `spec-driven-development`, git 2종 → `git-workflow-and-versioning`. 제거된 쪽(`debugging-and-error-recovery`, `debugging-strategies`, `planning-and-task-breakdown`, `code-review-excellence`, `source-driven-development`, `git-advanced-workflows`)은 정의·바인딩·디스크에서 삭제.
-
-**고아 8개 판정** — 버린 게 아니라 필요 여부로 갈랐다: `finance-unit-economics`·`finance-driver-based-model` → platform-reliability(COST가 비용 담당인데 바인딩만 빠져 있었음), `pm-foundation-meeting-synthesize` → service-knowledge(회의 자동 스케줄과 짝), 나머지 5개(`gsap-core`, `gsap-timeline`, `startup-financial-modeling`, `git-advanced-workflows`, `writing-skills`)는 설치본조차 없거나 중복이라 삭제. growth-marketing이 쥐고 있던 PM 발견 스킬 3종(`pm-define-jtbd-canvas`, `pm-discover-competitive-analysis`, `pm-discover-market-sizing`)은 product-experience로 이관 — 부서 경계상 발견은 제품 조직 소유.
-
-**마케팅 축소는 2단계로**: 18개(`ads`, `aso`, `attribution`, `co-marketing`, `cold-email`, `community-marketing`, `competitor-profiling`, `content-strategy`, `copy-editing`, `emails`, `marketing-plan`, `pricing`, `programmatic-seo`, `referrals`, `social`, `brand-consistency-checker`, `content-repurposer`)를 **물리 삭제하지 않고** `status: disabled` + 바인딩 해제만 했다. 정의·파일은 남겨 두고 참조 검사 후 다음 단계에서 지운다. growth-marketing 38 → 17. `sales-operations`는 마케팅 저장소가 아니라 `source: local` 자체 제작 스킬이라 되살려 유지(1차 목록에 잘못 들어갔던 것). `ui-ux-pro-max`는 `status: shadow` — 정의는 남기고 바인딩만 해제해 대체 스킬과 비교용으로 보관.
-
-`skill-definitions.json`에 `status` 필드 신설(active/shadow/disabled), `verify_routing.py`가 **active가 아닌 스킬이 바인딩되면 에러**를 내도록 게이트 추가. 작업당 스킬 상한은 이미 `validate_selected_skills(limit=3)`로 강제되고 있어 `task-profiles.json`은 비운 채 유지(라우팅 검사가 그걸 요구함).
-
-**공용 풀 전환** — 심볼릭 링크는 Windows·git·배포에서 깨지므로 쓰지 않고, 런타임이 풀 경로를 직접 참조하게 바꿨다. `skills/<id>/` 1부만 두고 `employees/*/*/skills/`에는 `_local-role-core`만 남긴다. `main.SKILL_POOL_PATH` 신설, `employee_security()`가 풀 경로를 보고 lock을 **스킬 id 키**로 조회. `install_skills.py`(풀에 1회 설치), `verify_skills.py`(id당 1회 해시 검증), `refresh_local_skill_lock.py`, `render_skill_indexes.py`, `audit_package.py` 동반 수정.
-
-**VFF2 진단 원칙 흡수**: `constitution/DIAGNOSIS.md` 신규(결론 우선·측정 먼저·불확실성 공개·단서 전체 설명·완료 전 검증) — 스킬이 아니라 헌법으로 넣어 24명 전원 상속, 선택 슬롯을 쓰지 않는다. `audit_package.py`가 5번째 헌법 참조를 강제.
-
-- 정의 126 → 116(active 97 / disabled 18 / shadow 1), 바인딩 합계 125, lock 372 → 98 entries.
-- 디스크 `employees/` 24M → 948K, 공용 풀 `skills/` 6.8M. 중복 복사본 323개 제거, 미바인딩 잔여 폴더 139개 정리.
-- `TASK_KINDS`에서 담당 스킬이 사라진 6종(`paid_acquisition`, `app_store_optimization`, `lifecycle_marketing`, `community_growth`, `partner_marketing`, `seo_growth`) 제거 — `test_lifecycle_capabilities`가 "모든 특화 task_kind는 바인딩된 스킬을 가져야 한다"를 강제하므로 스킬만 빼면 실패한다.
-- fixture 2종(`policy_market_research_ui_skill_001`, `policy_test_engineering_skill_011`)은 `ui-ux-pro-max` 대신 여전히 바인딩된 `design-first-ui-prompting`으로 교체 — 검사 대상은 "바인딩 없음"이 아니라 **task_kind 정책 차단 경로**라 바인딩된 UI 스킬이어야 의미가 있다.
-- `GROW`의 `positioning-statement` 깨진 참조(정의·설치본 모두 없음) 제거: `EMPLOYEE.md`, `SKILLS.md`, `reference/corporate-os/02-EMPLOYEE_REGISTRY_v6.2.md`.
-
-검증: `pytest apps/api` 163 passed, 실패 4건은 baseline과 동일(`test_runtime_hardening` 2 + 문서 fixture 2, HEAD 워크트리에서 동일 재현 확인). `audit_package` OK, `verify_routing` OK, `verify_skills` 0.
-
-**남은 일**: disabled 18개 물리 삭제(참조 검사에서 코드 참조는 발견되지 않음, 바이너리 이미지 파일명 오탐만 있었음), shadow `ui-ux-pro-max` A/B, Meng To·Vercel 선별 추가는 보류(현행 유지 결정).
-
 ---
 
 ## 진행 중
@@ -404,7 +343,7 @@ python scripts/skill_ab_report.py --skill ui-ux-pro-max --min-n 5
 
 ### LAUNCH_HARNESS_PLAN B0 + S0~S3.5 보강 (Kiro 세션 점유, 2026-07-30 시작)
 
-다른 세션이 S4(`apps/api/vibeoffice/build.py`, `test_vibeoffice_build.py`)를 진행 중이라 겹치지 않는 영역만 잡는다.
+다른 세션이 S4(apps/api/vibeoffice/build.py, `test_vibeoffice_build.py`)를 진행 중이라 겹치지 않는 영역만 잡는다.
 
 **점유 파일:**
 
@@ -547,9 +486,10 @@ S4 완료로 `main.py` 동시 편집이 멈춘 것을 확인한 뒤(수정 시�
 | ripgrep 설치 전 | 32 (E 3) | S1·조사품질 이전 |
 | 조사 품질 모듈 추가 후 | 45 | 32 + `test_research_quality` 13 |
 | S1 추가 후 | 63 | 45 + `test_vibeoffice_intake` 18 |
-| S2 + 문서 검사기 추가 후 (현재) | **113** | 63 + `test_vibeoffice_handoff` + `test_docs_consistency` 20 |
+| S2 + 문서 검사기 추가 후 | 113 | 63 + `test_vibeoffice_handoff` + `test_docs_consistency` 20 |
+| `vibeoffice/` 삭제 후 (현재, 2026-08-05, `5515caf`) | **65** | vibeoffice 테스트 100건(전체의 60%가 상시 OFF 게이트 뒤 코드를 검사하고 있었다) 제거. 남은 65건이 실행되는 job queue → worker → 상태 전이 경로를 검사한다 |
 
-이보다 실패가 늘면 회귀다. `rg`가 PATH에 없으면 `test_agent_tools` 3건이 error가 되는데, 그건 환경 문제이지 회귀가 아니다.
+이보다 65 밑으로 실패가 늘면 회귀다. `rg`가 PATH에 없으면 `test_agent_tools` 3건이 error가 되는데, 그건 환경 문제이지 회귀가 아니다.
 
 같은 방식으로 확인한 나머지 검증 (전부 exit 0):
 
