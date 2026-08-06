@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shlex
 import subprocess
 import time
@@ -28,6 +29,7 @@ from fastapi.responses import StreamingResponse
 from apps.api import main
 from apps.api.api_models import (
     ApprovalInput,
+    ChatInput,
     Command,
     ContractInput,
     CreateTask,
@@ -84,6 +86,56 @@ def agent_brief(task_id: str) -> dict:
         main.record_usage(db, task_id, main.model_assignment("NAVI")["model"], input_tokens, output_tokens)
         db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "agent_brief", task["state"], task["state"], "NAVI", "CEO briefing generated", json.dumps(["NAVI"]), now))
         return {"employee_id": "NAVI", "content": text, "model": main.model_assignment("NAVI")["model"], "input_tokens": input_tokens, "output_tokens": output_tokens}
+
+
+@router.post("/api/tasks/{task_id}/chat")
+def chat(task_id: str, payload: ChatInput) -> dict:
+    """Synchronous back-and-forth with NAVI (or the directly-assigned lead) before/while a task runs.
+
+    Mirrors ``agent_brief``'s synchronous model-call pattern instead of the queued job
+    pipeline: a chat turn needs to feel instant, not wait for a worker poll cycle. The
+    model is instructed to end every reply with a STATUS line so the UI can tell whether
+    it still needs an answer (``needs_info``) or has enough to proceed (``ready``); this
+    stays a caller-visible signal, not a task-state transition, since chat can happen at
+    any task state without touching the execution state machine.
+    """
+    key = main.model_key()
+    if not key:
+        raise HTTPException(409, "OpenRouter API key is not configured")
+    with main.database() as db:
+        task = main.task_payload(db, task_id)
+        now = main.utc_now()
+        db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, "CEO", "user", payload.message, now))
+        responder = task["lead_id"] if task["route"] == "direct_lead" and task["lead_id"] else "NAVI"
+        history = sorted((m for m in task["agent_messages"] if m["kind"] in ("user", "chat")), key=lambda m: m["created_at"])
+        transcript = "\n".join(f"{'대표' if m['kind'] == 'user' else responder}: {m['content']}" for m in history[-16:])
+        intake_hint = {
+            "blank": "사용자는 아직 구체적인 아이디어가 없습니다. 목적/대상/우선순위를 좁히는 질문을 한 번에 하나씩 던지고 선택지를 예시로 제시하세요.",
+            "has_items": "사용자는 이미 어느 정도 방향을 정했습니다. 빠진 구체 사항을 확인하는 질문 위주로 진행하세요.",
+        }.get(payload.intake_mode or "", "")
+        instructions = (
+            f"You are {responder}, an operating lead having an ongoing Korean conversation with the CEO (the user) about a task, before or during work. "
+            "Ask at most one question per turn; never dump a checklist. If context is thin, you must ask rather than guess. "
+            f"{intake_hint} "
+            "End your reply with exactly one line, nothing after it, formatted as 'STATUS: ready' when you have enough to start real work, or 'STATUS: needs_info' when you still must ask something."
+        )
+        input_text = json.dumps({"task_title": task["title"], "original_request": task["request"], "transcript": transcript}, ensure_ascii=False)
+        try:
+            response = main.model_client().responses.create(model=main.model_assignment(responder)["model"], instructions=instructions, input=input_text)
+        except Exception as error:
+            main.record_usage(db, task_id, main.model_assignment(responder)["model"], error=str(error))
+            raise HTTPException(502, "Model call failed; see local model_usage log") from error
+        usage = getattr(response, "usage", None)
+        input_tokens = getattr(usage, "input_tokens", 0) if usage else 0
+        output_tokens = getattr(usage, "output_tokens", 0) if usage else 0
+        text = response.output_text
+        status_match = re.search(r"STATUS:\s*(ready|needs_info)\s*$", text.strip(), re.I)
+        needs_info = not status_match or status_match.group(1).lower() == "needs_info"
+        display_text = re.sub(r"\n?STATUS:\s*(ready|needs_info)\s*$", "", text.strip(), flags=re.I).strip()
+        reply_at = main.utc_now()
+        db.execute("INSERT INTO agent_messages (task_id, employee_id, kind, content, created_at) VALUES (?, ?, ?, ?, ?)", (task_id, responder, "chat", display_text, reply_at))
+        main.record_usage(db, task_id, main.model_assignment(responder)["model"], input_tokens, output_tokens)
+        return {"employee_id": responder, "content": display_text, "needs_info": needs_info}
 
 
 @router.get("/api/tasks")

@@ -268,4 +268,9 @@ export const api = {
     }),
   office: (id: string) =>
     request<{ task: Task; employees: Employee[] }>(`/tasks/${id}/office`),
+  chat: (id: string, message: string, intakeMode?: 'blank' | 'has_items') =>
+    request<{ employee_id: string; content: string; needs_info: boolean }>(`/tasks/${id}/chat`, {
+      method: 'POST',
+      body: JSON.stringify({ message, intake_mode: intakeMode }),
+    }),
 };

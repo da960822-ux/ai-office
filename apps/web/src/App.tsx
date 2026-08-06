@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { api, type Employee, type JobEvent, type McpConnection, type ModelSettings, type Project, type ProviderModel, type RuntimeVersion, type Task, type UsageSummary, type Workspace } from './api';
+import { api, type Deliverable, type Employee, type JobEvent, type McpConnection, type ModelSettings, type Project, type ProviderModel, type RuntimeVersion, type Task, type UsageSummary, type Workspace } from './api';
 import { personas, type Persona } from './personas';
 import { directionForSegment, resolveMotion, routeBetween, routeDuration, type AgentAction, type AgentStateKey, type AvatarDirection, type MotionPoint } from './motion';
 
 const initialAgents = ['NAVI', 'FRAME', 'BUILD', 'FRONT', 'BACK', 'TRACE', 'GUARD'];
 const leadIds = new Set(['NAVI','FRAME','BUILD','LINK','SHIP','GUARD','GROW','LENS']);
 const spriteIds = ['NAVI','ROUTE','CLOCK','FRAME','FLOW','MOSS','BUILD','FRONT','BACK','LINK','SIGNAL','EVAL','SHIP','SRE','COST','GUARD','TRACE','SHIELD','GROW','VOICE','PULSE','LENS','JOURNEY','DOCS'];
-const avatarIndexes: Record<string, number> = { NAVI:1, ROUTE:0 };
+// Sprite sheet slots verified against apps/web/public/assets/agent-sprites-v3.png:
+// only 7 of 24 painted characters wear glasses (indexes 1,5,8,15,18,20,22). Personas
+// with accessory:'glasses' (NAVI/BUILD/LINK/GUARD/LENS/DOCS) must land on one of those
+// slots or they render as a different-looking character than their profile describes.
+const avatarIndexes: Record<string, number> = { NAVI:1, ROUTE:0, BUILD:8, BACK:6, LINK:22, JOURNEY:9, LENS:20, PULSE:21, DOCS:18, GROW:23 };
 const teamNames: Record<string, string> = {
   'operations-planning': '운영 기획', 'product-experience': '제품 경험', application: '애플리케이션',
   'ai-data': 'AI·데이터', 'platform-reliability': '플랫폼', 'quality-security': '품질·보안',
@@ -28,6 +32,10 @@ const teamSigns = [
   ['backend','백엔드·AI팀','API · 데이터 · AI'], ['growth','마케팅·성장팀','캠페인 · 지표'],
   ['lounge','공용 라운지','팀 허들 · 협업'], ['ops','운영·보안팀','신뢰성 · QA · 보안'],
 ] as const;
+
+async function pingApi(): Promise<boolean> {
+  try { const result = await api.health(); return Boolean(result.ok); } catch { return false; }
+}
 
 function friendlyError(error: unknown) {
   const text = error instanceof Error ? error.message : String(error);
@@ -56,7 +64,7 @@ export default function App() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<'project'|'request'|'settings'|'meeting'|'task'|'approval'|'evidence'|'reflection'|'leadSelection'|'workerSelection'|'leadCommand'|null>(null);
+  const [modal, setModal] = useState<'project'|'request'|'settings'|'meeting'|'task'|'approval'|'evidence'|'reflection'|'leadSelection'|'workerSelection'|'leadCommand'|'chat'|null>(null);
   const [focusedId, setFocusedId] = useState('');
   const [focusedZone, setFocusedZone] = useState('');
   const [camera, setCamera] = useState({ zoom: 1, x: 0, y: 0 });
@@ -67,6 +75,10 @@ export default function App() {
   const [directCommandLeadId, setDirectCommandLeadId] = useState('');
   const [directCommandTitle, setDirectCommandTitle] = useState('');
   const [directCommandText, setDirectCommandText] = useState('');
+  const [intakeMode, setIntakeMode] = useState<'blank'|'has_items'|''>('');
+  const [chatDraft, setChatDraft] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatNeedsInfo, setChatNeedsInfo] = useState(false);
   const executionControl = useRef<'active'|'paused'|'cancelled'>('active');
   const dragOrigin = useRef<{ pointerX:number; pointerY:number; x:number; y:number } | null>(null);
   const [meetingObjective, setMeetingObjective] = useState('');
@@ -82,6 +94,11 @@ export default function App() {
   const [modelTeamId, setModelTeamId] = useState('application');
   const [modelEmployeeId, setModelEmployeeId] = useState('BUILD');
   const [allRolesModel, setAllRolesModel] = useState('');
+  const [apiNickname, setApiNicknameState] = useState(() => localStorage.getItem('ai-office-api-nickname') ?? '');
+  const [connectionOk, setConnectionOk] = useState(false);
+  const [connectionCheckedAt, setConnectionCheckedAt] = useState<number | null>(null);
+  const setApiNickname = (value: string) => { setApiNicknameState(value); localStorage.setItem('ai-office-api-nickname', value); };
+  const recheckConnection = () => { setConnectionCheckedAt(Date.now()); void pingApi().then(setConnectionOk); };
 
   const load = async () => {
     try {
@@ -91,6 +108,13 @@ export default function App() {
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); void api.providerModels().then(setProviderModels).catch(()=>setProviderModels([])); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const check = () => { void pingApi().then(ok => { if (!cancelled) { setConnectionOk(ok); setConnectionCheckedAt(Date.now()); } }); };
+    check();
+    const interval = setInterval(check, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
   useEffect(() => {
     if (!task) return;
     const stream = new EventSource(`/api/tasks/${task.id}/events/stream`);
@@ -229,6 +253,43 @@ export default function App() {
     finally { setBusy(''); }
   };
 
+  const startChat = async () => {
+    if (!requestText.trim()) { setError('메시지를 입력해 주세요.'); return; }
+    setBusy('대화를 여는 중');
+    try {
+      const title = requestText.trim().split(/\r?\n/)[0].slice(0,80);
+      const created = await api.create(title, requestText.trim(), initialAgents, directLeadId === 'NAVI' ? 'navi' : 'direct_lead', directLeadId === 'NAVI' ? undefined : directLeadId);
+      setTasks(current => [created, ...current]); setTask(created); setModal('chat'); setError('');
+      const firstMessage = requestText.trim(); setRequestText('');
+      setChatBusy(true);
+      const reply = await api.chat(created.id, firstMessage, intakeMode || undefined);
+      setChatNeedsInfo(reply.needs_info); setTask(await api.task(created.id));
+    } catch (cause) { setError(friendlyError(cause)); }
+    finally { setBusy(''); setChatBusy(false); }
+  };
+  const sendChat = async () => {
+    if (!task || !chatDraft.trim()) return;
+    setChatBusy(true);
+    try {
+      const message = chatDraft.trim(); setChatDraft('');
+      const reply = await api.chat(task.id, message, intakeMode || undefined);
+      setChatNeedsInfo(reply.needs_info); setTask(await api.task(task.id)); setError('');
+    } catch (cause) { setError(friendlyError(cause)); }
+    finally { setChatBusy(false); }
+  };
+  const beginExecutionFromChat = async () => {
+    if (!task) return;
+    if (!selectedProject) { setError('먼저 헤더에서 작업 프로젝트를 연결해 주세요.'); setModal('project'); return; }
+    setBusy('실행 계획을 시작하는 중');
+    try {
+      await api.contract(task.id); await api.queuePlan(task.id);
+      const prepared = await api.createWorkspace(task.id, selectedProject.id, 'in_place'); setWorkspace(prepared);
+      setBrief(directLeadId === 'NAVI' ? 'NAVI가 필요한 부서 팀장을 판단 중입니다. 완료되면 팀장 선택이 열립니다.' : `${personas[directLeadId]?.name ?? directLeadId} 팀장 판단 Job을 대기열에 넣었습니다.`);
+      setTask(await api.task(task.id)); setModal('task'); setError('');
+    } catch (cause) { setError(friendlyError(cause)); }
+    finally { setBusy(''); }
+  };
+
   const saveModel = async () => {
     setBusy('모델 연결 저장 중');
     try { const saved = await api.saveModelSettings(model.role_models, model.team_overrides, model.employee_overrides, apiKey); setModel(saved); setApiKey(''); setModal(null); setError(''); }
@@ -302,6 +363,7 @@ export default function App() {
         <button className="header-new" onClick={() => { setRequestText(''); setDirectLeadId('NAVI'); setModal('request'); }}>+ 새 업무</button>
         <button className="header-brief" onClick={() => setModal('task')}><small>CEO 브리핑</small><b>{task?.title ?? '대기 중'}</b></button>
         <span className="header-cost"><small>비용</small><b>{usage.cost_known ? `$${usage.cost_usd.toFixed(2)}` : 'unknown'}</b></span>
+        <button className={`header-connection ${!model.configured ? 'is-unset' : connectionOk ? 'is-ok' : 'is-down'}`} onClick={() => setModal('settings')} title={connectionCheckedAt ? `마지막 확인 ${new Date(connectionCheckedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}` : '아직 확인 전'}><i/><small>{apiNickname || 'OpenRouter'}</small><b>{!model.configured ? '키 미등록' : connectionOk ? '연결됨' : '연결 끊김'}</b></button>
         <button className="header-settings" onClick={() => setModal('settings')}>설정</button>
       </div>
     </header>
@@ -387,9 +449,22 @@ export default function App() {
 
     {modal === 'request' && <Dialog title="새 업무 요청" onClose={() => setModal(null)}>
       <p className="dialog-copy">NAVI는 여러 부서가 필요한 업무용입니다. 작은 범위는 팀장을 직접 지정하면 NAVI 계획과 팀장 회의를 건너뜁니다.</p>
+      <label>지금 얼마나 정해졌나요?</label>
+      <div className="intake-mode-row">
+        <button className={`intake-mode-button ${intakeMode==='blank'?'selected':''}`} onClick={()=>setIntakeMode('blank')}>아직 아이디어 없음<small>NAVI가 질문으로 방향을 좁혀 줍니다</small></button>
+        <button className={`intake-mode-button ${intakeMode==='has_items'?'selected':''}`} onClick={()=>setIntakeMode('has_items')}>어느 정도 정해짐<small>빠진 부분만 빠르게 확인합니다</small></button>
+      </div>
       <label>지시 대상</label><select value={directLeadId} onChange={event=>setDirectLeadId(event.target.value)}><option value="NAVI">NAVI · 부서 판단 후 팀장 후보 제시</option>{employees.filter(employee=>leadIds.has(employee.id)&&employee.id!=='NAVI').map(employee=><option key={employee.id} value={employee.id}>{personas[employee.id]?.name ?? employee.id} · {employee.title} 팀장에게 직접 지시</option>)}</select>
       <textarea className="request-editor" value={requestText} onChange={event => setRequestText(event.target.value)} placeholder="예: 로그인 오류를 찾아 수정하고 테스트까지 실행해." autoFocus />
-      <div className="decision-row">{directLeadId==='NAVI'&&<button className="text-button" onClick={()=>startTask('plan')} disabled={Boolean(busy)}>{busy || '계획만 생성'}</button>}<button className="solid-button" onClick={()=>startTask('execute')} disabled={Boolean(busy)}>{busy || (directLeadId==='NAVI'?'업무 시작':'팀장에게 직접 지시')}</button></div>
+      <div className="decision-row"><button className="solid-button" onClick={startChat} disabled={Boolean(busy)||!requestText.trim()}>{busy || '대화로 시작'}</button>{directLeadId==='NAVI'&&<button className="text-button" onClick={()=>startTask('plan')} disabled={Boolean(busy)}>계획만 생성</button>}<button className="text-button" onClick={()=>startTask('execute')} disabled={Boolean(busy)}>{directLeadId==='NAVI'?'대화 없이 바로 시작':'팀장에게 직접 지시'}</button></div>
+    </Dialog>}
+
+    {modal === 'chat' && <Dialog title={`${personas[task?.route==='direct_lead'&&task?.lead_id?task.lead_id:'NAVI']?.name ?? 'NAVI'}와 대화`} onClose={() => setModal(null)}>
+      <p className="dialog-copy">{task?.title ?? '대화가 아직 시작되지 않았습니다.'}</p>
+      <div className="chat-thread">{(task?.agent_messages ?? []).filter(message=>['user','chat'].includes(message.kind)).slice().sort((a,b)=>a.created_at.localeCompare(b.created_at)).map(message=><article key={message.id} className={`chat-bubble ${message.kind==='user'?'from-ceo':'from-agent'}`}><b>{message.kind==='user'?'대표':(personas[message.employee_id]?.name ?? message.employee_id)}</b><p>{message.content}</p></article>)}{!task?.agent_messages.some(message=>['user','chat'].includes(message.kind)) && <p className="dialog-copy">아직 대화가 없습니다.</p>}{chatBusy && <p className="chat-typing">응답 작성 중…</p>}</div>
+      {chatNeedsInfo && <div className="chat-needs-info"><b>답변이 필요합니다</b><span>정보가 부족해 아직 실행 계획을 시작할 수 없습니다. 위 질문에 답해 주세요.</span></div>}
+      <div className="dialog-input-row"><input value={chatDraft} onChange={event=>setChatDraft(event.target.value)} placeholder="답하거나 더 물어보세요" onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void sendChat();}}} disabled={chatBusy}/><button className="solid-button" onClick={sendChat} disabled={chatBusy||!chatDraft.trim()}>전송</button></div>
+      <button className="solid-button wide" onClick={beginExecutionFromChat} disabled={Boolean(busy)||chatBusy}>{busy || (chatNeedsInfo ? '그래도 지금 실행 계획 시작' : '이 내용으로 실행 계획 시작')}</button>
     </Dialog>}
 
     {modal === 'meeting' && <Dialog title="구조화된 회의" onClose={() => setModal(null)}>
@@ -401,13 +476,13 @@ export default function App() {
 
     {modal === 'task' && <Dialog title="CEO 브리핑" onClose={() => setModal(null)}>
       <p className="dialog-copy">{task?.state==='completed' ? '요청한 작업이 완료되었습니다. 결과를 확인하고 다음 행동을 선택하세요.' : brief || (task ? `${task.title} · ${task.state_label} · 실제 실행 ${completedRunIds.size}건` : 'NAVI가 새 업무를 기다리고 있습니다.')}</p>
-      <div className="brief-primary-actions"><button className="solid-button" onClick={()=>{setRequestText('');setDirectLeadId('NAVI');setModal('request')}}>+ 새 업무 / 대화</button><button className="text-button" onClick={()=>task&&setModal('evidence')} disabled={!task}>{task?.state==='completed'?'자세히 보기':'실행 근거 보기'}</button></div>
+      <div className="brief-primary-actions"><button className="solid-button" onClick={()=>{setRequestText('');setDirectLeadId('NAVI');setIntakeMode('');setModal('request')}}>+ 새 업무 / 대화</button><button className="text-button" onClick={()=>task&&setModal('chat')} disabled={!task}>이 업무와 대화하기</button><button className="text-button" onClick={()=>task&&setModal('evidence')} disabled={!task}>{task?.state==='completed'?'자세히 보기':'실행 근거 보기'}</button></div>
       {task && <section className="brief-live"><div><small>현재 Job</small><b>{task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state)) ? `${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.kind} · ${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.state}` : '없음'}</b></div><div><small>다음 행동</small><b>{mainAction.label}</b></div><div><small>최근 실제 이벤트</small><b>{task.job_events[0] ? `${task.job_events[0].type} · ${task.job_events[0].summary}` : '아직 실제 이벤트 없음'}</b></div></section>}
       {task?.state==='completed' ? <CompletionSummary task={task} onDetails={()=>setModal('evidence')} /> : task && <><InfoBlock label="현재 업무" value={task.title} />{task.execution_plan&&<><InfoBlock label="AI 실행 판단" value={task.execution_plan.plan.summary} /><InfoBlock label="부서 인계 흐름" value={task.execution_plan.plan.phases.map(phase=>`${personas[phase.lead_id]?.name??phase.lead_id}: ${compactText(phase.objective,100)} → ${phase.handoff_to?personas[phase.handoff_to]?.name??phase.handoff_to:'최종 산출물'}`).join('\n')} /></>}<InfoBlock label="담당 팀" value={task.assigned_employees.map(id => personas[id]?.name ?? id).join(' · ')} /><InfoBlock label="모델 예산" value={`${task.budget_spent.toLocaleString()} / ${(task.contract?.token_limit ?? 0).toLocaleString()} tokens`} /><div className="decision-row">{task.state==='paused'?<button className="solid-button" onClick={()=>controlTask('resume')} disabled={Boolean(busy)}>재개</button>:<button className="text-button" onClick={()=>controlTask('pause')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>일시 정지</button>}<button className="danger-button" onClick={()=>controlTask('cancel')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>업무 취소</button></div>{task.state==='planning'&&!workspace&&<button className="solid-button wide" onClick={beginPlannedExecution} disabled={Boolean(busy)}>계획을 실행 단계로 전환</button>}<button className="text-button" onClick={() => setModal('evidence')}>산출물·근거 상세 보기 →</button><button className="text-button" onClick={() => setModal('reflection')}>회고와 회사 기억 →</button></>}
     </Dialog>}
 
     {modal === 'evidence' && <Dialog title="고급 상세 보기" onClose={() => setModal(null)}>
-      {!task ? <p className="dialog-copy">업무가 시작되면 산출물과 검증 근거가 표시됩니다.</p> : <><p className="dialog-copy">기술 근거와 내부 검증 기록입니다.</p>{task.execution_plan&&<><InfoBlock label="판단 요약" value={task.execution_plan.plan.summary} /><InfoBlock label="근거 전략" value={task.execution_plan.plan.evidence_strategy||'실행 단계에서 결정'} /></>}<InfoBlock label="실제 산출물" value={task.deliverables.length ? task.deliverables.map(item => `${item.status} · ${item.owner}\n${workspace ? `${workspace.path}\\${item.path.replaceAll('/', '\\')}` : item.path}`).join('\n\n') : '아직 생성된 산출물 파일이 없습니다.'} /><InfoBlock label="검증 상태" value={task.evidence.length ? task.evidence.map(item => `${item.type} · ${item.status}`).join('\n') : '아직 검증 근거가 없습니다.'} /><InfoBlock label="NAVI 기술 리포트" value={task.agent_messages.find(message=>message.employee_id==='NAVI'&&message.kind==='final_report')?.content ?? '아직 최종 리포트가 없습니다.'} /><InfoBlock label="원문 확인 웹 근거" value={task.research_sources.filter(source=>source.query==='verified-original').length ? task.research_sources.filter(source=>source.query==='verified-original').slice(0, 5).map(source => `${source.title}\n${source.url}`).join('\n\n') : '확인된 원문 근거 없음'} /><InfoBlock label="실행 범위" value={task.agent_scopes.map(scope=>`${personas[scope.employee_id]?.name??scope.employee_id}: ${compactText(scope.assignment,120)}\n산출물: ${scope.deliverable}`).join('\n\n')||'범위 결정 중'} /><InfoBlock label="최종 리뷰" value={task.reviews.length ? `${task.reviews[0].reviewer_id} · ${task.reviews[0].verdict}\n${task.reviews[0].findings||'의견 없음'}` : '아직 리뷰가 없습니다.'} />{workspace && <InfoBlock label="작업 프로젝트" value={workspace.path} />}</>}
+      {!task ? <p className="dialog-copy">업무가 시작되면 산출물과 검증 근거가 표시됩니다.</p> : <><p className="dialog-copy">기술 근거와 내부 검증 기록입니다.</p>{task.execution_plan&&<><InfoBlock label="판단 요약" value={task.execution_plan.plan.summary} /><InfoBlock label="근거 전략" value={task.execution_plan.plan.evidence_strategy||'실행 단계에서 결정'} /></>}<DeliverableCards deliverables={task.deliverables} workspace={workspace} /><InfoBlock label="검증 상태" value={task.evidence.length ? task.evidence.map(item => `${item.type} · ${item.status}`).join('\n') : '아직 검증 근거가 없습니다.'} /><InfoBlock label="NAVI 기술 리포트" value={task.agent_messages.find(message=>message.employee_id==='NAVI'&&message.kind==='final_report')?.content ?? '아직 최종 리포트가 없습니다.'} /><InfoBlock label="원문 확인 웹 근거" value={task.research_sources.filter(source=>source.query==='verified-original').length ? task.research_sources.filter(source=>source.query==='verified-original').slice(0, 5).map(source => `${source.title}\n${source.url}`).join('\n\n') : '확인된 원문 근거 없음'} /><InfoBlock label="실행 범위" value={task.agent_scopes.map(scope=>`${personas[scope.employee_id]?.name??scope.employee_id}: ${compactText(scope.assignment,120)}\n산출물: ${scope.deliverable}`).join('\n\n')||'범위 결정 중'} /><InfoBlock label="최종 리뷰" value={task.reviews.length ? `${task.reviews[0].reviewer_id} · ${task.reviews[0].verdict}\n${task.reviews[0].findings||'의견 없음'}` : '아직 리뷰가 없습니다.'} />{workspace && <InfoBlock label="작업 프로젝트" value={workspace.path} />}</>}
     </Dialog>}
 
     {modal === 'approval' && <Dialog title="대표 의사결정" onClose={() => setModal(null)}>
@@ -424,7 +499,12 @@ export default function App() {
       <label>전체 기본 역할 일괄 변경</label><div className="model-bulk-row"><ModelSelect listId="all-role-models" value={allRolesModel} models={providerModels} onChange={setAllRolesModel}/><button className="text-button" onClick={applyModelToAllRoles}>전체 적용</button></div>
       <div className="settings-divider"/><h3>부서별 오버라이드</h3><select value={modelTeamId} onChange={event=>setModelTeamId(event.target.value)}>{Object.entries(teamNames).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select><ModelSelect listId="team-model" value={model.team_overrides[modelTeamId] ?? ''} models={providerModels} allowInheritance onChange={value=>setModelOverride('team_overrides',modelTeamId,value)}/>
       <h3>개인별 오버라이드</h3><select value={modelEmployeeId} onChange={event=>setModelEmployeeId(event.target.value)}>{employees.map(employee=><option key={employee.id} value={employee.id}>{personas[employee.id]?.name ?? employee.id} · {employee.model_assignment?.model ?? '기본 모델'}</option>)}</select><ModelSelect listId="employee-model" value={model.employee_overrides[modelEmployeeId] ?? ''} models={providerModels} allowInheritance onChange={value=>setModelOverride('employee_overrides',modelEmployeeId,value)}/>
-      <label>OpenRouter API 키</label><input type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={model.configured ? '새 키 입력 시 교체' : 'sk-or-…'} /><button className="solid-button wide" onClick={saveModel} disabled={Boolean(busy)}>{busy || '모델 라우팅 저장'}</button><div className="settings-divider"/><h3>MCP 연결</h3><p className="dialog-copy">GitHub, Google Drive, Notion의 MCP 서버 URL과 토큰을 등록합니다. 연결 서버가 제공하는 범위만 에이전트에 노출됩니다.</p><select value={mcpProvider} onChange={event=>{const provider=event.target.value as McpConnection['provider'];setMcpProvider(provider);setMcpName(provider==='github'?'GitHub MCP':provider==='google-drive'?'Google Drive MCP':provider==='notion'?'Notion MCP':'Custom MCP')}}><option value="github">GitHub</option><option value="google-drive">Google Drive</option><option value="notion">Notion</option><option value="custom">Custom</option></select><label>연결 이름</label><input value={mcpName} onChange={event=>setMcpName(event.target.value)}/><label>MCP 서버 URL</label><input value={mcpUrl} onChange={event=>setMcpUrl(event.target.value)} placeholder="https://…/mcp"/><label>토큰</label><input type="password" value={mcpToken} onChange={event=>setMcpToken(event.target.value)} placeholder="등록 시 보안 저장"/><button className="solid-button wide" onClick={saveMcp} disabled={Boolean(busy)}>{busy || 'MCP 연결 저장'}</button>{mcpConnections.length ? <InfoBlock label="등록된 MCP" value={mcpConnections.map(item=>`${item.name} · ${item.status}`).join('\n')} /> : null}
+      <label>API 별칭 <small>(이 기기에만 저장, 서버 동기화 안 됨)</small></label><input value={apiNickname} onChange={event=>setApiNickname(event.target.value)} placeholder="예: 회사 OpenRouter 키" />
+      <label>OpenRouter API 키</label><input type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={model.configured ? '새 키 입력 시 교체' : 'sk-or-…'} /><button className="solid-button wide" onClick={saveModel} disabled={Boolean(busy)}>{busy || '모델 라우팅 저장'}</button>
+      <div className="connection-status-row"><span className={`status-dot ${!model.configured?'is-unset':connectionOk?'is-ok':'is-down'}`} aria-hidden="true"/><span>{!model.configured ? '키가 등록되지 않았습니다.' : connectionOk ? `${apiNickname || 'OpenRouter'} 연결이 살아있습니다.` : '서버에 연결할 수 없습니다. 실행기를 확인하세요.'}</span><button className="text-button" onClick={recheckConnection}>지금 확인</button></div>
+      {connectionCheckedAt && <small className="connection-checked-at">마지막 확인: {new Date(connectionCheckedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</small>}
+      <div className="settings-divider"/><h3>MCP 연결</h3><p className="dialog-copy">GitHub, Google Drive, Notion의 MCP 서버 URL과 토큰을 등록합니다. 이름(별칭)은 여러 연결을 구분하는 용도로, 연결 서버가 제공하는 범위만 에이전트에 노출됩니다.</p><select value={mcpProvider} onChange={event=>{const provider=event.target.value as McpConnection['provider'];setMcpProvider(provider);setMcpName(provider==='github'?'GitHub MCP':provider==='google-drive'?'Google Drive MCP':provider==='notion'?'Notion MCP':'Custom MCP')}}><option value="github">GitHub</option><option value="google-drive">Google Drive</option><option value="notion">Notion</option><option value="custom">Custom</option></select><label>연결 별칭</label><input value={mcpName} onChange={event=>setMcpName(event.target.value)}/><label>MCP 서버 URL</label><input value={mcpUrl} onChange={event=>setMcpUrl(event.target.value)} placeholder="https://…/mcp"/><label>토큰</label><input type="password" value={mcpToken} onChange={event=>setMcpToken(event.target.value)} placeholder="등록 시 보안 저장"/><button className="solid-button wide" onClick={saveMcp} disabled={Boolean(busy)}>{busy || 'MCP 연결 저장'}</button>
+      {mcpConnections.length ? <div className="connection-list">{mcpConnections.map(item=><div key={item.id} className="connection-list-row"><span className={`status-dot ${['configured','connected'].includes(item.status)?'is-ok':'is-down'}`} aria-hidden="true"/><b>{item.name}</b><small>{item.provider} · {item.status}</small></div>)}</div> : null}
     </Dialog>}
   </main>;
 }
@@ -549,6 +629,30 @@ function TeamPanel({teamId,members,lead,task,onClose,onFocus}:{teamId:string;mem
 }
 
 function Dialog({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}) { return <div className="modal-backdrop" onMouseDown={onClose}><section className="detail-dialog" onMouseDown={event=>event.stopPropagation()}><button className="modal-close" onClick={onClose}>×</button><span>AI OFFICE</span><h2>{title}</h2>{children}</section></div>; }
+function deliverableStatusMeta(status:string) {
+  if (['approved','final_candidate'].includes(status)) return {label:status==='approved'?'승인됨':'최종 후보', tone:'is-ok'};
+  if (['rejected','fail'].includes(status)) return {label:'반려', tone:'is-down'};
+  return {label:status||'작성 중', tone:'is-unset'};
+}
+function DeliverableCards({deliverables,workspace}:{deliverables:Deliverable[];workspace:Workspace|null}) {
+  const [copiedId, setCopiedId] = useState('');
+  if (!deliverables.length) return <InfoBlock label="실제 산출물" value="아직 생성된 산출물 파일이 없습니다." />;
+  const copyPath = (id:string, fullPath:string) => {
+    void navigator.clipboard?.writeText(fullPath).then(() => { setCopiedId(id); setTimeout(() => setCopiedId(current => current === id ? '' : current), 1500); }).catch(() => {});
+  };
+  return <div className="deliverable-section">
+    <b className="info-block-label">실제 산출물 · {deliverables.length}건</b>
+    <div className="deliverable-grid">{deliverables.map(item => {
+      const fullPath = workspace ? `${workspace.path}\\${item.path.replaceAll('/', '\\')}` : item.path;
+      const status = deliverableStatusMeta(item.status);
+      return <div key={item.id} className="deliverable-card">
+        <div className="deliverable-card-head"><span className={`status-dot ${status.tone}`} aria-hidden="true"/><b>{status.label}</b><small>{personas[item.owner]?.name ?? item.owner}</small></div>
+        <code className="deliverable-path" title={fullPath}>{item.path}</code>
+        <div className="deliverable-card-foot"><small>{item.kind} · {new Date(item.updated_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</small><button className="text-button" onClick={() => copyPath(item.id, fullPath)}>{copiedId === item.id ? '복사됨' : '경로 복사'}</button></div>
+      </div>;
+    })}</div>
+  </div>;
+}
 function InfoBlock({label,value}:{label:string;value:string}) { return <div className="info-block"><b>{label}</b><p>{value}</p></div>; }
 function CompletionSummary({task,onDetails}:{task:Task;onDetails:()=>void}) {
   const failed = task.evidence.some(item=>item.status==='fail') || task.jobs.some(job=>job.state==='failed');

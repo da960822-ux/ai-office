@@ -1181,6 +1181,7 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
         "Build a deliverable chain, not parallel opinions: every later phase that uses earlier work must name that phase in depends_on, state exact input it consumes in objective, and state exact file/evidence it hands off. "
         "Typical example when relevant: verified research -> product decision/PRD -> implementation -> independent quality/security gate -> release or final document. Omit steps that do not change this request. Choose one accountable final owner. "
         "For research, define source quality, recency, triangulation, and decision criteria. For implementation, define verification and independent review proportional to risk. "
+        "If any phase is market_research, business_strategy, product_planning, or customer_discovery, requires_web_research must be true and evidence_strategy must require comparing at least two existing competitors or alternatives and naming this product's differentiation. "
         "Choose an artifact kind from the supplied standards. Decide workspace_context as none, read, or write based on whether local project files are relevant. "
         "Return strict JSON only with: summary (<=160 Korean chars), artifact_kind, final_owner, workspace_context, requires_web_research (boolean), evidence_strategy, "
         "phases:[{id,department,lead_id,task_kind,objective,output,handoff_to,depends_on,skill_ids}], reason. "
@@ -1248,13 +1249,23 @@ def select_roster_with_model(request: str, task_id: str = "", job_id: str | None
     workspace_context = payload.get("workspace_context")
     if workspace_context not in {"none", "read", "write"}:
         workspace_context = "read"
+    # Product/strategy phases decide what to build or how to position it; skipping
+    # competitive and differentiation research there ships an uninformed decision.
+    # The planner model is asked for requires_web_research but not trusted to always
+    # set it, so a product-shaped plan forces the flag and appends the requirement
+    # instead of hoping the prompt was followed.
+    product_shaped = any(phase["task_kind"] in {"market_research", "business_strategy", "product_planning", "customer_discovery"} for phase in phases)
+    requires_web_research = bool(payload.get("requires_web_research")) or product_shaped
+    evidence_strategy = str(payload.get("evidence_strategy") or "")[:1200]
+    if product_shaped and "차별" not in evidence_strategy and "경쟁" not in evidence_strategy:
+        evidence_strategy = (evidence_strategy + " 기존 경쟁 서비스·대안을 최소 2건 조사하고 이 제품과의 차별점을 명시한다.").strip()[:1200]
     plan = {
         "summary": str(payload.get("summary") or "동적 실행 계획")[:160],
         "artifact_kind": artifact_kind,
         "final_owner": final_owner,
         "workspace_context": workspace_context,
-        "requires_web_research": bool(payload.get("requires_web_research")),
-        "evidence_strategy": str(payload.get("evidence_strategy") or "")[:1200],
+        "requires_web_research": requires_web_research,
+        "evidence_strategy": evidence_strategy,
         "phases": phases,
         "reason": str(payload.get("reason") or "")[:1200],
     }

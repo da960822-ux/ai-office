@@ -136,6 +136,11 @@ class SteeringInput(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
 
 
+class ChatInput(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    intake_mode: Literal["blank", "has_items"] | None = None
+
+
 class RetryInput(BaseModel):
     failure_class: Literal["contract_interpretation", "permission", "skill", "file_conflict", "build", "test", "runtime", "external_dependency", "quality", "budget", "model_response"]
     strategy: str | None = Field(default=None, min_length=1, max_length=500)
@@ -162,6 +167,7 @@ class McpConnectionInput(BaseModel):
 __all__ = [
     "AgentRunInput",
     "ApprovalInput",
+    "ChatInput",
     "Command",
     "ContractInput",
     "CreateTask",
