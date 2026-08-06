@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {"dev": "vite", "build": "tsc -b && vite build", "test": "vitest run"},
-  "dependencies": {"@vitejs/plugin-react": "latest", "vite": "latest", "typescript": "latest", "react": "latest", "react-dom": "latest"},
-  "devDependencies": {"vitest": "latest", "jsdom": "latest", "@types/react": "latest", "@types/react-dom": "latest"}
+  "dependencies": {"@vitejs/plugin-react": "^6.0.4", "vite": "^8.1.5", "typescript": "^7.0.2", "react": "^19.2.8", "react-dom": "^19.2.8"},
+  "devDependencies": {"vitest": "^4.1.10", "jsdom": "^30.0.1", "@types/react": "^19.2.17", "@types/react-dom": "^19.2.3"}
 }

@@ -493,29 +493,6 @@ def run_meeting(task_id: str, meeting_id: str) -> dict:
 @router.post("/api/tasks/{task_id}/reviews")
 def create_review(task_id: str, payload: ReviewInput) -> dict:
     raise HTTPException(409, "Manual reviews are disabled; queue a lead review Job after Evidence")
-    if payload.reviewer_id not in main.registry():
-        raise HTTPException(404, "Reviewer not found")
-    with main.database() as db:
-        main.require_runnable(db, task_id)
-        task = main.task_payload(db, task_id)
-        if payload.reviewer_id not in task["assigned_employees"]:
-            raise HTTPException(403, "Reviewer is not assigned to this task")
-        if payload.reviewer_id not in main.LEAD_IDS and main.registry()[payload.reviewer_id]["runtime"] != "REVIEWER":
-            raise HTTPException(403, "Reviewer must be a team lead or reviewer agent")
-        direct_order = next((event for event in task["events"] if event["action"] == "direct_dispatch"), None)
-        if direct_order:
-            required_lead = direct_order["employee_ids"][0]
-            if payload.reviewer_id != required_lead:
-                raise HTTPException(403, f"Direct task requires review by assigned lead: {required_lead}")
-        count = db.execute("SELECT COUNT(*) FROM reviews WHERE task_id = ?", (task_id,)).fetchone()[0] + 1
-        review_id = f"REV-{task_id.split('-')[-1]}-{count:02d}"
-        now = main.utc_now()
-        next_state = "awaiting_approval" if payload.verdict == "pass" else ("blocked" if payload.verdict == "blocked" else "planning")
-        db.execute("INSERT INTO reviews VALUES (?, ?, ?, ?, ?, ?)", (review_id, task_id, payload.reviewer_id, payload.verdict, payload.findings, now))
-        db.execute("UPDATE tasks SET state = ?, updated_at = ? WHERE id = ?", (next_state, now, task_id))
-        db.execute("INSERT INTO events (task_id, action, from_state, to_state, actor, note, employee_ids, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (task_id, "review", task["state"], next_state, payload.reviewer_id, payload.findings or payload.verdict, json.dumps([payload.reviewer_id]), now))
-        main.checkpoint(db, task_id, f"review:{payload.reviewer_id}")
-        return main.task_payload(db, task_id)
 
 
 @router.post("/api/tasks/{task_id}/approval")

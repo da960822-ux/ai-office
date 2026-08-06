@@ -56,7 +56,7 @@ export default function App() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<'project'|'request'|'settings'|'meeting'|'task'|'approval'|'evidence'|'review'|'reflection'|'leadSelection'|'workerSelection'|'leadCommand'|null>(null);
+  const [modal, setModal] = useState<'project'|'request'|'settings'|'meeting'|'task'|'approval'|'evidence'|'reflection'|'leadSelection'|'workerSelection'|'leadCommand'|null>(null);
   const [focusedId, setFocusedId] = useState('');
   const [focusedZone, setFocusedZone] = useState('');
   const [camera, setCamera] = useState({ zoom: 1, x: 0, y: 0 });
@@ -71,8 +71,6 @@ export default function App() {
   const dragOrigin = useRef<{ pointerX:number; pointerY:number; x:number; y:number } | null>(null);
   const [meetingObjective, setMeetingObjective] = useState('');
   const [meetingAgenda, setMeetingAgenda] = useState('');
-  const [reviewerId, setReviewerId] = useState('');
-  const [reviewFindings, setReviewFindings] = useState('');
   const [reflectionSummary, setReflectionSummary] = useState('');
   const [reflectionCause, setReflectionCause] = useState('');
   const [reflectionImprovement, setReflectionImprovement] = useState('');
@@ -278,13 +276,6 @@ export default function App() {
   const startLeadReview = async () => { if (!task) return; try { await api.queueReview(task.id); setBrief('팀장 실제 리뷰 Job을 시작했습니다.'); setError(''); } catch(cause) { setError(friendlyError(cause)); } };
   const openLeadCommand = (leadId:string) => { setDirectCommandLeadId(leadId); setDirectCommandTitle(''); setDirectCommandText(''); setModal('leadCommand'); };
   const submitLeadCommand = async (leadId=directCommandLeadId, title=directCommandTitle, prompt=directCommandText) => { if (!selectedProject || !leadId || !title.trim() || !prompt.trim()) return; setBusy('팀장 직접 업무를 등록하는 중'); try { const created=await api.create(title.trim(), prompt.trim(), [], 'direct_lead', leadId); setTasks(current=>[created,...current]); await api.contract(created.id); const prepared=await api.createWorkspace(created.id, selectedProject.id, 'in_place'); setWorkspace(prepared); await api.queuePlan(created.id); setTask(created); setModal('task'); setBrief(`${personas[leadId]?.name ?? leadId} 팀장이 실행자를 자동 배정하고 별도 리뷰합니다.`); } catch(cause) { setError(friendlyError(cause)); } finally { setBusy(''); } };
-  const submitReview = async (verdict:'pass'|'changes_requested'|'blocked') => {
-    if (!task || !reviewerId) return;
-    setBusy('리뷰를 기록하는 중');
-    try { setTask(await api.review(task.id, reviewerId, verdict, reviewFindings)); setReviewFindings(''); setModal(null); setError(''); }
-    catch (cause) { setError(friendlyError(cause)); }
-    finally { setBusy(''); }
-  };
   const decideApproval = async (decision:'approve'|'rework'|'reject') => {
     if (!task) return;
     setBusy('대표 결정을 기록하는 중');
@@ -412,7 +403,7 @@ export default function App() {
       <p className="dialog-copy">{task?.state==='completed' ? '요청한 작업이 완료되었습니다. 결과를 확인하고 다음 행동을 선택하세요.' : brief || (task ? `${task.title} · ${task.state_label} · 실제 실행 ${completedRunIds.size}건` : 'NAVI가 새 업무를 기다리고 있습니다.')}</p>
       <div className="brief-primary-actions"><button className="solid-button" onClick={()=>{setRequestText('');setDirectLeadId('NAVI');setModal('request')}}>+ 새 업무 / 대화</button><button className="text-button" onClick={()=>task&&setModal('evidence')} disabled={!task}>{task?.state==='completed'?'자세히 보기':'실행 근거 보기'}</button></div>
       {task && <section className="brief-live"><div><small>현재 Job</small><b>{task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state)) ? `${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.kind} · ${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.state}` : '없음'}</b></div><div><small>다음 행동</small><b>{mainAction.label}</b></div><div><small>최근 실제 이벤트</small><b>{task.job_events[0] ? `${task.job_events[0].type} · ${task.job_events[0].summary}` : '아직 실제 이벤트 없음'}</b></div></section>}
-      {task?.state==='completed' ? <CompletionSummary task={task} onDetails={()=>setModal('evidence')} /> : task && <><InfoBlock label="현재 업무" value={task.title} />{task.execution_plan&&<><InfoBlock label="AI 실행 판단" value={task.execution_plan.plan.summary} /><InfoBlock label="부서 인계 흐름" value={task.execution_plan.plan.phases.map(phase=>`${personas[phase.lead_id]?.name??phase.lead_id}: ${compactText(phase.objective,100)} → ${phase.handoff_to?personas[phase.handoff_to]?.name??phase.handoff_to:'최종 산출물'}`).join('\n')} /></>}<InfoBlock label="담당 팀" value={task.assigned_employees.map(id => personas[id]?.name ?? id).join(' · ')} /><InfoBlock label="모델 예산" value={`${task.budget_spent.toLocaleString()} / ${(task.contract?.token_limit ?? 0).toLocaleString()} tokens`} /><div className="decision-row">{task.state==='paused'?<button className="solid-button" onClick={()=>controlTask('resume')} disabled={Boolean(busy)}>재개</button>:<button className="text-button" onClick={()=>controlTask('pause')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>일시 정지</button>}<button className="danger-button" onClick={()=>controlTask('cancel')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>업무 취소</button></div>{task.state==='planning'&&!workspace&&<button className="solid-button wide" onClick={beginPlannedExecution} disabled={Boolean(busy)}>계획을 실행 단계로 전환</button>}<button className="text-button" onClick={() => setModal('evidence')}>산출물·근거 상세 보기 →</button><button className="text-button" onClick={() => setModal('review')}>리뷰 기록 →</button><button className="text-button" onClick={() => setModal('reflection')}>회고와 회사 기억 →</button></>}
+      {task?.state==='completed' ? <CompletionSummary task={task} onDetails={()=>setModal('evidence')} /> : task && <><InfoBlock label="현재 업무" value={task.title} />{task.execution_plan&&<><InfoBlock label="AI 실행 판단" value={task.execution_plan.plan.summary} /><InfoBlock label="부서 인계 흐름" value={task.execution_plan.plan.phases.map(phase=>`${personas[phase.lead_id]?.name??phase.lead_id}: ${compactText(phase.objective,100)} → ${phase.handoff_to?personas[phase.handoff_to]?.name??phase.handoff_to:'최종 산출물'}`).join('\n')} /></>}<InfoBlock label="담당 팀" value={task.assigned_employees.map(id => personas[id]?.name ?? id).join(' · ')} /><InfoBlock label="모델 예산" value={`${task.budget_spent.toLocaleString()} / ${(task.contract?.token_limit ?? 0).toLocaleString()} tokens`} /><div className="decision-row">{task.state==='paused'?<button className="solid-button" onClick={()=>controlTask('resume')} disabled={Boolean(busy)}>재개</button>:<button className="text-button" onClick={()=>controlTask('pause')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>일시 정지</button>}<button className="danger-button" onClick={()=>controlTask('cancel')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>업무 취소</button></div>{task.state==='planning'&&!workspace&&<button className="solid-button wide" onClick={beginPlannedExecution} disabled={Boolean(busy)}>계획을 실행 단계로 전환</button>}<button className="text-button" onClick={() => setModal('evidence')}>산출물·근거 상세 보기 →</button><button className="text-button" onClick={() => setModal('reflection')}>회고와 회사 기억 →</button></>}
     </Dialog>}
 
     {modal === 'evidence' && <Dialog title="고급 상세 보기" onClose={() => setModal(null)}>
@@ -421,10 +412,6 @@ export default function App() {
 
     {modal === 'approval' && <Dialog title="대표 의사결정" onClose={() => setModal(null)}>
       {approvalCount ? <><p className="dialog-copy">현재 업무가 대표 승인을 기다리고 있습니다.</p><InfoBlock label="대상" value={task?.title ?? ''} /><div className="decision-row"><button className="solid-button" onClick={()=>decideApproval('approve')} disabled={Boolean(busy)}>승인</button><button className="text-button" onClick={()=>decideApproval('rework')} disabled={Boolean(busy)}>재작업</button><button className="danger-button" onClick={()=>decideApproval('reject')} disabled={Boolean(busy)}>반려</button></div></> : <><p className="dialog-copy">현재 대표 승인이 필요한 업무가 없습니다.</p>{task?.approvals.length ? <InfoBlock label="마지막 결정" value={`${task.approvals[0].decision} · ${task.approvals[0].reason || '사유 없음'}`} /> : null}</>}
-    </Dialog>}
-
-    {modal === 'review' && <Dialog title="팀 리뷰와 교차 리뷰" onClose={()=>setModal(null)}>
-      {!task ? <p className="dialog-copy">업무가 필요합니다.</p> : <><p className="dialog-copy">팀장 또는 REVIEWER가 결과를 판정합니다. 통과하면 대표 승인으로, 수정 요청이면 계획으로 되돌아갑니다.</p><label>리뷰어</label><select value={reviewerId} onChange={event=>setReviewerId(event.target.value)}><option value="">리뷰어 선택</option>{task.assigned_employees.filter(id=>leadIds.has(id)||employees.find(employee=>employee.id===id)?.runtime==='REVIEWER').map(id=><option key={id} value={id}>{personas[id]?.name ?? id}</option>)}</select><label>발견 사항</label><textarea className="request-editor compact-editor" value={reviewFindings} onChange={event=>setReviewFindings(event.target.value)} placeholder="검증 결과, 위험, 수정 요청을 기록합니다."/><div className="decision-row"><button className="solid-button" disabled={!reviewerId||Boolean(busy)} onClick={()=>submitReview('pass')}>통과</button><button className="text-button" disabled={!reviewerId||Boolean(busy)} onClick={()=>submitReview('changes_requested')}>수정 요청</button><button className="danger-button" disabled={!reviewerId||Boolean(busy)} onClick={()=>submitReview('blocked')}>차단</button></div></>}
     </Dialog>}
 
     {modal === 'reflection' && <Dialog title="회고와 회사 기억" onClose={()=>setModal(null)}>

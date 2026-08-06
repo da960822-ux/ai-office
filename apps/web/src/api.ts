@@ -241,8 +241,6 @@ export const api = {
   createMeeting: (id:string, objective:string, participantIds:string[], agenda:string[]) =>
     request<Task>(`/tasks/${id}/meetings`, {method:'POST',body:JSON.stringify({objective,participant_ids:participantIds,agenda})}),
   runMeeting: (taskId:string, meetingId:string) => request<Task>(`/tasks/${taskId}/meetings/${meetingId}/run`, {method:'POST',body:'{}'}),
-  review: (id:string, reviewerId:string, verdict:'pass'|'changes_requested'|'blocked', findings:string) =>
-    request<Task>(`/tasks/${id}/reviews`, {method:'POST',body:JSON.stringify({reviewer_id:reviewerId,verdict,findings})}),
   approval: (id:string, decision:'approve'|'rework'|'reject', reason:string) =>
     request<Task>(`/tasks/${id}/approval`, {method:'POST',body:JSON.stringify({decision,reason})}),
   reflection: (id:string, summary:string, rootCauses:string[], improvements:string[], lesson:string) =>

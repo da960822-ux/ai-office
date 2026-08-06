@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -8,6 +9,23 @@ from threading import Thread
 from fastapi.testclient import TestClient
 
 import apps.api.main as office
+from apps.api import worker
+
+
+class FakeResponses:
+    def __init__(self, outputs):
+        self.outputs = iter(outputs)
+
+    def create(self, **_kwargs):
+        return SimpleNamespace(
+            output_text=next(self.outputs),
+            usage=SimpleNamespace(input_tokens=10, output_tokens=10),
+        )
+
+
+class FakeModelClient:
+    def __init__(self, outputs):
+        self.responses = FakeResponses(outputs)
 
 
 class WorkflowE2E(unittest.TestCase):
@@ -57,12 +75,55 @@ class WorkflowE2E(unittest.TestCase):
         self.assertEqual(planned["state"], "planning")
         manual_review = self.client.post(f"/api/tasks/{task_id}/reviews", json={"reviewer_id": "BUILD", "verdict": "pass", "findings": "manual"})
         self.assertEqual(manual_review.status_code, 409)
-        return
 
-        meeting = self.post(f"/api/tasks/{task_id}/meetings", {"objective": "수정 범위와 담당 확정", "participant_ids": planned["assigned_employees"], "agenda": ["범위", "위험", "담당"]})
+        # Manual review is intentionally disabled. The real completion-gating review path is
+        # job-based (apps/api/worker.py process_review, dispatched as a "lead_review" Job after
+        # synthesis). The manual "/meetings" endpoint is likewise disabled in favor of the
+        # autonomous meeting Job, so the lead meeting here is recorded directly the same way the
+        # worker would leave it, and the job is driven the same way test_job_workflow.py drives
+        # jobs: worker.claim_job() + worker.process(job).
+        now = office.utc_now()
+        with office.database() as db:
+            db.execute(
+                "INSERT INTO meetings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    f"MEET-{task_id.split('-')[-1]}-01", task_id, "lead_dispatch", "수정 범위와 담당 확정",
+                    office.json.dumps(["NAVI", *planned["assigned_employees"]]),
+                    office.json.dumps(["범위", "위험", "담당"]), office.json.dumps([]), "concluded", now,
+                ),
+            )
+            db.execute("UPDATE tasks SET state = 'meeting', updated_at = ? WHERE id = ?", (now, task_id))
+        meeting = self.client.get(f"/api/tasks/{task_id}").json()
         self.assertEqual(meeting["state"], "meeting")
 
-        reviewed = self.post(f"/api/tasks/{task_id}/reviews", {"reviewer_id": "BUILD", "verdict": "pass", "findings": "독립 리뷰 통과"})
+        workspace_dir = Path(self.temp.name) / "workspace"
+        workspace_dir.mkdir()
+        workspace_id = f"WS-{task_id.split('-')[-1]}"
+        with office.database() as db:
+            db.execute(
+                "INSERT INTO workspaces VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (workspace_id, task_id, str(workspace_dir), str(workspace_dir), "in_place", "ready", office.utc_now()),
+            )
+            # Force the "requires user approval" branch of process_review so the existing
+            # /approval assertions below stay meaningful, and mark the single planned phase
+            # complete so assert_completion_invariants doesn't block on unfinished work -
+            # the actual execute/synthesize Jobs aren't run in this test.
+            db.execute("UPDATE task_phases SET task_kind = 'legal_compliance', status = 'completed' WHERE task_id = ?", (task_id,))
+            office.persist_deliverable(
+                db, workspace_dir, task_id, "FRAME", "business_document",
+                "# 최종 산출물\n\nUI 오류 수정 완료.\n",
+                filename="FINAL.md", status="final_candidate",
+            )
+            review_job = office.enqueue_job(db, task_id, "lead_review", {"lead_id": "FRAME", "reviewer_id": "NAVI", "workspace_id": workspace_id})
+        self.assertEqual(review_job["kind"], "lead_review")
+
+        fake_client = FakeModelClient(['{"verdict":"pass","findings":"독립 리뷰 통과","final_report":"UI 오류 수정 완료"}'])
+        with patch.object(office, "model_client", return_value=fake_client):
+            job = worker.claim_job()
+            self.assertEqual(job["kind"], "lead_review")
+            worker.process(job)
+
+        reviewed = self.client.get(f"/api/tasks/{task_id}").json()
         self.assertEqual(reviewed["state"], "awaiting_approval")
         self.assertEqual(reviewed["reviews"][0]["verdict"], "pass")
 
