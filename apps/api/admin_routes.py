@@ -40,9 +40,16 @@ def health() -> dict:
 def runtime_version() -> dict:
     with main.database() as db:
         running = db.execute("SELECT COUNT(*) FROM jobs WHERE state IN ('queued','running','pause_requested','cancel_requested')").fetchone()[0]
-        worker = db.execute("SELECT build_id, heartbeat_at FROM worker_heartbeats ORDER BY heartbeat_at DESC LIMIT 1").fetchone()
+        worker = db.execute("SELECT build_id, heartbeat_at, error_streak, last_error FROM worker_heartbeats ORDER BY heartbeat_at DESC LIMIT 1").fetchone()
     fresh = worker and (datetime.now(timezone.utc) - datetime.fromisoformat(worker["heartbeat_at"])).total_seconds() < 8
-    return {"api_build_id": main.BUILD_ID, "worker_build_id": worker["build_id"] if fresh else None, "schema_version": main.SCHEMA_VERSION, "running_jobs": running}
+    return {
+        "api_build_id": main.BUILD_ID,
+        "worker_build_id": worker["build_id"] if fresh else None,
+        "schema_version": main.SCHEMA_VERSION,
+        "running_jobs": running,
+        "dispatcher_error_streak": worker["error_streak"] if worker else 0,
+        "dispatcher_last_error": worker["last_error"] if worker else None,
+    }
 
 
 @router.get("/api/usage/summary")
