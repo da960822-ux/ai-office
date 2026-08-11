@@ -54,7 +54,7 @@ from apps.api.research_quality import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = ROOT / "data" / "ai-office.sqlite3"
+DB_PATH = Path(os.getenv("AI_OFFICE_DB_PATH", str(ROOT / "data" / "ai-office.sqlite3"))).resolve()
 REGISTRY_PATH = ROOT / "registry" / "employees.json"
 SKILL_BINDINGS_PATH = ROOT / "registry" / "employee-skill-bindings.json"
 SKILL_DEFINITIONS_PATH = ROOT / "registry" / "skill-definitions.json"

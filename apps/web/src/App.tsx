@@ -1,16 +1,27 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { api, type Deliverable, type Employee, type JobEvent, type McpConnection, type ModelSettings, type Project, type ProviderModel, type RuntimeVersion, type Task, type UsageSummary, type Workspace } from './api';
-import { personas, type Persona } from './personas';
-import { directionForSegment, resolveMotion, routeBetween, routeDuration, type AgentAction, type AgentStateKey, type AvatarDirection, type MotionPoint } from './motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { api, type Employee, type JobEvent, type Project, type RuntimeVersion, type Task, type UsageSummary, type Workspace } from './api';
+import { personas } from './personas';
+import { resolveMotion, type AgentAction } from './motion';
+import { FloorAgent, Avatar, agentRole, compactText, teamStatus, teamForAgent, teamSignStyle } from './OfficeFloor';
+import { InfoBlock } from './shared';
+import { useOfficeCamera } from './hooks/useOfficeCamera';
+import { useModelSettings } from './hooks/useModelSettings';
+import { useTaskChat } from './hooks/useTaskChat';
+import { ModelSettingsPanel } from './ModelSettingsPanel';
+import { ProjectModal } from './modals/ProjectModal';
+import { LeadSelectionModal } from './modals/LeadSelectionModal';
+import { WorkerSelectionModal } from './modals/WorkerSelectionModal';
+import { LeadCommandModal } from './modals/LeadCommandModal';
+import { RequestModal } from './modals/RequestModal';
+import { ChatModal } from './modals/ChatModal';
+import { MeetingModal } from './modals/MeetingModal';
+import { TaskModal } from './modals/TaskModal';
+import { EvidenceModal } from './modals/EvidenceModal';
+import { ApprovalModal } from './modals/ApprovalModal';
+import { ReflectionModal } from './modals/ReflectionModal';
 
 const initialAgents = ['NAVI', 'FRAME', 'BUILD', 'FRONT', 'BACK', 'TRACE', 'GUARD'];
 const leadIds = new Set(['NAVI','FRAME','BUILD','LINK','SHIP','GUARD','GROW','LENS']);
-const spriteIds = ['NAVI','ROUTE','CLOCK','FRAME','FLOW','MOSS','BUILD','FRONT','BACK','LINK','SIGNAL','EVAL','SHIP','SRE','COST','GUARD','TRACE','SHIELD','GROW','VOICE','PULSE','LENS','JOURNEY','DOCS'];
-// Sprite sheet slots verified against apps/web/public/assets/agent-sprites-v3.png:
-// only 7 of 24 painted characters wear glasses (indexes 1,5,8,15,18,20,22). Personas
-// with accessory:'glasses' (NAVI/BUILD/LINK/GUARD/LENS/DOCS) must land on one of those
-// slots or they render as a different-looking character than their profile describes.
-const avatarIndexes: Record<string, number> = { NAVI:1, ROUTE:0, BUILD:8, BACK:6, LINK:22, JOURNEY:9, LENS:20, PULSE:21, DOCS:18, GROW:23 };
 const teamNames: Record<string, string> = {
   'operations-planning': '운영 기획', 'product-experience': '제품 경험', application: '애플리케이션',
   'ai-data': 'AI·데이터', 'platform-reliability': '플랫폼', 'quality-security': '품질·보안',
@@ -22,16 +33,32 @@ const deskPositions: Record<string, [number, number]> = {
   SHIP:[78,70], SRE:[86,70], COST:[78,80], GUARD:[88,80], TRACE:[86,20], SHIELD:[76,20],
   GROW:[16,70], VOICE:[26,70], PULSE:[17,80], LENS:[47,73], JOURNEY:[56,73], DOCS:[47,82],
 };
-const roomPositions: Record<'meeting'|'qa'|'ceo', [number,number][]> = {
-  meeting:[[50,25],[57,23],[64,26],[67,33],[62,39],[54,39],[48,34]],
-  qa:[[83,17],[90,18],[87,25],[92,30],[83,32],[88,37],[94,22]],
-  ceo:[[15,13],[21,14],[24,21],[18,25],[12,22],[26,15],[14,28]],
-};
 const teamSigns = [
   ['product','제품·기획팀','PM · 리서치 · 로드맵'], ['design','디자인·프론트팀','UX · UI · 프론트엔드'],
   ['backend','백엔드·AI팀','API · 데이터 · AI'], ['growth','마케팅·성장팀','캠페인 · 지표'],
   ['lounge','공용 라운지','팀 허들 · 협업'], ['ops','운영·보안팀','신뢰성 · QA · 보안'],
 ] as const;
+
+// Bounding box per department, derived from the real desk layout (deskPositions
+// grouped by teamForAgent) so the floor tint always matches where agents
+// actually stand — never a hand-tuned rectangle that can drift out of sync.
+type ZoneRect = { left: number; top: number; width: number; height: number };
+function computeDeptZoneRects(): Record<string, ZoneRect> {
+  const groups: Record<string, [number, number][]> = {};
+  for (const [id, position] of Object.entries(deskPositions)) {
+    const team = teamForAgent(id);
+    (groups[team] ??= []).push(position);
+  }
+  const pad = 7;
+  return Object.fromEntries(Object.entries(groups).map(([team, points]) => {
+    const xs = points.map(point => point[0]);
+    const ys = points.map(point => point[1]);
+    const left = Math.max(0, Math.min(...xs) - pad);
+    const top = Math.max(0, Math.min(...ys) - pad);
+    return [team, { left, top, width: Math.min(100, Math.max(...xs) + pad) - left, height: Math.min(100, Math.max(...ys) + pad) - top }];
+  }));
+}
+const deptZoneRects = computeDeptZoneRects();
 
 async function pingApi(): Promise<boolean> {
   try { const result = await api.health(); return Boolean(result.ok); } catch { return false; }
@@ -53,22 +80,14 @@ export default function App() {
   const [task, setTask] = useState<Task | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [runtime, setRuntime] = useState<RuntimeVersion | null>(null);
-  const [model, setModel] = useState<ModelSettings>({provider:'openrouter',lead_model:'deepseek/deepseek-v4-pro',worker_model:'deepseek/deepseek-v4-flash',role_models:{},team_overrides:{},employee_overrides:{},configured:false});
-  const [providerModels, setProviderModels] = useState<ProviderModel[]>([]);
-  const [mcpConnections, setMcpConnections] = useState<McpConnection[]>([]);
   const [usage, setUsage] = useState<UsageSummary>({input_tokens:0,output_tokens:0,cost_usd:0,cost_known:false});
   const [requestText, setRequestText] = useState('');
   const [projectPath, setProjectPath] = useState('');
-  const [apiKey, setApiKey] = useState('');
   const [brief, setBrief] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<'project'|'request'|'settings'|'meeting'|'task'|'approval'|'evidence'|'reflection'|'leadSelection'|'workerSelection'|'leadCommand'|'chat'|null>(null);
-  const [focusedId, setFocusedId] = useState('');
-  const [focusedZone, setFocusedZone] = useState('');
-  const [camera, setCamera] = useState({ zoom: 1, x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>([]);
   const [directLeadId, setDirectLeadId] = useState('NAVI');
@@ -76,41 +95,31 @@ export default function App() {
   const [directCommandTitle, setDirectCommandTitle] = useState('');
   const [directCommandText, setDirectCommandText] = useState('');
   const [intakeMode, setIntakeMode] = useState<'blank'|'has_items'|''>('');
-  const [chatDraft, setChatDraft] = useState('');
-  const [chatBusy, setChatBusy] = useState(false);
-  const [chatNeedsInfo, setChatNeedsInfo] = useState(false);
   const executionControl = useRef<'active'|'paused'|'cancelled'>('active');
-  const dragOrigin = useRef<{ pointerX:number; pointerY:number; x:number; y:number } | null>(null);
   const [meetingObjective, setMeetingObjective] = useState('');
   const [meetingAgenda, setMeetingAgenda] = useState('');
   const [reflectionSummary, setReflectionSummary] = useState('');
   const [reflectionCause, setReflectionCause] = useState('');
   const [reflectionImprovement, setReflectionImprovement] = useState('');
   const [lesson, setLesson] = useState('');
-  const [mcpProvider, setMcpProvider] = useState<McpConnection['provider']>('github');
-  const [mcpName, setMcpName] = useState('GitHub MCP');
-  const [mcpUrl, setMcpUrl] = useState('');
-  const [mcpToken, setMcpToken] = useState('');
-  const [modelTeamId, setModelTeamId] = useState('application');
-  const [modelEmployeeId, setModelEmployeeId] = useState('BUILD');
-  const [allRolesModel, setAllRolesModel] = useState('');
-  const [apiNickname, setApiNicknameState] = useState(() => localStorage.getItem('ai-office-api-nickname') ?? '');
-  const [connectionOk, setConnectionOk] = useState(false);
-  const [connectionCheckedAt, setConnectionCheckedAt] = useState<number | null>(null);
-  const setApiNickname = (value: string) => { setApiNicknameState(value); localStorage.setItem('ai-office-api-nickname', value); };
-  const recheckConnection = () => { setConnectionCheckedAt(Date.now()); void pingApi().then(setConnectionOk); };
+
+  const cameraApi = useOfficeCamera(employees, deskPositions, teamForAgent, teamSigns.map(([id]) => id));
+  const { camera, focusedId, focusedZone, focusZone, focusEmployee, locateZone, showAllOffice, moveTeam, zoomCamera, beginPan, panOffice, endPan, panByKeyboard } = cameraApi;
+  const settings = useModelSettings(setError, friendlyError, setBusy);
+  const { model, setModel, setProviderModels, setMcpConnections } = settings;
+  const chat = useTaskChat(setError, friendlyError, setBusy);
 
   const load = async () => {
     try {
-      const [roster, savedProjects, tasks, settings, costs, connections, version] = await Promise.all([api.employees(), api.projects(), api.tasks(), api.modelSettings(), api.usageSummary(), api.mcpConnections(), api.runtime()]);
-      setEmployees(roster); setProjects(savedProjects); setTasks(tasks); setProjectId(savedProjects[0]?.id ?? ''); setTask(tasks[0] ?? null); setModel(settings); setUsage(costs); setMcpConnections(connections); setRuntime(version); setError('');
+      const [roster, savedProjects, tasks, modelSettings, costs, connections, version] = await Promise.all([api.employees(), api.projects(), api.tasks(), api.modelSettings(), api.usageSummary(), api.mcpConnections(), api.runtime()]);
+      setEmployees(roster); setProjects(savedProjects); setTasks(tasks); setProjectId(savedProjects[0]?.id ?? ''); setTask(tasks[0] ?? null); setModel(modelSettings); setUsage(costs); setMcpConnections(connections); setRuntime(version); setError('');
     } catch (cause) { setError(friendlyError(cause)); }
     finally { setLoading(false); }
   };
   useEffect(() => { void load(); void api.providerModels().then(setProviderModels).catch(()=>setProviderModels([])); }, []);
   useEffect(() => {
     let cancelled = false;
-    const check = () => { void pingApi().then(ok => { if (!cancelled) { setConnectionOk(ok); setConnectionCheckedAt(Date.now()); } }); };
+    const check = () => { void pingApi().then(ok => { if (!cancelled) { settings.setConnectionOk(ok); settings.setConnectionCheckedAt(Date.now()); } }); };
     check();
     const interval = setInterval(check, 30_000);
     return () => { cancelled = true; clearInterval(interval); };
@@ -148,17 +157,18 @@ export default function App() {
     const life = event.type === 'meeting.message' ? 15_000 : 8_000;
     if (age < life && !bubbleByAgent.has(event.agent_id)) bubbleByAgent.set(event.agent_id, event);
   }
-  const runtimeReady = runtime?.api_build_id === runtime?.worker_build_id && runtime?.schema_version === 2;
+  const runtimeReady = Boolean(runtime?.worker_build_id) && runtime?.api_build_id === runtime?.worker_build_id;
   const executionJobIds = new Set(task?.jobs.filter(job=>job.kind==='execute').map(job=>job.id) ?? []);
   const completedRunIds = new Set((task?.agent_runs ?? []).filter(run=>run.state==='succeeded'&&executionJobIds.has(run.job_id)).map(run=>run.employee_id));
   const failedModelUsage = task?.model_usage?.filter(item => item.error) ?? [];
   const latestExecutionResult = task?.agent_messages.find(message=>message.kind==='run');
   const latestReview = task?.reviews[0];
   const terminalTask = ['completed','cancelled'].includes(task?.state ?? '');
-  const directTaskLead = task?.events.find(event => event.action === 'direct_dispatch')?.employee_ids[0];
   const approvalCount = task?.state === 'awaiting_approval' ? 1 : 0;
+  const pendingPermissions = task?.permission_requests.filter(item=>item.state==='pending') ?? [];
+  const decisionCount = approvalCount + pendingPermissions.length;
   const activeTaskCount = tasks.filter(item=>item.jobs.some(job=>['queued','running','pause_requested','cancel_requested'].includes(job.state)) || ['awaiting_lead_selection','awaiting_approval'].includes(item.state)).length;
-  const mainAction = !selectedProject ? {label:'프로젝트 연결', action:()=>setModal('project')} : approvalCount ? {label:'승인 패널 열기', action:()=>setModal('approval')} : !task || task.state === 'completed' ? {label:'새 업무 요청', action:()=>setModal('request')} : task.state==='planning' ? {label:activeJob ? 'NAVI 판단 진행 중' : 'NAVI 판단 다시 시작', action:()=>setModal('task')} : task.state==='awaiting_lead_selection' ? {label:'팀장 선택', action:()=>setModal('leadSelection')} : task.state==='awaiting_worker_selection' ? {label:'팀장 자동 배정 중', action:()=>setModal('task')} : {label:'현재 업무 열기', action:()=>setModal('task')};
+  const mainAction = !selectedProject ? {label:'프로젝트 연결', action:()=>setModal('project')} : decisionCount ? {label:'승인 패널 열기', action:()=>setModal('approval')} : !task || task.state === 'completed' ? {label:'새 업무 요청', action:()=>setModal('request')} : task.state==='planning' ? {label:activeJob ? 'NAVI 판단 진행 중' : 'NAVI 판단 다시 시작', action:()=>setModal('task')} : task.state==='awaiting_lead_selection' ? {label:'팀장 선택', action:()=>setModal('leadSelection')} : task.state==='awaiting_worker_selection' ? {label:'팀장 자동 배정 중', action:()=>setModal('task')} : {label:'현재 업무 열기', action:()=>setModal('task')};
   const focusedEmployee = employees.find(employee => employee.id === focusedId);
   const motions = useMemo(() => Object.fromEntries(employees.map(employee => {
     const taskAssignmentIndex=task?.assigned_employees.indexOf(employee.id) ?? -1;
@@ -171,43 +181,6 @@ export default function App() {
     const motion=resolveMotion({employeeId:employee.id, taskState:zone === 'meeting' ? 'meeting' : zone === 'qa' ? 'team_review' : zone === 'ceo' ? 'awaiting_approval' : task?.state, active, isLead:leadIds.has(employee.id), assignmentIndex:assignedIndex});
     return [employee.id, {...motion, action:action ?? motion.action}];
   })), [employees, task, liveAgentEvents, lastLocationEvents, activeIds]);
-  const focusZone = (zone: string) => {
-    setFocusedId('');
-    setFocusedZone(zone);
-  };
-  const locateZone = (zone: string) => {
-    const members = employees.filter(employee => teamForAgent(employee.id) === zone);
-    const points = members.map(employee => deskPositions[employee.id]).filter(Boolean);
-    if (!points.length) return;
-    const x = points.reduce((sum, point) => sum + point[0], 0) / points.length;
-    const y = points.reduce((sum, point) => sum + point[1], 0) / points.length;
-    setCamera({zoom:1.55, x:(50-x)*.55, y:(50-y)*.55});
-  };
-  const showAllOffice = () => { setCamera({zoom:1,x:0,y:0}); setFocusedZone(''); setFocusedId(''); };
-  const moveTeam = (direction:number) => {
-    const ids:string[]=teamSigns.map(([id])=>id);
-    const current=Math.max(0,ids.indexOf(focusedZone));
-    focusZone(ids[(current+direction+ids.length)%ids.length]);
-  };
-  const focusEmployee = (id: string) => {
-    setFocusedZone('');
-    setFocusedId(id);
-  };
-  const zoomCamera = (delta:number) => setCamera(current => ({...current, zoom: Math.max(1, Math.min(2.35, current.zoom + delta))}));
-  const beginPan = (event: React.PointerEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest('button')) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragOrigin.current = { pointerX:event.clientX, pointerY:event.clientY, x:camera.x, y:camera.y };
-    setDragging(true);
-  };
-  const panOffice = (event: React.PointerEvent<HTMLDivElement>) => {
-    const origin = dragOrigin.current;
-    if (!origin) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const limit = Math.max(0, (camera.zoom - 1) * 42);
-    setCamera(current => ({...current, x:Math.max(-limit, Math.min(limit, origin.x + (event.clientX-origin.pointerX)/bounds.width*100)), y:Math.max(-limit, Math.min(limit, origin.y + (event.clientY-origin.pointerY)/bounds.height*100))}));
-  };
-  const endPan = () => { dragOrigin.current = null; setDragging(false); };
 
   const registerProject = async () => {
     if (!projectPath.trim()) { setError('프로젝트 폴더 경로를 입력해 주세요.'); return; }
@@ -253,78 +226,10 @@ export default function App() {
     finally { setBusy(''); }
   };
 
-  const startChat = async () => {
-    if (!requestText.trim()) { setError('메시지를 입력해 주세요.'); return; }
-    setBusy('대화를 여는 중');
-    try {
-      const title = requestText.trim().split(/\r?\n/)[0].slice(0,80);
-      const created = await api.create(title, requestText.trim(), initialAgents, directLeadId === 'NAVI' ? 'navi' : 'direct_lead', directLeadId === 'NAVI' ? undefined : directLeadId);
-      setTasks(current => [created, ...current]); setTask(created); setModal('chat'); setError('');
-      const firstMessage = requestText.trim(); setRequestText('');
-      setChatBusy(true);
-      const reply = await api.chat(created.id, firstMessage, intakeMode || undefined);
-      setChatNeedsInfo(reply.needs_info); setTask(await api.task(created.id));
-    } catch (cause) { setError(friendlyError(cause)); }
-    finally { setBusy(''); setChatBusy(false); }
-  };
-  const sendChat = async () => {
-    if (!task || !chatDraft.trim()) return;
-    setChatBusy(true);
-    try {
-      const message = chatDraft.trim(); setChatDraft('');
-      const reply = await api.chat(task.id, message, intakeMode || undefined);
-      setChatNeedsInfo(reply.needs_info); setTask(await api.task(task.id)); setError('');
-    } catch (cause) { setError(friendlyError(cause)); }
-    finally { setChatBusy(false); }
-  };
-  const beginExecutionFromChat = async () => {
-    if (!task) return;
-    if (!selectedProject) { setError('먼저 헤더에서 작업 프로젝트를 연결해 주세요.'); setModal('project'); return; }
-    setBusy('실행 계획을 시작하는 중');
-    try {
-      await api.contract(task.id); await api.queuePlan(task.id);
-      const prepared = await api.createWorkspace(task.id, selectedProject.id, 'in_place'); setWorkspace(prepared);
-      setBrief(directLeadId === 'NAVI' ? 'NAVI가 필요한 부서 팀장을 판단 중입니다. 완료되면 팀장 선택이 열립니다.' : `${personas[directLeadId]?.name ?? directLeadId} 팀장 판단 Job을 대기열에 넣었습니다.`);
-      setTask(await api.task(task.id)); setModal('task'); setError('');
-    } catch (cause) { setError(friendlyError(cause)); }
-    finally { setBusy(''); }
-  };
-
-  const saveModel = async () => {
-    setBusy('모델 연결 저장 중');
-    try { const saved = await api.saveModelSettings(model.role_models, model.team_overrides, model.employee_overrides, apiKey); setModel(saved); setApiKey(''); setModal(null); setError(''); }
-    catch (cause) { setError(friendlyError(cause)); }
-    finally { setBusy(''); }
-  };
-  const setRoleModel = (role:string, value:string) => setModel(current=>({...current,role_models:{...current.role_models,[role]:value}}));
-  const setModelOverride = (scope:'team_overrides'|'employee_overrides', id:string, value:string) => setModel(current=>{
-    const overrides={...current[scope]};
-    if (value.trim()) overrides[id]=value.trim(); else delete overrides[id];
-    return {...current,[scope]:overrides};
-  });
-  const applyModelToAllRoles = () => {
-    if (!allRolesModel.trim()) { setError('전체 적용할 모델 ID를 입력해 주세요.'); return; }
-    setModel(current=>({...current,role_models:Object.fromEntries(modelRoleLabels.map(([role])=>[role,allRolesModel.trim()]))}));
-  };
-  const saveMcp = async () => {
-    if (!mcpUrl.trim()) { setError('MCP 서버 URL을 입력해 주세요.'); return; }
-    setBusy('MCP 연결을 저장하는 중');
-    try { const saved=await api.saveMcpConnection(mcpProvider,mcpName.trim()||mcpProvider,'streamable_http',mcpUrl.trim(),mcpToken); setMcpConnections(current=>[saved,...current]); setMcpUrl(''); setMcpToken(''); setError(''); }
-    catch (cause) { setError(friendlyError(cause)); }
-    finally { setBusy(''); }
-  };
-
   const createMeeting = async () => {
     if (!task || !meetingObjective.trim()) return;
     setBusy('회의를 준비하는 중');
     try { const updated=await api.createMeeting(task.id, meetingObjective.trim(), task.assigned_employees, meetingAgenda.split('\n').map(item=>item.trim()).filter(Boolean)); setTask(updated); setMeetingObjective(''); setMeetingAgenda(''); setError(''); }
-    catch (cause) { setError(friendlyError(cause)); }
-    finally { setBusy(''); }
-  };
-  const runMeeting = async () => {
-    if (!task || !currentMeeting) return;
-    setBusy('실제 팀장 회의 Job을 시작하는 중');
-    try { await api.queueMeeting(task.id, currentMeeting.id); setModal(null); setError(''); }
     catch (cause) { setError(friendlyError(cause)); }
     finally { setBusy(''); }
   };
@@ -334,13 +239,18 @@ export default function App() {
   const retryFailedJob = async () => { if (!failedJob) return; setBusy('실패 단계 재시도 중'); try { await api.retryJob(failedJob.id); setTask(await api.task(failedJob.task_id)); setBrief('완료된 실행자는 유지하고 실패한 단계부터 다시 시작합니다.'); setError(''); } catch(cause) { setError(friendlyError(cause)); } finally { setBusy(''); } };
   const beginPlannedExecution = async () => { if (!task) return; setSelectedLeadIds(task.assigned_employees); setModal('leadSelection'); };
   const preparePlan = async () => { if (!task) return; setBusy('NAVI 계획 Job을 대기열에 넣는 중'); try { await api.queuePlan(task.id); setBrief('NAVI가 팀장 후보를 다시 판단 중입니다.'); setError(''); } catch(cause) { setError(friendlyError(cause)); } finally { setBusy(''); } };
-  const startLeadReview = async () => { if (!task) return; try { await api.queueReview(task.id); setBrief('팀장 실제 리뷰 Job을 시작했습니다.'); setError(''); } catch(cause) { setError(friendlyError(cause)); } };
-  const openLeadCommand = (leadId:string) => { setDirectCommandLeadId(leadId); setDirectCommandTitle(''); setDirectCommandText(''); setModal('leadCommand'); };
   const submitLeadCommand = async (leadId=directCommandLeadId, title=directCommandTitle, prompt=directCommandText) => { if (!selectedProject || !leadId || !title.trim() || !prompt.trim()) return; setBusy('팀장 직접 업무를 등록하는 중'); try { const created=await api.create(title.trim(), prompt.trim(), [], 'direct_lead', leadId); setTasks(current=>[created,...current]); await api.contract(created.id); const prepared=await api.createWorkspace(created.id, selectedProject.id, 'in_place'); setWorkspace(prepared); await api.queuePlan(created.id); setTask(created); setModal('task'); setBrief(`${personas[leadId]?.name ?? leadId} 팀장이 실행자를 자동 배정하고 별도 리뷰합니다.`); } catch(cause) { setError(friendlyError(cause)); } finally { setBusy(''); } };
   const decideApproval = async (decision:'approve'|'rework'|'reject') => {
     if (!task) return;
     setBusy('대표 결정을 기록하는 중');
     try { setTask(await api.approval(task.id, decision, '대표 화면에서 기록한 결정')); setModal(null); setError(''); }
+    catch (cause) { setError(friendlyError(cause)); }
+    finally { setBusy(''); }
+  };
+  const decidePermission = async (requestId:string, decision:'approve'|'deny', reason:string) => {
+    if (!task) return;
+    setBusy(decision==='approve' ? '요청을 승인하는 중' : '요청을 거부하는 중');
+    try { await api.decidePermission(task.id, requestId, decision, reason); setTask(await api.task(task.id)); setError(''); }
     catch (cause) { setError(friendlyError(cause)); }
     finally { setBusy(''); }
   };
@@ -363,7 +273,7 @@ export default function App() {
         <button className="header-new" onClick={() => { setRequestText(''); setDirectLeadId('NAVI'); setModal('request'); }}>+ 새 업무</button>
         <button className="header-brief" onClick={() => setModal('task')}><small>CEO 브리핑</small><b>{task?.title ?? '대기 중'}</b></button>
         <span className="header-cost"><small>비용</small><b>{usage.cost_known ? `$${usage.cost_usd.toFixed(2)}` : 'unknown'}</b></span>
-        <button className={`header-connection ${!model.configured ? 'is-unset' : connectionOk ? 'is-ok' : 'is-down'}`} onClick={() => setModal('settings')} title={connectionCheckedAt ? `마지막 확인 ${new Date(connectionCheckedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}` : '아직 확인 전'}><i/><small>{apiNickname || 'OpenRouter'}</small><b>{!model.configured ? '키 미등록' : connectionOk ? '연결됨' : '연결 끊김'}</b></button>
+        <button className={`header-connection ${!model.configured ? 'is-unset' : settings.connectionOk ? 'is-ok' : 'is-down'}`} onClick={() => setModal('settings')} title={settings.connectionCheckedAt ? `마지막 확인 ${new Date(settings.connectionCheckedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}` : '아직 확인 전'}><i/><small>{settings.apiNickname || 'OpenRouter'}</small><b>{!model.configured ? '키 미등록' : settings.connectionOk ? '연결됨' : '연결 끊김'}</b></button>
         <button className="header-settings" onClick={() => setModal('settings')}>설정</button>
       </div>
     </header>
@@ -385,16 +295,17 @@ export default function App() {
     </section>
 
     <section className="office-main">
-      <div className={`office-stage product-office-stage ${dragging ? 'is-panning' : ''} ${focusedZone ? 'zone-focus' : ''} ${task?.state==='verifying'||task?.state==='team_review'||task?.state==='cross_review'?'qa-active':''} ${task?.state==='completed'?'office-complete':''}`} onWheel={event => { event.preventDefault(); zoomCamera(event.deltaY < 0 ? .14 : -.14); }} onPointerDown={beginPan} onPointerMove={panOffice} onPointerUp={endPan} onPointerCancel={endPan}>
+      <div className={`office-stage product-office-stage ${cameraApi.dragging ? 'is-panning' : ''} ${focusedZone ? 'zone-focus' : ''} ${task?.state==='verifying'||task?.state==='team_review'||task?.state==='cross_review'?'qa-active':''} ${task?.state==='completed'?'office-complete':''}`} tabIndex={0} role="application" aria-label="AI 오피스 지도 · 화살표 키 또는 WASD로 이동, 버튼으로 확대·축소" onWheel={event => { event.preventDefault(); zoomCamera(event.deltaY < 0 ? .14 : -.14); }} onPointerDown={beginPan} onPointerMove={panOffice} onPointerUp={endPan} onPointerCancel={endPan} onKeyDown={panByKeyboard}>
         <div className="office-world" style={{transform:`translate(${camera.x}%, ${camera.y}%) scale(${camera.zoom})`}}>
         <img src="/assets/ai-office-zones-v2.png" alt="팀 구역이 구분된 탑다운 AI 자동화 오피스" />
         <div className="office-vignette" />
         <nav className="office-breadcrumb" aria-label="오피스 탐색"><span>전체 오피스</span>{focusedZone && <><i>›</i><b>{teamSigns.find(([id])=>id===focusedZone)?.[1]}</b></>}<div><button onClick={showAllOffice}>전체 보기</button><button onClick={()=>moveTeam(-1)}>이전 팀</button><button onClick={()=>moveTeam(1)}>다음 팀</button></div></nav>
-        <div className="camera-controls"><button aria-label="확대" style={cameraButton} onClick={() => zoomCamera(.16)}>＋</button><button aria-label="축소" style={cameraButton} onClick={() => zoomCamera(-.16)}>－</button></div>
-        <button className="room-marker marker-ceo" onClick={() => setModal('approval')}><span>CEO OFFICE</span><b>{task?.state==='completed' ? '업무 완료' : approvalCount ? `대표 승인 · ${approvalCount}` : '대표 대기'}</b></button>
+        <div className="camera-controls"><button aria-label="확대" onClick={() => zoomCamera(.16)}>＋</button><button aria-label="축소" onClick={() => zoomCamera(-.16)}>－</button></div>
+        <button className="room-marker marker-ceo" onClick={() => setModal('approval')}><span>CEO OFFICE</span><b>{task?.state==='completed' ? '업무 완료' : decisionCount ? `확인 필요 · ${decisionCount}` : '민감 업무만 대기'}</b></button>
         <button className="room-marker marker-meeting" onClick={() => setModal('meeting')}><span>MEETING HUB</span><b>{currentMeeting ? 'NAVI 회의 진행 중' : latestMeeting ? '실제 회의 완료' : '회의 없음'}</b></button>
         <button className="room-marker marker-qa" onClick={() => setModal('evidence')}><span>QA LAB</span><b>{task?.evidence.length ? `${task.evidence.length}건 검증` : '검증·보안'}</b></button>
         <div className="room-marker marker-work"><span>WORK FLOOR</span><b>{task?.title ?? '업무 대기'}</b></div>
+        {Object.entries(deptZoneRects).map(([id, rect]) => <div key={id} aria-hidden="true" className={`dept-zone dept-zone-${id} ${focusedZone===id?'is-focused':''} ${(!terminalTask&&task?.assigned_employees.some(agentId=>teamForAgent(agentId)===id))?'active-zone':''}`} style={{left:`${rect.left}%`,top:`${rect.top}%`,width:`${rect.width}%`,height:`${rect.height}%`}} />)}
         {teamSigns.map(([id,title]) => <button key={id} className={`team-sign sign-${id} ${focusedZone===id?'selected':''} ${(!terminalTask&&task?.assigned_employees.some(agentId=>teamForAgent(agentId)===id))?'active-team':''}`} style={teamSignStyle(id)} onClick={() => focusZone(id)}><span>{title} · {employees.filter(employee=>teamForAgent(employee.id)===id).length}명 · {teamStatus(id,task)}</span></button>)}
         {employees.map(employee => {
           const motion=motions[employee.id];
@@ -412,211 +323,48 @@ export default function App() {
     </section>
 
     {selectedProject ? <footer className="primary-action-bar">
-      <div className="company-state"><small>회사 전체 상태</small><b>{approvalCount ? '대표 결정 필요' : activeTaskCount ? '업무 진행 중' : selectedProject ? '진행 업무 없음' : '프로젝트 연결 필요'}</b></div>
+      <div className="company-state"><small>회사 전체 상태</small><b>{decisionCount ? '대표 결정 필요' : activeTaskCount ? '업무 진행 중' : selectedProject ? '진행 업무 없음' : '프로젝트 연결 필요'}</b></div>
       <button className="primary-task-button" onClick={task?.state==='awaiting_lead_selection'?beginPlannedExecution:task?.state==='planning'&&!activeJob?preparePlan:mainAction.action} disabled={!runtimeReady}>{mainAction.label}</button>
       <button className="bar-stat" onClick={()=>task&&setModal('task')}><small>진행 업무</small><b>{activeTaskCount}</b></button>
-      <button className={`bar-stat ${approvalCount?'urgent':''}`} onClick={()=>setModal('approval')}><small>승인 필요</small><b>{approvalCount}</b></button>
+      <button className={`bar-stat ${decisionCount?'urgent':''}`} onClick={()=>setModal('approval')}><small>승인 필요</small><b>{decisionCount}</b></button>
     </footer> : <footer className="project-connect-cta"><span>프로젝트를 연결해야 업무를 시작할 수 있습니다.</span><button className="solid-button" onClick={()=>setModal('project')}>프로젝트 연결</button></footer>}
 
-    {focusedEmployee && <ProfilePanel employee={focusedEmployee} active={activeIds.has(focusedEmployee.id)} activity={activeIds.has(focusedEmployee.id) ? liveAgentEvents.get(focusedEmployee.id)?.summary ?? task?.action_items.find(item=>item.owner===focusedEmployee.id)?.description ?? '' : ''} result={task?.agent_messages.find(message=>message.employee_id===focusedEmployee.id&&message.kind==='run')?.content ?? ''} evidenceCount={task?.evidence.length ?? 0} busy={Boolean(busy)} onSubmitCommand={submitLeadCommand} onClose={() => setFocusedId('')} />}
-    {focusedZone && <TeamPanel teamId={focusedZone} members={employees.filter(employee=>teamForAgent(employee.id)===focusedZone)} lead={employees.find(employee=>teamForAgent(employee.id)===focusedZone&&leadIds.has(employee.id))} task={task} onClose={()=>setFocusedZone('')} onFocus={()=>locateZone(focusedZone)} />}
+    {focusedEmployee && <ProfilePanel employee={focusedEmployee} active={activeIds.has(focusedEmployee.id)} activity={activeIds.has(focusedEmployee.id) ? liveAgentEvents.get(focusedEmployee.id)?.summary ?? task?.action_items.find(item=>item.owner===focusedEmployee.id)?.description ?? '' : ''} result={task?.agent_messages.find(message=>message.employee_id===focusedEmployee.id&&message.kind==='run')?.content ?? ''} evidenceCount={task?.evidence.length ?? 0} busy={Boolean(busy)} onSubmitCommand={(leadId,title,prompt)=>submitLeadCommand(leadId,title,prompt)} onClose={() => cameraApi.setFocusedId('')} />}
+    {focusedZone && <TeamPanel teamId={focusedZone} members={employees.filter(employee=>teamForAgent(employee.id)===focusedZone)} lead={employees.find(employee=>teamForAgent(employee.id)===focusedZone&&leadIds.has(employee.id))} task={task} onClose={()=>cameraApi.setFocusedZone('')} onFocus={()=>locateZone(focusedZone)} />}
 
-    {modal === 'project' && <Dialog title="작업 프로젝트" onClose={() => setModal(null)}>
-      <p className="dialog-copy">프로젝트를 연결하면 에이전트가 원본과 분리된 작업공간에서 작업합니다.</p>
-      {projects.length > 0 && <div className="project-list">{projects.map(project => <button key={project.id} className={project.id === projectId ? 'selected' : ''} onClick={() => { setProjectId(project.id); setModal(null); }}><b>{project.name}</b><small>{project.root_path}</small></button>)}</div>}
-      <label>새 프로젝트 폴더</label><div className="dialog-input-row"><input value={projectPath} onChange={event => setProjectPath(event.target.value)} placeholder="C:\\Projects\\my-app"/><button className="text-button picker-button" onClick={pickProjectFolder} disabled={Boolean(busy)}>폴더 선택</button><button className="solid-button" onClick={registerProject} disabled={Boolean(busy)}>{busy || '연결'}</button></div>
-    </Dialog>}
+    {modal === 'project' && <ProjectModal projects={projects} projectId={projectId} setProjectId={setProjectId} projectPath={projectPath} setProjectPath={setProjectPath} busy={busy} pickProjectFolder={()=>void pickProjectFolder()} registerProject={()=>void registerProject()} onClose={() => setModal(null)} />}
 
-    {modal === 'leadSelection' && <Dialog title="NAVI 판단 · 팀장 선택" onClose={() => setModal(null)}>
-      <p className="dialog-copy">NAVI가 필요한 부서 팀장 후보만 제시했습니다. 대표가 실제 회의 참석자를 확정합니다.</p>
-      <div className="project-list">{task?.assigned_employees.map(id => <label key={id}><input type="checkbox" checked={selectedLeadIds.includes(id)} onChange={()=>setSelectedLeadIds(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id])}/><b>{personas[id]?.name ?? id}</b><small>{agentRole(id, leadIds.has(id))}</small></label>)}</div>
-      <button className="solid-button wide" disabled={!selectedLeadIds.length||Boolean(busy)} onClick={selectLeads}>{busy || '선택 팀장 회의 시작'}</button>
-    </Dialog>}
+    {modal === 'leadSelection' && <LeadSelectionModal task={task} leadIds={leadIds} selectedLeadIds={selectedLeadIds} setSelectedLeadIds={setSelectedLeadIds} busy={busy} selectLeads={()=>void selectLeads()} onClose={() => setModal(null)} />}
 
-    {modal === 'workerSelection' && <Dialog title="팀장 회의 완료 · 실행자 선택" onClose={() => setModal(null)}>
-      <p className="dialog-copy">대표가 실제 실행자를 지정합니다. 선택된 실행자만 하위 모델로 호출됩니다.</p>
-      <div className="project-list">{employees.filter(employee=>workerProposalIds.has(employee.id)).map(employee => <label key={employee.id}><input type="checkbox" checked={selectedWorkerIds.includes(employee.id)} onChange={()=>setSelectedWorkerIds(current=>current.includes(employee.id)?current.filter(value=>value!==employee.id):[...current,employee.id])}/><b>{personas[employee.id]?.name ?? employee.id}</b><small>{task?.action_items.find(item=>item.owner===employee.id)?.description ?? employee.title}</small></label>)}</div>
-      <button className="solid-button wide" disabled={!selectedWorkerIds.length||Boolean(busy)} onClick={selectWorkers}>{busy || '선택 실행자 배정·실행'}</button>
-    </Dialog>}
+    {modal === 'workerSelection' && <WorkerSelectionModal task={task} employees={employees} workerProposalIds={workerProposalIds} selectedWorkerIds={selectedWorkerIds} setSelectedWorkerIds={setSelectedWorkerIds} busy={busy} selectWorkers={()=>void selectWorkers()} onClose={() => setModal(null)} />}
 
-    {modal === 'leadCommand' && <Dialog title="팀장에게 직접 지시" onClose={() => setModal(null)}>
-      <p className="dialog-copy">독립 소규모 업무입니다. NAVI 판단·팀장 회의는 생략하지만, worker 선택과 해당 팀장 실제 리뷰는 반드시 거칩니다.</p>
-      <InfoBlock label="수신 팀장" value={personas[directCommandLeadId]?.name ?? directCommandLeadId} />
-      <label>업무 제목</label><input value={directCommandTitle} onChange={event=>setDirectCommandTitle(event.target.value)} placeholder="짧고 검증 가능한 제목" />
-      <label>명령</label><textarea className="request-editor compact-editor" value={directCommandText} onChange={event=>setDirectCommandText(event.target.value)} placeholder="목표, 범위, 산출물, 확인 기준" />
-      <button className="solid-button wide" disabled={!directCommandTitle.trim()||!directCommandText.trim()||Boolean(busy)} onClick={()=>void submitLeadCommand()}>{busy || '팀장 판단 시작'}</button>
-    </Dialog>}
+    {modal === 'leadCommand' && <LeadCommandModal directCommandLeadId={directCommandLeadId} directCommandTitle={directCommandTitle} setDirectCommandTitle={setDirectCommandTitle} directCommandText={directCommandText} setDirectCommandText={setDirectCommandText} busy={busy} submitLeadCommand={()=>void submitLeadCommand()} onClose={() => setModal(null)} />}
 
-    {modal === 'request' && <Dialog title="새 업무 요청" onClose={() => setModal(null)}>
-      <p className="dialog-copy">NAVI는 여러 부서가 필요한 업무용입니다. 작은 범위는 팀장을 직접 지정하면 NAVI 계획과 팀장 회의를 건너뜁니다.</p>
-      <label>지금 얼마나 정해졌나요?</label>
-      <div className="intake-mode-row">
-        <button className={`intake-mode-button ${intakeMode==='blank'?'selected':''}`} onClick={()=>setIntakeMode('blank')}>아직 아이디어 없음<small>NAVI가 질문으로 방향을 좁혀 줍니다</small></button>
-        <button className={`intake-mode-button ${intakeMode==='has_items'?'selected':''}`} onClick={()=>setIntakeMode('has_items')}>어느 정도 정해짐<small>빠진 부분만 빠르게 확인합니다</small></button>
-      </div>
-      <label>지시 대상</label><select value={directLeadId} onChange={event=>setDirectLeadId(event.target.value)}><option value="NAVI">NAVI · 부서 판단 후 팀장 후보 제시</option>{employees.filter(employee=>leadIds.has(employee.id)&&employee.id!=='NAVI').map(employee=><option key={employee.id} value={employee.id}>{personas[employee.id]?.name ?? employee.id} · {employee.title} 팀장에게 직접 지시</option>)}</select>
-      <textarea className="request-editor" value={requestText} onChange={event => setRequestText(event.target.value)} placeholder="예: 로그인 오류를 찾아 수정하고 테스트까지 실행해." autoFocus />
-      <div className="decision-row"><button className="solid-button" onClick={startChat} disabled={Boolean(busy)||!requestText.trim()}>{busy || '대화로 시작'}</button>{directLeadId==='NAVI'&&<button className="text-button" onClick={()=>startTask('plan')} disabled={Boolean(busy)}>계획만 생성</button>}<button className="text-button" onClick={()=>startTask('execute')} disabled={Boolean(busy)}>{directLeadId==='NAVI'?'대화 없이 바로 시작':'팀장에게 직접 지시'}</button></div>
-    </Dialog>}
+    {modal === 'request' && <RequestModal intakeMode={intakeMode} setIntakeMode={setIntakeMode} directLeadId={directLeadId} setDirectLeadId={setDirectLeadId} employees={employees} leadIds={leadIds} requestText={requestText} setRequestText={setRequestText} busy={busy} startChat={()=>void chat.startChat({requestText, directLeadId, intakeMode, initialAgents, setTasks, setTask, setModal, setRequestText})} startTask={(mode)=>void startTask(mode)} onClose={() => setModal(null)} />}
 
-    {modal === 'chat' && <Dialog title={`${personas[task?.route==='direct_lead'&&task?.lead_id?task.lead_id:'NAVI']?.name ?? 'NAVI'}와 대화`} onClose={() => setModal(null)}>
-      <p className="dialog-copy">{task?.title ?? '대화가 아직 시작되지 않았습니다.'}</p>
-      <div className="chat-thread">{(task?.agent_messages ?? []).filter(message=>['user','chat'].includes(message.kind)).slice().sort((a,b)=>a.created_at.localeCompare(b.created_at)).map(message=><article key={message.id} className={`chat-bubble ${message.kind==='user'?'from-ceo':'from-agent'}`}><b>{message.kind==='user'?'대표':(personas[message.employee_id]?.name ?? message.employee_id)}</b><p>{message.content}</p></article>)}{!task?.agent_messages.some(message=>['user','chat'].includes(message.kind)) && <p className="dialog-copy">아직 대화가 없습니다.</p>}{chatBusy && <p className="chat-typing">응답 작성 중…</p>}</div>
-      {chatNeedsInfo && <div className="chat-needs-info"><b>답변이 필요합니다</b><span>정보가 부족해 아직 실행 계획을 시작할 수 없습니다. 위 질문에 답해 주세요.</span></div>}
-      <div className="dialog-input-row"><input value={chatDraft} onChange={event=>setChatDraft(event.target.value)} placeholder="답하거나 더 물어보세요" onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void sendChat();}}} disabled={chatBusy}/><button className="solid-button" onClick={sendChat} disabled={chatBusy||!chatDraft.trim()}>전송</button></div>
-      <button className="solid-button wide" onClick={beginExecutionFromChat} disabled={Boolean(busy)||chatBusy}>{busy || (chatNeedsInfo ? '그래도 지금 실행 계획 시작' : '이 내용으로 실행 계획 시작')}</button>
-    </Dialog>}
+    {modal === 'chat' && <ChatModal task={task} chatDraft={chat.chatDraft} setChatDraft={chat.setChatDraft} chatBusy={chat.chatBusy} chatNeedsInfo={chat.chatNeedsInfo} busy={busy} sendChat={()=>void chat.sendChat(task, intakeMode, setTask)} beginExecutionFromChat={()=>void chat.beginExecutionFromChat({task, selectedProject, directLeadId, setModal, setWorkspace, setTask, setBrief})} onClose={() => setModal(null)} />}
 
-    {modal === 'meeting' && <Dialog title="구조화된 회의" onClose={() => setModal(null)}>
-      <p className="dialog-copy">{currentMeeting?.objective ?? '현재 진행 중인 회의가 없습니다.'}</p>
-      {currentMeeting && <><InfoBlock label="참석" value={currentMeeting.participants.map(id => personas[id]?.name ?? id).join(' · ')} /><InfoBlock label="안건" value={currentMeeting.agenda.join(' · ')} /><InfoBlock label="결정" value={currentMeeting.decisions.join(' · ') || '회의 Job 자동 진행 중'} /><div className="meeting-transcript">{task?.agent_messages.filter(message => message.kind === 'meeting').map(message => <article key={message.id}><b>{personas[message.employee_id]?.name ?? message.employee_id}</b><p>{message.content}</p></article>)}</div></>}
-      {latestMeeting && !currentMeeting && <InfoBlock label="마지막 회의 상태" value="실제 발언 기록이 남은 회의입니다." />}
-      {task && <><label>회의 목표</label><input value={meetingObjective} onChange={event=>setMeetingObjective(event.target.value)} placeholder="예: API 오류 원인과 수정 담당 확정"/><label>안건 — 줄마다 하나</label><textarea className="request-editor compact-editor" value={meetingAgenda} onChange={event=>setMeetingAgenda(event.target.value)} placeholder="범위 확인&#10;위험 확인&#10;담당자 결정"/><button className="solid-button wide" onClick={createMeeting} disabled={Boolean(busy)||!meetingObjective.trim()}>{busy||'회의 시작'}</button></>}
-    </Dialog>}
+    {modal === 'meeting' && <MeetingModal task={task} currentMeeting={currentMeeting} latestMeeting={latestMeeting} meetingObjective={meetingObjective} setMeetingObjective={setMeetingObjective} meetingAgenda={meetingAgenda} setMeetingAgenda={setMeetingAgenda} busy={busy} createMeeting={()=>void createMeeting()} onClose={() => setModal(null)} />}
 
-    {modal === 'task' && <Dialog title="CEO 브리핑" onClose={() => setModal(null)}>
-      <p className="dialog-copy">{task?.state==='completed' ? '요청한 작업이 완료되었습니다. 결과를 확인하고 다음 행동을 선택하세요.' : brief || (task ? `${task.title} · ${task.state_label} · 실제 실행 ${completedRunIds.size}건` : 'NAVI가 새 업무를 기다리고 있습니다.')}</p>
-      <div className="brief-primary-actions"><button className="solid-button" onClick={()=>{setRequestText('');setDirectLeadId('NAVI');setIntakeMode('');setModal('request')}}>+ 새 업무 / 대화</button><button className="text-button" onClick={()=>task&&setModal('chat')} disabled={!task}>이 업무와 대화하기</button><button className="text-button" onClick={()=>task&&setModal('evidence')} disabled={!task}>{task?.state==='completed'?'자세히 보기':'실행 근거 보기'}</button></div>
-      {task && <section className="brief-live"><div><small>현재 Job</small><b>{task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state)) ? `${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.kind} · ${task.jobs.find(job=>['running','queued','pause_requested','cancel_requested'].includes(job.state))?.state}` : '없음'}</b></div><div><small>다음 행동</small><b>{mainAction.label}</b></div><div><small>최근 실제 이벤트</small><b>{task.job_events[0] ? `${task.job_events[0].type} · ${task.job_events[0].summary}` : '아직 실제 이벤트 없음'}</b></div></section>}
-      {task?.state==='completed' ? <CompletionSummary task={task} onDetails={()=>setModal('evidence')} /> : task && <><InfoBlock label="현재 업무" value={task.title} />{task.execution_plan&&<><InfoBlock label="AI 실행 판단" value={task.execution_plan.plan.summary} /><InfoBlock label="부서 인계 흐름" value={task.execution_plan.plan.phases.map(phase=>`${personas[phase.lead_id]?.name??phase.lead_id}: ${compactText(phase.objective,100)} → ${phase.handoff_to?personas[phase.handoff_to]?.name??phase.handoff_to:'최종 산출물'}`).join('\n')} /></>}<InfoBlock label="담당 팀" value={task.assigned_employees.map(id => personas[id]?.name ?? id).join(' · ')} /><InfoBlock label="모델 예산" value={`${task.budget_spent.toLocaleString()} / ${(task.contract?.token_limit ?? 0).toLocaleString()} tokens`} /><div className="decision-row">{task.state==='paused'?<button className="solid-button" onClick={()=>controlTask('resume')} disabled={Boolean(busy)}>재개</button>:<button className="text-button" onClick={()=>controlTask('pause')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>일시 정지</button>}<button className="danger-button" onClick={()=>controlTask('cancel')} disabled={Boolean(busy)||['completed','cancelled'].includes(task.state)}>업무 취소</button></div>{task.state==='planning'&&!workspace&&<button className="solid-button wide" onClick={beginPlannedExecution} disabled={Boolean(busy)}>계획을 실행 단계로 전환</button>}<button className="text-button" onClick={() => setModal('evidence')}>산출물·근거 상세 보기 →</button><button className="text-button" onClick={() => setModal('reflection')}>회고와 회사 기억 →</button></>}
-    </Dialog>}
+    {modal === 'task' && <TaskModal task={task} brief={brief} completedRunIds={completedRunIds} mainAction={mainAction} busy={busy} controlTask={(action)=>void controlTask(action)} beginPlannedExecution={()=>void beginPlannedExecution()} workspace={workspace} onOpenRequest={()=>{setRequestText('');setDirectLeadId('NAVI');setIntakeMode('');setModal('request');}} onOpenChat={()=>task&&setModal('chat')} onOpenEvidence={()=>task&&setModal('evidence')} onOpenReflection={()=>setModal('reflection')} onClose={() => setModal(null)} />}
 
-    {modal === 'evidence' && <Dialog title="고급 상세 보기" onClose={() => setModal(null)}>
-      {!task ? <p className="dialog-copy">업무가 시작되면 산출물과 검증 근거가 표시됩니다.</p> : <><p className="dialog-copy">기술 근거와 내부 검증 기록입니다.</p>{task.execution_plan&&<><InfoBlock label="판단 요약" value={task.execution_plan.plan.summary} /><InfoBlock label="근거 전략" value={task.execution_plan.plan.evidence_strategy||'실행 단계에서 결정'} /></>}<DeliverableCards deliverables={task.deliverables} workspace={workspace} /><InfoBlock label="검증 상태" value={task.evidence.length ? task.evidence.map(item => `${item.type} · ${item.status}`).join('\n') : '아직 검증 근거가 없습니다.'} /><InfoBlock label="NAVI 기술 리포트" value={task.agent_messages.find(message=>message.employee_id==='NAVI'&&message.kind==='final_report')?.content ?? '아직 최종 리포트가 없습니다.'} /><InfoBlock label="원문 확인 웹 근거" value={task.research_sources.filter(source=>source.query==='verified-original').length ? task.research_sources.filter(source=>source.query==='verified-original').slice(0, 5).map(source => `${source.title}\n${source.url}`).join('\n\n') : '확인된 원문 근거 없음'} /><InfoBlock label="실행 범위" value={task.agent_scopes.map(scope=>`${personas[scope.employee_id]?.name??scope.employee_id}: ${compactText(scope.assignment,120)}\n산출물: ${scope.deliverable}`).join('\n\n')||'범위 결정 중'} /><InfoBlock label="최종 리뷰" value={task.reviews.length ? `${task.reviews[0].reviewer_id} · ${task.reviews[0].verdict}\n${task.reviews[0].findings||'의견 없음'}` : '아직 리뷰가 없습니다.'} />{workspace && <InfoBlock label="작업 프로젝트" value={workspace.path} />}</>}
-    </Dialog>}
+    {modal === 'evidence' && <EvidenceModal task={task} workspace={workspace} onClose={() => setModal(null)} />}
 
-    {modal === 'approval' && <Dialog title="대표 의사결정" onClose={() => setModal(null)}>
-      {approvalCount ? <><p className="dialog-copy">현재 업무가 대표 승인을 기다리고 있습니다.</p><InfoBlock label="대상" value={task?.title ?? ''} /><div className="decision-row"><button className="solid-button" onClick={()=>decideApproval('approve')} disabled={Boolean(busy)}>승인</button><button className="text-button" onClick={()=>decideApproval('rework')} disabled={Boolean(busy)}>재작업</button><button className="danger-button" onClick={()=>decideApproval('reject')} disabled={Boolean(busy)}>반려</button></div></> : <><p className="dialog-copy">현재 대표 승인이 필요한 업무가 없습니다.</p>{task?.approvals.length ? <InfoBlock label="마지막 결정" value={`${task.approvals[0].decision} · ${task.approvals[0].reason || '사유 없음'}`} /> : null}</>}
-    </Dialog>}
+    {modal === 'approval' && <ApprovalModal task={task} approvalCount={approvalCount} pendingPermissions={pendingPermissions} busy={busy} decideApproval={(decision)=>void decideApproval(decision)} decidePermission={(requestId,decision)=>void decidePermission(requestId,decision,'')} onClose={() => setModal(null)} />}
 
-    {modal === 'reflection' && <Dialog title="회고와 회사 기억" onClose={()=>setModal(null)}>
-      {!task ? <p className="dialog-copy">업무가 필요합니다.</p> : <><p className="dialog-copy">회고는 업무 기록에 남고, 레슨은 회사 기억으로 누적됩니다.</p><label>회고 요약</label><textarea className="request-editor compact-editor" value={reflectionSummary} onChange={event=>setReflectionSummary(event.target.value)} placeholder="무엇이 잘 됐고 무엇을 바꿀지 기록합니다."/><label>원인 — 줄마다 하나</label><textarea className="request-editor compact-editor" value={reflectionCause} onChange={event=>setReflectionCause(event.target.value)} /><label>개선 — 줄마다 하나</label><textarea className="request-editor compact-editor" value={reflectionImprovement} onChange={event=>setReflectionImprovement(event.target.value)} /><label>회사 레슨</label><textarea className="request-editor compact-editor" value={lesson} onChange={event=>setLesson(event.target.value)} placeholder="다음 업무에도 재사용할 한 문장 원칙"/><button className="solid-button wide" disabled={!reflectionSummary.trim()||Boolean(busy)} onClick={submitReflection}>{busy||'회고와 레슨 저장'}</button>{task.lessons.length ? <InfoBlock label="기록된 레슨" value={task.lessons.map(item=>item.content).join('\n')} /> : null}</>}
-    </Dialog>}
+    {modal === 'reflection' && <ReflectionModal task={task} reflectionSummary={reflectionSummary} setReflectionSummary={setReflectionSummary} reflectionCause={reflectionCause} setReflectionCause={setReflectionCause} reflectionImprovement={reflectionImprovement} setReflectionImprovement={setReflectionImprovement} lesson={lesson} setLesson={setLesson} busy={busy} submitReflection={()=>void submitReflection()} onClose={() => setModal(null)} />}
 
-    {modal === 'settings' && <Dialog title="AI 및 연결 설정" onClose={() => setModal(null)}>
-      <p className="dialog-copy">모델 기본값은 <code>registry/model-routing.json</code>에서 관리합니다. 저장한 변경값은 개인 설정 파일에만 적용됩니다. 우선순위는 개인 → 부서 → 역할이며, 2회 이상 실패 또는 장기 추적은 Kimi Code 역할을 사용합니다.</p>
-      <h3>역할별 기본 모델</h3><div className="model-routing-grid">{modelRoleLabels.map(([role,label])=><div key={role} className="model-routing-card"><b>{label}</b><ModelSelect listId={`role-${role}`} value={model.role_models[role] ?? ''} models={providerModels} onChange={value=>setRoleModel(role,value)}/></div>)}</div>
-      <label>전체 기본 역할 일괄 변경</label><div className="model-bulk-row"><ModelSelect listId="all-role-models" value={allRolesModel} models={providerModels} onChange={setAllRolesModel}/><button className="text-button" onClick={applyModelToAllRoles}>전체 적용</button></div>
-      <div className="settings-divider"/><h3>부서별 오버라이드</h3><select value={modelTeamId} onChange={event=>setModelTeamId(event.target.value)}>{Object.entries(teamNames).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select><ModelSelect listId="team-model" value={model.team_overrides[modelTeamId] ?? ''} models={providerModels} allowInheritance onChange={value=>setModelOverride('team_overrides',modelTeamId,value)}/>
-      <h3>개인별 오버라이드</h3><select value={modelEmployeeId} onChange={event=>setModelEmployeeId(event.target.value)}>{employees.map(employee=><option key={employee.id} value={employee.id}>{personas[employee.id]?.name ?? employee.id} · {employee.model_assignment?.model ?? '기본 모델'}</option>)}</select><ModelSelect listId="employee-model" value={model.employee_overrides[modelEmployeeId] ?? ''} models={providerModels} allowInheritance onChange={value=>setModelOverride('employee_overrides',modelEmployeeId,value)}/>
-      <label>API 별칭 <small>(이 기기에만 저장, 서버 동기화 안 됨)</small></label><input value={apiNickname} onChange={event=>setApiNickname(event.target.value)} placeholder="예: 회사 OpenRouter 키" />
-      <label>OpenRouter API 키</label><input type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={model.configured ? '새 키 입력 시 교체' : 'sk-or-…'} /><button className="solid-button wide" onClick={saveModel} disabled={Boolean(busy)}>{busy || '모델 라우팅 저장'}</button>
-      <div className="connection-status-row"><span className={`status-dot ${!model.configured?'is-unset':connectionOk?'is-ok':'is-down'}`} aria-hidden="true"/><span>{!model.configured ? '키가 등록되지 않았습니다.' : connectionOk ? `${apiNickname || 'OpenRouter'} 연결이 살아있습니다.` : '서버에 연결할 수 없습니다. 실행기를 확인하세요.'}</span><button className="text-button" onClick={recheckConnection}>지금 확인</button></div>
-      {connectionCheckedAt && <small className="connection-checked-at">마지막 확인: {new Date(connectionCheckedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</small>}
-      <div className="settings-divider"/><h3>MCP 연결</h3><p className="dialog-copy">GitHub, Google Drive, Notion의 MCP 서버 URL과 토큰을 등록합니다. 이름(별칭)은 여러 연결을 구분하는 용도로, 연결 서버가 제공하는 범위만 에이전트에 노출됩니다.</p><select value={mcpProvider} onChange={event=>{const provider=event.target.value as McpConnection['provider'];setMcpProvider(provider);setMcpName(provider==='github'?'GitHub MCP':provider==='google-drive'?'Google Drive MCP':provider==='notion'?'Notion MCP':'Custom MCP')}}><option value="github">GitHub</option><option value="google-drive">Google Drive</option><option value="notion">Notion</option><option value="custom">Custom</option></select><label>연결 별칭</label><input value={mcpName} onChange={event=>setMcpName(event.target.value)}/><label>MCP 서버 URL</label><input value={mcpUrl} onChange={event=>setMcpUrl(event.target.value)} placeholder="https://…/mcp"/><label>토큰</label><input type="password" value={mcpToken} onChange={event=>setMcpToken(event.target.value)} placeholder="등록 시 보안 저장"/><button className="solid-button wide" onClick={saveMcp} disabled={Boolean(busy)}>{busy || 'MCP 연결 저장'}</button>
-      {mcpConnections.length ? <div className="connection-list">{mcpConnections.map(item=><div key={item.id} className="connection-list-row"><span className={`status-dot ${['configured','connected'].includes(item.status)?'is-ok':'is-down'}`} aria-hidden="true"/><b>{item.name}</b><small>{item.provider} · {item.status}</small></div>)}</div> : null}
-    </Dialog>}
+    {modal === 'settings' && <ModelSettingsPanel settings={settings} employees={employees} teamNames={teamNames} busy={busy} onClose={() => setModal(null)} />}
   </main>;
 }
 
-function FloorAgent({employee, active, activity, position, action, motion, selected, bubble, onFocus}:{employee:Employee;active:boolean;activity:string;position:[number,number];action:AgentAction;motion?:ReturnType<typeof resolveMotion>;selected:boolean;bubble?:JobEvent;onFocus:(id:string)=>void}) {
-  const elementRef=useRef<HTMLButtonElement>(null);
-  const previousPosition=useRef<MotionPoint | null>(null);
-  const [isMoving, setIsMoving]=useState(false);
-  const [direction, setDirection]=useState<AvatarDirection>('front-right');
-  const lead=leadIds.has(employee.id);
-  const team=teamForAgent(employee.id);
-  const state=motion?.stateKey ?? 'idle';
-  const status=stateLabel(state);
-  const icon=stateIcon(state);
-  const pose=isMoving || action==='walk' ? 'walk-a' : action==='idle'?'sit':action;
-  const genericBubble=!bubble || ['모델 작업 시작','작업 중 · 실제 Job 처리 중'].includes(bubble.summary);
-  const bubbleText=active ? ((genericBubble ? activity : bubble?.summary)?.slice(0, 140) || `${status} · 실제 Job 처리 중`) : (bubble?.summary.slice(0, 140) ?? '');
-  useEffect(() => {
-    const element=elementRef.current;
-    const next:MotionPoint={x:position[0],y:position[1],zone:motion?.target.zone ?? 'desk'};
-    const previous=previousPosition.current;
-    previousPosition.current=next;
-    if (!element || !previous || (previous.x === next.x && previous.y === next.y)) return;
-    const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) { element.animate([{opacity:.45},{opacity:1}], {duration:120, easing:'ease-out'}); return; }
-    const stage=element.closest('.office-world');
-    if (!stage) return;
-    const bounds=stage.getBoundingClientRect();
-    const route=routeBetween(previous,next);
-    const duration=routeDuration(route);
-    setDirection(directionForSegment(route[0], route[1] ?? route[0]));
-    const keyframes=route.map((point,index) => {
-      const dx=(point.x-next.x)/100*bounds.width;
-      const dy=(point.y-next.y)/100*bounds.height;
-      return {transform:`translate3d(-50%, -60%, 0) translate3d(${dx}px, ${dy}px, 0)`, offset:index/(route.length-1)};
-    });
-    setIsMoving(true);
-    const animation=element.animate(keyframes,{duration,easing:'cubic-bezier(.22,.8,.25,1)',fill:'both'});
-    animation.onfinish=()=>setIsMoving(false);
-    animation.oncancel=()=>setIsMoving(false);
-    return ()=>animation.cancel();
-  }, [motion?.target.zone, position[0], position[1]]);
-  const visualAction=isMoving ? 'walk' : action;
-  return <button ref={elementRef} aria-label={`${personas[employee.id]?.name ?? employee.id}, ${status}`} aria-live={selected ? 'polite' : undefined} className={`floor-agent ${active ? 'working' : ''} ${lead ? 'team-lead' : 'sub-agent'} team-${team} ${selected ? 'selected' : ''} state-${state} action-${visualAction}`} style={{'--x':`${position[0]}%`,'--y':`${position[1]}%`,'--agent-tone':personas[employee.id]?.palette ?? '#7d9271','--motion-delay':`${motion?.delayMs ?? 0}ms`,'--motion-duration':`${motion?.durationMs ?? 1600}ms`} as CSSProperties} onClick={() => onFocus(employee.id)}><span className="agent-shadow"/>{bubbleText && <span className="agent-bubble">{bubbleText}</span>}<Avatar id={employee.id} pose={pose} direction={direction}/>{lead&&<b className="lead-mark" aria-label="팀장">◆</b>}{icon&&<span className="agent-state-icon" aria-hidden="true">{icon}</span>}<span className="agent-name"><i/>{personas[employee.id]?.name ?? employee.id}<em>{status}</em></span></button>;
-}
-
-const cameraButton:CSSProperties={border:'1px solid #d5efaf',borderRadius:5,background:'#182319dd',color:'#efffe7',padding:'4px 6px',fontSize:8};
-function agentBehavior(state:string, active:boolean){if(!active)return '자리 대기';if(['contracting','planning'].includes(state))return '계획 중';if(state==='meeting')return '회의 중';if(['verifying','failed','team_review','cross_review'].includes(state))return 'QA 검토';if(['awaiting_approval','blocked','escalated'].includes(state))return state==='blocked'?'차단':'CEO 보고';if(state==='completed')return '업무 완료';return '팀 작업 중';}
-// `group` here is an AgentStateKey display group from motion.getStateGroup, not
-// a raw backend task/job state string. Backend states are awaiting_approval,
-// completed, verifying/team_review/cross_review, etc. (apps/api/main.py
-// JOB_STATES/TASK_STATES) - grouping them into approval/done/reviewing for
-// display happens once, in motion.ts, so this function never re-derives a
-// display bucket from a raw state string itself.
-function stateLabel(group:AgentStateKey){return group==='planning'?'계획 중':group==='meeting'?'회의 중':group==='reviewing'?'QA 검토':group==='blocked'?'차단':group==='approval'?'CEO 보고':group==='running'?'작업 중':group==='done'?'업무 완료':'대기';}
-function stateIcon(group:AgentStateKey){return group==='planning'?'▤':group==='meeting'?'◌':group==='reviewing'?'⌕':group==='blocked'?'!':group==='approval'||group==='done'?'✓':group==='running'?'◔':'';}
-function agentRole(id:string,lead:boolean){const roles:Record<string,string>={NAVI:'CEO',FRAME:'PM',BUILD:'TECH LEAD',LINK:'AI LEAD',SHIP:'OPS LEAD',GUARD:'QA LEAD',GROW:'GROWTH LEAD',LENS:'REVIEW LEAD',MOSS:'DESIGNER',FRONT:'FRONTEND',BACK:'BACKEND',SIGNAL:'DATA',EVAL:'AI EVAL',SRE:'SRE',TRACE:'QA',SHIELD:'SECURITY',VOICE:'BRAND',PULSE:'ANALYST',DOCS:'DOCS',JOURNEY:'RESEARCH',ROUTE:'PLANNER',CLOCK:'OPS',FLOW:'UX',COST:'FINOPS'};return roles[id] ?? (lead?'TEAM LEAD':'SPECIALIST');}
-function compactText(value:string, limit:number){const text=value.replace(/[#*_`|]+/g,' ').replace(/\s+/g,' ').trim();return text.length>limit?`${text.slice(0,limit-1)}…`:text;}
-function teamStatus(id:string, task:Task|null){const count=task?.assigned_employees.filter(agentId=>teamForAgent(agentId)===id).length??0;if(!count||['completed','cancelled'].includes(task?.state??''))return '대기';if(['meeting','meeting_running'].includes(task?.state??''))return '회의 중';if(['contracting','planning','awaiting_lead_selection','awaiting_worker_selection'].includes(task?.state??''))return `실행 대기 ${count}`;if(['verifying','failed','team_review','cross_review','lead_review_running'].includes(task?.state??''))return '검토 중';if(task?.state==='awaiting_approval')return '승인 대기';if(task?.state==='blocked')return '차단';if(['running','executing'].includes(task?.state??''))return `작업 중 ${count}`;return `배정 ${count}`;}
-
-function teamForAgent(id:string) {
-  if (['NAVI','ROUTE','CLOCK','FRAME','FLOW'].includes(id)) return 'product';
-  if (['MOSS','BUILD','FRONT'].includes(id)) return 'design';
-  if (['BACK','LINK','SIGNAL','EVAL'].includes(id)) return 'backend';
-  if (['GROW','VOICE','PULSE'].includes(id)) return 'growth';
-  if (['LENS','JOURNEY','DOCS'].includes(id)) return 'lounge';
-  return 'ops';
-}
-
-function teamSignStyle(id:string):CSSProperties {
-  const coordinates:Record<string,[string,string]>={product:['8%','29%'],design:['42%','31%'],backend:['72%','31%'],growth:['8%','61%'],lounge:['42%','66%'],ops:['72%','61%']};
-  const [left,top]=coordinates[id];
-  return {position:'absolute',zIndex:8,left,top,minWidth:112,padding:'6px 8px',border:'1px solid #ffffffaa',borderRadius:7,background:'#101811e8',color:'#f7fff3',textAlign:'left',boxShadow:'0 5px 12px #0008'};
-}
-
-const directionalAtlases:Partial<Record<string,string>>={NAVI:'/assets/agent-navi-v3.png',BUILD:'/assets/agent-build-v3.png',GUARD:'/assets/agent-guard-v3.png'};
-function Avatar({id,compact=false,pose='stand',direction='front-right'}:{id:string;compact?:boolean;pose?:string;direction?:AvatarDirection}) {
-  const persona=personas[id] ?? personas.NAVI;
-  const index=avatarIndexes[id] ?? Math.max(0,spriteIds.indexOf(id));
-  const atlas=directionalAtlases[id];
-  const [x,y]=direction==='front-left'?['0%','0%']:direction==='front-right'?['100%','0%']:direction==='back-left'?['0%','100%']:['100%','100%'];
-  return <div data-avatar={id} className={`avatar-art sprite-avatar ${atlas?'directional-avatar':''} pose-${pose} ${compact?'compact':''}`} style={{'--sprite-x':`${(index%8)*100/7}%`,'--sprite-y':`${Math.floor(index/8)*50}%`,'--directional-atlas':atlas?`url(${atlas})`:undefined,'--direction-x':x,'--direction-y':y,'--halo':persona.palette} as CSSProperties}/>;
-}
-
 function ProfilePanel({employee,active,activity,result,evidenceCount,busy,onSubmitCommand,onClose}:{employee:Employee;active:boolean;activity:string;result:string;evidenceCount:number;busy:boolean;onSubmitCommand:(leadId:string,title:string,prompt:string)=>Promise<void>;onClose:()=>void}) {
-  const persona:Persona=personas[employee.id] ?? personas.NAVI;
+  const persona = personas[employee.id] ?? personas.NAVI;
   const lead=leadIds.has(employee.id);
   const [title,setTitle]=useState('');
   const [prompt,setPrompt]=useState('');
   useEffect(()=>{setTitle('');setPrompt('');},[employee.id]);
   return <aside className="profile-panel"><button onClick={onClose}>×</button><Avatar id={employee.id}/><div><span>{teamNames[employee.team] ?? employee.team}</span><h2>{persona.name}</h2><p>{persona.bio}</p>{lead && employee.id !== 'NAVI' && <section className="lead-command"><b>팀장에게 직접 지시</b><input value={title} onChange={event=>setTitle(event.target.value)} placeholder="업무 제목"/><textarea value={prompt} onChange={event=>setPrompt(event.target.value)} placeholder="프롬프트: 목표, 범위, 산출물, 확인 기준"/><button className="solid-button" disabled={!title.trim()||!prompt.trim()||busy} onClick={()=>void onSubmitCommand(employee.id,title,prompt)}>판단 Job 시작</button></section>}</div><dl><div><dt>직책</dt><dd>{agentRole(employee.id,lead)}</dd></div><div><dt>역할</dt><dd>{lead?'업무 분담 · 리뷰 · 디버깅':'실제 구현 · 문서 · 테스트 수행'}</dd></div><div><dt>전문 분야</dt><dd>{persona.specialty}</dd></div><div><dt>현재 업무</dt><dd className={active?'active':''}>{active ? (activity || '실제 Job 처리 중') : '배정 대기'}</dd></div><div><dt>최근 결과</dt><dd>{result ? result.slice(0,600) : '아직 결과물 없음'}</dd></div><div><dt>검증 근거</dt><dd>{evidenceCount}건</dd></div></dl></aside>;
-}
-
-const featuredModels: ProviderModel[] = [
-  {id:'z-ai/glm-5.2',name:'GLM-5.2',context_length:1048576},
-  {id:'deepseek/deepseek-v4-pro',name:'DeepSeek V4 Pro',context_length:1048576},
-  {id:'deepseek/deepseek-v4-flash',name:'DeepSeek V4 Flash',context_length:1048576},
-  {id:'stepfun/step-3.5-flash',name:'Step 3.5 Flash 2603',context_length:262144},
-  {id:'tencent/hy3',name:'Tencent HY3',context_length:262144},
-  {id:'stepfun/step-3.7-flash',name:'Step 3.7 Flash',context_length:262144},
-  {id:'xiaomi/mimo-v2.5',name:'MiMo V2.5',context_length:1048576},
-  {id:'moonshotai/kimi-k2.7-code',name:'Kimi K2.7 Code',context_length:1048576},
-];
-const modelRoleLabels:[string,string][] = [
-  ['orchestrator','NAVI · 전체 조율'], ['development_basic','기본 개발'], ['complex_design_integration','복잡 설계 · 통합'],
-  ['document_research_test_repeat','문서 · 조사 · 테스트 · 반복'], ['frontend_cicd_operations','프론트 · CI/CD · 일반 운영'], ['ui_video_mock_review','UI · 영상 Mock 검수'],
-  ['multimodal_audio_analysis','음성 포함 멀티모달 분석'], ['debug_escalation','2회 이상 실패 · 장기 디버깅'], ['final_completion','최종 완료 판정'],
-];
-function ModelSelect({listId,value,models,onChange,allowInheritance=false}:{listId:string;value:string;models:ProviderModel[];onChange:(value:string)=>void;allowInheritance?:boolean}) {
-  const options=[...featuredModels,...models.filter(model=>!featuredModels.some(featured=>featured.id===model.id)&&(!model.id.startsWith('openai/')||model.id.startsWith('openai/gpt-5.6')))];
-  const featuredIds=new Set(featuredModels.map(model=>model.id));
-  return <div className="model-picker"><select aria-label={`${listId} 모델 선택`} value={value} onChange={event=>onChange(event.target.value)}>{allowInheritance&&<option value="">역할별 기본값 사용</option>}{value&&<option value={value}>{options.find(model=>model.id===value)?.name ?? value}</option>}<optgroup label="권장 역할 모델">{options.filter(model=>featuredIds.has(model.id)&&model.id!==value).map(model=><option key={model.id} value={model.id}>{model.name}</option>)}</optgroup><optgroup label="OpenRouter 전체 모델">{options.filter(model=>!featuredIds.has(model.id)&&model.id!==value).map(model=><option key={model.id} value={model.id}>{model.name}</option>)}</optgroup></select><input value={value} onChange={event=>onChange(event.target.value)} placeholder={allowInheritance?'빈 값이면 역할별 기본값 사용':'직접 모델 ID 입력'}/><small>{allowInheritance?'선택 해제 또는 빈 값이면 기본값으로 복귀':'목록 선택 또는 OpenRouter 모델 ID 직접 입력'}</small></div>;
 }
 
 function TeamPanel({teamId,members,lead,task,onClose,onFocus}:{teamId:string;members:Employee[];lead:Employee|undefined;task:Task|null;onClose:()=>void;onFocus:()=>void}) {
@@ -626,36 +374,4 @@ function TeamPanel({teamId,members,lead,task,onClose,onFocus}:{teamId:string;mem
   const meeting=task?.meetings.find(item=>item.participants.some(id=>teamForAgent(id)===teamId));
   const skills=members.flatMap(member=>member.required_skills??[]).filter((value,index,array)=>array.indexOf(value)===index).slice(0,8);
   return <aside className="team-panel"><button className="panel-close" onClick={onClose}>×</button><span>DEPARTMENT</span><h2>{title}</h2><p className="team-panel-state">{teamStatus(teamId,task)}</p><InfoBlock label="팀장" value={lead ? personas[lead.id]?.name ?? lead.id : '배정 없음'} /><InfoBlock label="구성원" value={members.map(member=>personas[member.id]?.name ?? member.id).join(' · ')} /><InfoBlock label="현재 업무" value={active.length ? task?.title ?? '업무 진행 중' : '대기 중'} /><InfoBlock label="최근 활동" value={recent?.note ?? '최근 활동 없음'} /><InfoBlock label="활성 스킬" value={skills.join(' · ') || '준비 중'} /><InfoBlock label="관련 회의" value={meeting?.objective ?? '관련 회의 없음'} /><button className="solid-button wide" onClick={onFocus}>팀 포커스</button></aside>;
-}
-
-function Dialog({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}) { return <div className="modal-backdrop" onMouseDown={onClose}><section className="detail-dialog" onMouseDown={event=>event.stopPropagation()}><button className="modal-close" onClick={onClose}>×</button><span>AI OFFICE</span><h2>{title}</h2>{children}</section></div>; }
-function deliverableStatusMeta(status:string) {
-  if (['approved','final_candidate'].includes(status)) return {label:status==='approved'?'승인됨':'최종 후보', tone:'is-ok'};
-  if (['rejected','fail'].includes(status)) return {label:'반려', tone:'is-down'};
-  return {label:status||'작성 중', tone:'is-unset'};
-}
-function DeliverableCards({deliverables,workspace}:{deliverables:Deliverable[];workspace:Workspace|null}) {
-  const [copiedId, setCopiedId] = useState('');
-  if (!deliverables.length) return <InfoBlock label="실제 산출물" value="아직 생성된 산출물 파일이 없습니다." />;
-  const copyPath = (id:string, fullPath:string) => {
-    void navigator.clipboard?.writeText(fullPath).then(() => { setCopiedId(id); setTimeout(() => setCopiedId(current => current === id ? '' : current), 1500); }).catch(() => {});
-  };
-  return <div className="deliverable-section">
-    <b className="info-block-label">실제 산출물 · {deliverables.length}건</b>
-    <div className="deliverable-grid">{deliverables.map(item => {
-      const fullPath = workspace ? `${workspace.path}\\${item.path.replaceAll('/', '\\')}` : item.path;
-      const status = deliverableStatusMeta(item.status);
-      return <div key={item.id} className="deliverable-card">
-        <div className="deliverable-card-head"><span className={`status-dot ${status.tone}`} aria-hidden="true"/><b>{status.label}</b><small>{personas[item.owner]?.name ?? item.owner}</small></div>
-        <code className="deliverable-path" title={fullPath}>{item.path}</code>
-        <div className="deliverable-card-foot"><small>{item.kind} · {new Date(item.updated_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</small><button className="text-button" onClick={() => copyPath(item.id, fullPath)}>{copiedId === item.id ? '복사됨' : '경로 복사'}</button></div>
-      </div>;
-    })}</div>
-  </div>;
-}
-function InfoBlock({label,value}:{label:string;value:string}) { return <div className="info-block"><b>{label}</b><p>{value}</p></div>; }
-function CompletionSummary({task,onDetails}:{task:Task;onDetails:()=>void}) {
-  const failed = task.evidence.some(item=>item.status==='fail') || task.jobs.some(job=>job.state==='failed');
-  const report = task.agent_messages.find(message=>message.employee_id==='NAVI'&&message.kind==='final_report');
-  return <section className="completion-summary"><h3>작업 결과</h3><InfoBlock label="작동 여부" value={failed?'확인이 필요합니다. 상세 검토가 필요합니다.':'검증을 통과했습니다.'}/><InfoBlock label="남은 작업" value={failed?'검토 후 재작업 범위를 선택하세요.':'현재 요청 기준 남은 작업이 없습니다.'}/><InfoBlock label="다음 행동" value="결과를 사용하거나, 새 요청으로 다음 개선을 시작하세요."/>{report&&<p className="completion-note">NAVI가 완료 조건과 위험을 확인했습니다.</p>}<button className="text-button" onClick={onDetails}>테스트 결과·기술 리포트 자세히 보기 →</button></section>;
 }

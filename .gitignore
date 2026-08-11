@@ -16,6 +16,13 @@ data/
 logs/
 AI_OFFICE_OUTPUTS/
 
+# Trajectory / eval records — contain full prompts, model outputs and tool I/O.
+# Never commit. Redacted at write time, but treat as sensitive regardless.
+data/trajectories/
+evals/outputs/
+**/trace.jsonl
+**/cassettes/
+
 # Credentials and local configuration
 .env
 .env.*

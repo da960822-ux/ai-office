@@ -59,6 +59,7 @@ export type ActionItem = {
   status: string;
 };
 
+export type PermissionRequest = { id:string; task_id:string; employee_id:string; action:string; target:string; state:'pending'|'approved'|'denied'; reason:string; created_at:string; decided_at:string|null };
 export type Review = { id:string; reviewer_id:string; verdict:'pass'|'changes_requested'|'blocked'; findings:string; created_at:string };
 export type Approval = { id:string; decision:'approve'|'rework'|'reject'; reason:string; decided_by:string; created_at:string };
 export type Reflection = { id:string; summary:string; root_causes:string[]; improvements:string[]; created_at:string };
@@ -94,6 +95,7 @@ export type Task = {
   action_items: ActionItem[];
   reviews: Review[];
   approvals: Approval[];
+  permission_requests: PermissionRequest[];
   reflections: Reflection[];
   lessons: Lesson[];
   agent_messages: AgentMessage[];
@@ -243,6 +245,8 @@ export const api = {
   runMeeting: (taskId:string, meetingId:string) => request<Task>(`/tasks/${taskId}/meetings/${meetingId}/run`, {method:'POST',body:'{}'}),
   approval: (id:string, decision:'approve'|'rework'|'reject', reason:string) =>
     request<Task>(`/tasks/${id}/approval`, {method:'POST',body:JSON.stringify({decision,reason})}),
+  decidePermission: (taskId:string, requestId:string, decision:'approve'|'deny', reason:string) =>
+    request<PermissionRequest>(`/tasks/${taskId}/permissions/${requestId}`, {method:'POST',body:JSON.stringify({decision,reason})}),
   reflection: (id:string, summary:string, rootCauses:string[], improvements:string[], lesson:string) =>
     request<Task>(`/tasks/${id}/reflection`, {method:'POST',body:JSON.stringify({summary,root_causes:rootCauses,improvements,lesson})}),
   lessons: () => request<Lesson[]>('/lessons'),

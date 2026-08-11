@@ -1,0 +1,125 @@
+{
+  "nodes": [
+    {
+      "id": "apps_web_public_assets_ai_office_zones_v2",
+      "label": "AI Office Zones Map v2 (Isometric Floor Plan)",
+      "file_type": "image",
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_operations_planning",
+      "label": "operations-planning (department concept)",
+      "file_type": null,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_product_experience",
+      "label": "product-experience (department concept)",
+      "file_type": null,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_application",
+      "label": "application (department concept)",
+      "file_type": null,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_ai_data",
+      "label": "ai-data (department concept)",
+      "file_type": null,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_quality_security",
+      "label": "quality-security (department concept)",
+      "file_type": null,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "apps_web_public_assets_ai_office_zones_v2",
+      "target": "concept_operations_planning",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_public_assets_ai_office_zones_v2",
+      "target": "concept_product_experience",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_public_assets_ai_office_zones_v2",
+      "target": "concept_application",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_public_assets_ai_office_zones_v2",
+      "target": "concept_ai_data",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_public_assets_ai_office_zones_v2",
+      "target": "concept_quality_security",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "C:\\Users\\SMHRD\\Desktop\\AI_COMPANY_PRO_Corporate_OS_v6.2_Embedded_Skills\\apps\\web\\public\\assets\\ai-office-zones-v2.png",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

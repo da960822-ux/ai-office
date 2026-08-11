@@ -2,21 +2,73 @@
 
 > ## 게임처럼 보이지만, 실제로 일하는 AI 조직.
 >
-> 아이디어와 목표만 전달하세요. AI Office가 필요한 부서와 전문가를 모아 기획하고, 만들고, 검수합니다. 당신은 매 단계의 작업을 지휘하는 사람이 아니라 중요한 결정을 내리는 사람이 됩니다.
+> 목표 하나를 받으면 역할 기반 AI 조직이 기획·구현·검증을 이어 가고, 사용자는 중요한 결정과 Evidence만 확인하는 로컬 멀티 에이전트 운영 시스템입니다.
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![Tests](https://img.shields.io/badge/tests-99%20passing-brightgreen)](#검증)
 
 <p align="center">
-  <a href="#3분-안에-내-프로젝트-맡기기"><strong>직접 실행하기</strong></a> ·
-  <a href="#ai-office가-일하는-방식"><strong>일하는 방식</strong></a> ·
-  <a href="#왜-사무실이어야-하나"><strong>오피스 UI</strong></a> ·
-  <a href="#개발자를-위한-기술-설계"><strong>기술 설계</strong></a>
+  <a href="#3분-안에-내-프로젝트-맡기기"><strong>로컬에서 실행하기</strong></a> ·
+  <a href="#핵심-구현과-기여"><strong>구현 기여 보기</strong></a> ·
+  <a href="#검증한-범위와-한계"><strong>검증 범위 보기</strong></a> ·
+  <a href="#ai-office가-일하는-방식"><strong>서비스 서사 보기</strong></a>
 </p>
+
+## 먼저 보기
+
+아래는 **외부 모델 호출·사용자 프로젝트·개인 데이터 없이** 만든 `카페 예약 전환 흐름 개선` 가상 시나리오입니다. UI를 꾸미기 위한 정적 목업이 아니라, 분리 SQLite fixture를 실제 API에 연결해 Task·Job·Evidence 상태를 렌더링한 화면입니다.
+
+| 업무 접수 | 조직 운영 화면 | Evidence 확인 |
+|---|---|---|
+| ![목표와 지시 대상을 정하는 업무 접수 화면](docs/assets/demo-request-intake.png) | ![부서별 AI 직원과 실행 현황을 보여주는 오피스 화면](docs/assets/demo-office-dashboard.png) | ![산출물과 3중 검증 게이트를 보여주는 QA 화면](docs/assets/demo-qa-evidence.png) |
+
+## 프로젝트 한눈에
+
+| 항목 | 내용 |
+|---|---|
+| 해결할 문제 | 여러 AI에 역할·맥락·검수를 반복 지시해야 하는 작업 흐름 |
+| 핵심 경험 | 목표 전달 → 팀 구성 → workspace 실행 → 독립 리뷰 → Evidence 기반 완료 |
+| 대상 사용자 | 비개발 창업가, PM, 1인 개발자, 소규모 제품팀 |
+| 실행 환경 | Windows 로컬 단일 사용자 · OpenRouter API key 선택 설정 |
+| 직접 체험 | [설치·실행 방법](#3분-안에-내-프로젝트-맡기기)으로 자신의 로컬 프로젝트 연결 |
+
+## 핵심 구현과 기여
+
+개인 프로젝트로 서비스 기획부터 실행 구조와 UI까지 설계·구현했습니다.
+
+- **제품 설계**: 채팅형 AI 도구가 아니라 역할·전문 스킬·인계 순서·검증 기준을 가진 “작은 회사”를 제품 모델로 정의했습니다.
+- **멀티 에이전트 실행기**: FastAPI API, SQLite WAL, worker lease·heartbeat, retry·checkpoint로 장시간 Job 상태를 복구 가능하게 만들었습니다.
+- **통제 가능한 자동화**: 요청별 `TaskContract`로 허용 경로·명령·권한을 제한하고, 민감 권한은 승인 대기로 멈춥니다.
+- **검증 중심 완료 판정**: 산출물 hash, 검증 명령, 독립 리뷰가 모두 통과해야 완료 상태에 도달하게 했습니다.
+- **오피스형 운영 UI**: React/TypeScript 화면에서 Task와 Job event를 부서·회의·QA Lab·직원 이동으로 대응시켜, 누가 무엇을 책임지는지 읽을 수 있게 했습니다.
+
+### 어려웠던 문제와 해결 방식
+
+| 문제 | 해결 | 코드상 근거 |
+|---|---|---|
+| 모델 호출보다 오래 사는 Job을 어떻게 신뢰할까 | SQLite WAL과 atomic lease, worker heartbeat, interrupted 복구, checkpoint·retry를 분리 설계 | [Durable Runtime](docs/RUNTIME_HARDENING.md) |
+| AI의 “완료”를 말이 아닌 결과로 판정하려면 | 파일 hash·검증 명령 종료 코드·독립 리뷰를 Evidence gate로 묶고, 하나라도 빠지면 완료를 차단 | [Evidence UI](apps/web/src/shared.tsx) · [Task routes](apps/api/task_routes.py) |
+| 보이지 않는 에이전트 작업을 어떻게 통제 화면으로 만들까 | 실제 Task state·Job event·담당자 정보를 오피스 구역, 회의실, QA Lab, 실행 타임라인에 연결 | [App](apps/web/src/App.tsx) · [Office floor](apps/web/src/OfficeFloor.tsx) |
+
+## 검증한 범위와 한계
+
+**로컬에서 확인한 범위**
+
+- Python `unittest` 88개, Vitest 11개, TypeScript/Vite production build
+- 24명·8개 부서 routing 일관성, 스킬·패키지 audit
+- API와 worker build ID가 다르거나 worker heartbeat가 사라지면 실행을 막는 runtime guard
+- README 화면은 분리 fixture로 재현: 실제 사용자 프로젝트·API key·모델 출력 미사용
+
+**아직 검증하지 않은 범위**
+
+- 공개 SaaS 배포, 멀티테넌트·동시 사용자, 운영 환경 관측성
+- 다양한 실제 프로젝트에서의 모델 품질·비용·완료율에 대한 정량 평가
+- 승인 없는 외부 전송·게시·배포 자동화
+
+따라서 이 저장소는 “배포된 AI SaaS”가 아니라, 로컬 환경에서 실행·검증 가능한 **멀티 에이전트 운영 시스템 프로토타입**으로 평가해야 합니다.
 
 ## AI를 쓰고 있는데, 왜 아직도 내가 팀장일까?
 
